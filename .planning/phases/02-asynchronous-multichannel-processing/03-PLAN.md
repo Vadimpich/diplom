@@ -74,11 +74,11 @@ Output: three minimal Python worker services, Compose wiring, and documented run
 <task type="auto">
   <name>Task 2: Wire workers into the reproducible local stack</name>
   <files>docker-compose.yml, .env.example, docs/01_contract.md</files>
-  <action>Extend the root Compose stack with the three worker services, explicit broker/S3 environment variables, and startup dependencies that match the existing self-hosted topology. Update `.env.example` with worker configuration and queue names. Touch `docs/01_contract.md` only if environment-backed contract details need clarification for queue names or result routing; otherwise keep the earlier contract wording intact. Do not upgrade RabbitMQ in this phase unless the code explicitly requires it; stay on `rabbitmq:3.13-management-alpine` and document the explicit queue assumptions instead.</action>
+  <action>Extend the root Compose stack with the three worker services, explicit broker/S3 environment variables, and startup dependencies that match the existing self-hosted topology. Update `.env.example` with worker configuration and queue names. Keep `docs/01_contract.md` synchronized with the shipped AMQP topology by confirming or refining exchange names, per-channel queues, routing keys, unified result routing, and explicit RabbitMQ 3.13 retry/DLX assumptions as they land in Compose and worker code. Do not upgrade RabbitMQ in this phase unless the code explicitly requires it; stay on `rabbitmq:3.13-management-alpine` and document the explicit queue assumptions instead.</action>
   <verify>
     <automated>cd /home/katya/dimplom && docker compose up -d --build && docker compose ps</automated>
   </verify>
-  <done>The local stack starts frontend, core backend, PostgreSQL, RabbitMQ, MinIO, and three mandatory worker services from one Compose file.</done>
+  <done>The local stack starts frontend, core backend, PostgreSQL, RabbitMQ, MinIO, and three mandatory worker services from one Compose file, with `docs/01_contract.md` kept authoritative for shared queue and routing contracts.</done>
 </task>
 
 </tasks>

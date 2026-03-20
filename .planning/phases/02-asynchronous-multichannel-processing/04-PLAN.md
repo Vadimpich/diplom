@@ -71,7 +71,7 @@ export interface Examination {
 
 Required extension in this plan:
 ```text
-Add a dedicated processing-status DTO instead of overloading the existing examination list item.
+Persist and document examination-level `processing` / `failed` statuses, but keep rich per-channel runtime detail in a dedicated processing-status DTO instead of overloading the existing examination list item.
 ```
 </interfaces>
 </context>
@@ -102,7 +102,7 @@ Add a dedicated processing-status DTO instead of overloading the existing examin
     - Test 2: terminal failure is returned with the failing channel and persisted error details.
     - Test 3: the endpoint works without reading broker management state.
   </behavior>
-  <action>Add `GET /examinations/{id}/processing-status` to the operator/admin backend surface. The handler should return a DTO built entirely from PostgreSQL projection: overall pipeline status, `is_terminal`, per-channel statuses, attempt metadata, timestamps, and last error details. Keep the existing `Examination` list DTO stable; expose the richer runtime data through this dedicated endpoint only.</action>
+  <action>Add `GET /examinations/{id}/processing-status` to the operator/admin backend surface. The handler should return a DTO built entirely from PostgreSQL projection: overall pipeline status, `is_terminal`, per-channel statuses, attempt metadata, timestamps, and last error details. Align runtime status handling with the Phase 2 contract decision: examination state may progress through `processing` and `failed`, but rich per-channel detail is exposed only through this dedicated endpoint rather than overloaded into generic list/history payloads.</action>
   <verify>
     <automated>cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestProcessingStatusEndpoint|TestProcessingStatusEndpointReturnsTerminalError' -count=1</automated>
   </verify>
@@ -117,8 +117,8 @@ Run both result-state and HTTP projection tests; confirm terminal pipeline error
 
 <success_criteria>
 - Unified result messages drive persisted channel-run transitions in PostgreSQL.
-- Retry exhaustion or fatal failure on a mandatory channel produces a final examination error state.
-- `GET /examinations/{id}/processing-status` exposes per-channel progress for UI polling.
+- Retry exhaustion or fatal failure on a mandatory channel produces a final examination `failed` state.
+- `GET /examinations/{id}/processing-status` exposes per-channel progress for UI polling while remaining the rich runtime surface.
 </success_criteria>
 
 <output>
