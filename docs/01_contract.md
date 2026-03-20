@@ -44,6 +44,7 @@
 - core backend НЕ устанавливает browser cookies самостоятельно;
 - frontend BFF или route handlers на origin фронтенда принимают `refresh_token` из ответа и кладут его в `HttpOnly` cookie;
 - browser не должен хранить `access_token` и `refresh_token` в JavaScript-readable storage.
+- frontend использует BFF endpoints `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout` и `/api/auth/session` как единственную browser-cookie boundary.
 
 Запрос:
 
@@ -150,6 +151,23 @@
 Ошибки:
 - `400 Bad Request` если payload невалидный.
 
+### Frontend BFF Auth API
+
+Назначение:
+- Next.js route handlers на frontend origin проксируют auth transport к core backend;
+- только BFF layer устанавливает и очищает browser cookies.
+
+Endpoints:
+- `POST /api/auth/login` -> прокси к `POST /auth/login`, устанавливает browser cookies после успешного входа;
+- `POST /api/auth/refresh` -> прокси к `POST /auth/refresh`, ротирует browser cookies;
+- `POST /api/auth/logout` -> прокси к `POST /auth/logout`, очищает browser cookies;
+- `GET /api/auth/session` -> возвращает текущего пользователя, при необходимости обновляя access token через refresh cookie.
+
+Технические правила:
+- `dimplom_refresh_token` хранится только как `HttpOnly` cookie и не должен читаться браузерным JavaScript;
+- BFF может выставлять вспомогательные cookies для переходного UI-слоя, но transport refresh-session остаётся централизованным в `/api/auth/*`;
+- frontend-клиент не должен писать auth cookies через `document.cookie`.
+
 ### CORS / preflight
 
 Технические правила:
@@ -169,6 +187,11 @@
 
 Аутентификация:
 - `Authorization: Bearer <jwt>`.
+
+Роли и авторизация:
+- `/users` и `/questionnaires` доступны только роли `admin`; для роли `operator` backend возвращает `403 Forbidden`;
+- `/specialists`, `/examinations`, `/answers` и `GET /specialists/{id}/examinations` доступны ролям `operator` и `admin`;
+- `/me` доступен любой аутентифицированной роли.
 
 Технические детали:
 - `/me` использует только access token;
