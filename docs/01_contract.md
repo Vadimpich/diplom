@@ -523,6 +523,10 @@ Endpoints:
 }
 ```
 
+Технические детали:
+- список должен отражать авторитетные backend-статусы `created`, `collecting_answers`, `ready_for_processing`;
+- UI не должен вычислять эти статусы из local draft state, cookie-кэша или optimistic флагов.
+
 Ошибки:
 - `404 Not Found` если специалист не найден.
 
@@ -552,11 +556,13 @@ Endpoints:
 Правила:
 - переход допустим из `collecting_answers`;
 - если обследование уже в `ready_for_processing`, endpoint идемпотентно возвращает текущее состояние;
+- backend переводит обследование в `ready_for_processing` только если число сохранённых ответов совпадает с числом snapshot-вопросов `examination_questions`;
+- processing launch защищён server-side fence в БД, поэтому повторный `finish` не должен создавать дублирующий запуск;
 - любые другие переходы дают ошибку.
 
 Ошибки:
 - `404 Not Found` если обследование не найдено;
-- `409 Conflict` при недопустимом переходе статуса.
+- `409 Conflict` при недопустимом переходе статуса или неполном наборе ответов.
 
 ## Answers API
 
@@ -587,6 +593,8 @@ Endpoints:
 
 Поля формы:
 - `examination_id`: integer, обязательное;
+- `examination_question_id`: integer, обязательное;
+- `specialist_id`: integer, обязательное;
 - `text`: string, обязательное;
 - `audio`: binary file, обязательное.
 
@@ -596,12 +604,14 @@ Endpoints:
 - файл не сохраняется в PostgreSQL;
 - в БД хранится только `audio_s3_key`;
 - ключ объекта детерминирован: `examinations/{examination_id}/answers/{answer_id}/audio{ext}`;
-- ответ можно сохранять только для обследования в статусе `collecting_answers`.
+- ответ можно сохранять только для обследования в статусе `collecting_answers`;
+- `examination_question_id` должен ссылаться на snapshot-вопрос из `examination_questions`, принадлежащий тому же `examination_id` и `specialist_id`;
+- повторный ответ на один и тот же snapshot-вопрос должен отклоняться как конфликт.
 
 Ошибки:
 - `400 Bad Request` при невалидном multipart payload;
 - `404 Not Found` если обследование не найдено;
-- `409 Conflict` если обследование не находится в статусе `collecting_answers`.
+- `409 Conflict` если обследование не находится в статусе `collecting_answers` или если на этот snapshot-вопрос уже сохранён ответ.
 
 ## Questionnaires API
 

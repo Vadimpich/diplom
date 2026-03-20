@@ -12,7 +12,7 @@ Roadmap focuses on brownfield gaps between the current operator/admin CRUD flows
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Trusted Access And Intake** - Secure server-side access and make examination intake reliably reach processing-ready state.
+- [x] **Phase 1: Trusted Access And Intake** - Secure server-side access and make examination intake reliably reach processing-ready state.
 - [ ] **Phase 2: Asynchronous Multichannel Processing** - Run mandatory `text`, `acoustic`, and `paralinguistic` analysis through RabbitMQ with bounded retries and visible channel progress.
 - [ ] **Phase 3: Aggregated Baseline-Aware Profiles** - Turn channel outputs into a versioned, interpretable profile with baseline deviation and history dynamics.
 - [ ] **Phase 4: Decision Delivery To Operator** - Deliver normalized results into KЭСМИ and expose final recommendation or integration failure to the operator.
@@ -83,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Trusted Access And Intake | 1/8 | In Progress|  |
+| 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
 | 2. Asynchronous Multichannel Processing | 0/TBD | Not started | - |
 | 3. Aggregated Baseline-Aware Profiles | 0/TBD | Not started | - |
 | 4. Decision Delivery To Operator | 0/TBD | Not started | - |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 01-trusted-access-and-intake-01-PLAN.md
-last_updated: "2026-03-20T10:20:22.413Z"
+stopped_at: Completed Phase 1 — Trusted Access And Intake
+last_updated: "2026-03-20T14:10:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 8
 ---
 
 # Project State
@@ -19,33 +19,33 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-20)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Phase 1 — Trusted Access And Intake
+**Current focus:** Phase 2 — Asynchronous Multichannel Processing
 
 ## Current Position
 
-Phase: 1 (Trusted Access And Intake) — EXECUTING
-Plan: 2 of 8
-Status: In progress
-Progress: [█░░░░░░░░░] 13%
+Phase: 2 (Asynchronous Multichannel Processing) — READY TO PLAN
+Plan: 0 of 0
+Status: Phase 1 complete
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: 8 min
-- Total execution time: 0.1 hours
+- Total plans completed: 8
+- Average duration: 9 min
+- Total execution time: 1.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-trusted-access-and-intake | 1 | 476s | 476s |
+| 01-trusted-access-and-intake | 8 | 3500s | 437s |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (476s)
-- Trend: Stable
+- Last 5 plans: 01-04, 01-05, 01-06, 01-07, 01-08
+- Trend: Improving
 
 ## Accumulated Context
 
@@ -58,6 +58,10 @@ Recent decisions affecting current work:
 - Existing operator/admin CRUD and intake flows are treated as brownfield baseline; roadmap covers only target-architecture gaps.
 - [Phase 01-trusted-access-and-intake]: Core backend returns refresh tokens to a trusted frontend BFF, which owns HttpOnly browser cookies.
 - [Phase 01-trusted-access-and-intake]: Refresh tokens are opaque random values stored only as SHA-256 hashes in PostgreSQL refresh_sessions.
+- [Phase 01-trusted-access-and-intake]: Examination creation snapshots questionnaire questions into immutable examination-scoped rows.
+- [Phase 01-trusted-access-and-intake]: Answer uploads are bound to examination, snapshot question, and specialist; duplicate answers per question are rejected.
+- [Phase 01-trusted-access-and-intake]: Finish is idempotent and fenced at the DB layer before processing starts.
+- [Phase 01-trusted-access-and-intake]: Specialist history UI renders backend workflow statuses as the source of truth.
 
 ### Pending Todos
 
@@ -65,12 +69,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Backend still lacks server-side RBAC enforcement.
 - Async RabbitMQ/ML pipeline, aggregator, baseline, KЭСМИ integration, and operator result views are not implemented yet.
-- Test coverage remains concentrated around auth and does not yet cover the broader examination workflow.
+- Test coverage now includes auth, intake linkage, finish idempotency, and specialist status history, but broader async pipeline coverage is still absent.
 
 ## Session Continuity
 
-Last session: 2026-03-20T10:20:22.411Z
-Stopped at: Completed 01-trusted-access-and-intake-01-PLAN.md
+Last session: 2026-03-20T14:10:00.000Z
+Stopped at: Completed Phase 1 — Trusted Access And Intake
 Resume file: None
