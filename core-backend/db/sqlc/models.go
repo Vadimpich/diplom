@@ -9,12 +9,14 @@ import (
 )
 
 type Answer struct {
-	ID              int64
-	ExaminationID   int64
-	CreatedByUserID int64
-	AnswerText      string
-	AudioS3Key      string
-	CreatedAt       pgtype.Timestamptz
+	ID                    int64
+	ExaminationID         int64
+	CreatedByUserID       int64
+	AnswerText            string
+	AudioS3Key            string
+	CreatedAt             pgtype.Timestamptz
+	ExaminationQuestionID pgtype.Int8
+	SpecialistID          pgtype.Int8
 }
 
 type Examination struct {
@@ -27,6 +29,11 @@ type Examination struct {
 	FinishedAt      pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
 	QuestionnaireID pgtype.Int8
+}
+
+type ExaminationProcessingLaunch struct {
+	ExaminationID int64
+	LaunchedAt    pgtype.Timestamptz
 }
 
 type ExaminationQuestion struct {

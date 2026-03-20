@@ -63,6 +63,8 @@ export interface ExaminationsResponse {
 export interface Answer {
   id: number;
   examination_id: number;
+  examination_question_id: number;
+  specialist_id: number;
   created_by_user_id: number;
   text: string;
   audio_s3_key: string;
