@@ -167,6 +167,7 @@ Endpoints:
 - `dimplom_refresh_token` хранится только как `HttpOnly` cookie и не должен читаться браузерным JavaScript;
 - BFF может выставлять вспомогательные cookies для переходного UI-слоя, но transport refresh-session остаётся централизованным в `/api/auth/*`;
 - frontend-клиент не должен писать auth cookies через `document.cookie`.
+- protected layouts и route guards должны опираться на `/api/auth/session` как на авторитетный источник session/role state; role-cookie допустим только как UX hint для первичного redirect.
 
 ### CORS / preflight
 
