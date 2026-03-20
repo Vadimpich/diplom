@@ -91,32 +91,32 @@
 | ACCS-02 | Phase 1 | Pending |
 | ACCS-03 | Phase 1 | Pending |
 | ACCS-04 | Phase 1 | Pending |
-| EXAM-01 | Phase 2 | Pending |
-| EXAM-02 | Phase 2 | Pending |
-| EXAM-03 | Phase 2 | Pending |
-| EXAM-04 | Phase 2 | Pending |
-| PIPE-01 | Phase 3 | Pending |
-| PIPE-02 | Phase 3 | Pending |
-| PIPE-03 | Phase 3 | Pending |
-| PIPE-04 | Phase 3 | Pending |
-| AGGR-01 | Phase 4 | Pending |
-| AGGR-02 | Phase 4 | Pending |
-| AGGR-03 | Phase 4 | Pending |
-| BASE-01 | Phase 5 | Pending |
-| BASE-02 | Phase 5 | Pending |
-| BASE-03 | Phase 5 | Pending |
-| KSMI-01 | Phase 6 | Pending |
-| KSMI-02 | Phase 6 | Pending |
-| KSMI-03 | Phase 6 | Pending |
-| RSLT-01 | Phase 7 | Pending |
-| RSLT-02 | Phase 7 | Pending |
-| RSLT-03 | Phase 7 | Pending |
-| OBSV-01 | Phase 8 | Pending |
-| OBSV-02 | Phase 8 | Pending |
-| OBSV-03 | Phase 8 | Pending |
-| QUAL-01 | Phase 8 | Pending |
-| QUAL-02 | Phase 8 | Pending |
-| QUAL-03 | Phase 8 | Pending |
+| EXAM-01 | Phase 1 | Pending |
+| EXAM-02 | Phase 1 | Pending |
+| EXAM-03 | Phase 1 | Pending |
+| EXAM-04 | Phase 1 | Pending |
+| PIPE-01 | Phase 2 | Pending |
+| PIPE-02 | Phase 2 | Pending |
+| PIPE-03 | Phase 2 | Pending |
+| PIPE-04 | Phase 2 | Pending |
+| AGGR-01 | Phase 3 | Pending |
+| AGGR-02 | Phase 3 | Pending |
+| AGGR-03 | Phase 3 | Pending |
+| BASE-01 | Phase 3 | Pending |
+| BASE-02 | Phase 3 | Pending |
+| BASE-03 | Phase 3 | Pending |
+| KSMI-01 | Phase 4 | Pending |
+| KSMI-02 | Phase 4 | Pending |
+| KSMI-03 | Phase 4 | Pending |
+| RSLT-01 | Phase 2 | Pending |
+| RSLT-02 | Phase 4 | Pending |
+| RSLT-03 | Phase 3 | Pending |
+| OBSV-01 | Phase 5 | Pending |
+| OBSV-02 | Phase 5 | Pending |
+| OBSV-03 | Phase 5 | Pending |
+| QUAL-01 | Phase 5 | Pending |
+| QUAL-02 | Phase 5 | Pending |
+| QUAL-03 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
@@ -125,4 +125,4 @@
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after project initialization*
+*Last updated: 2026-03-20 after roadmap creation*
