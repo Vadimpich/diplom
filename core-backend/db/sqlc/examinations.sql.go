@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAnswersForExamination = `-- name: CountAnswersForExamination :one
+SELECT COUNT(*)
+FROM answers
+WHERE examination_id = $1
+`
+
+func (q *Queries) CountAnswersForExamination(ctx context.Context, examinationID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countAnswersForExamination, examinationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countExaminationQuestions = `-- name: CountExaminationQuestions :one
+SELECT COUNT(*)
+FROM examination_questions
+WHERE examination_id = $1
+`
+
+func (q *Queries) CountExaminationQuestions(ctx context.Context, examinationID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countExaminationQuestions, examinationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createExamination = `-- name: CreateExamination :one
 INSERT INTO examinations (
     specialist_id,
@@ -56,6 +82,20 @@ func (q *Queries) CreateExamination(ctx context.Context, arg CreateExaminationPa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const createExaminationProcessingLaunch = `-- name: CreateExaminationProcessingLaunch :exec
+INSERT INTO examination_processing_launches (
+    examination_id
+) VALUES (
+    $1
+)
+ON CONFLICT DO NOTHING
+`
+
+func (q *Queries) CreateExaminationProcessingLaunch(ctx context.Context, examinationID int64) error {
+	_, err := q.db.Exec(ctx, createExaminationProcessingLaunch, examinationID)
+	return err
 }
 
 const createExaminationQuestionSnapshots = `-- name: CreateExaminationQuestionSnapshots :many
@@ -115,6 +155,45 @@ func (q *Queries) CreateExaminationQuestionSnapshots(ctx context.Context, arg Cr
 	return items, nil
 }
 
+const finishExamination = `-- name: FinishExamination :one
+UPDATE examinations
+SET
+    status = 'ready_for_processing',
+    finished_at = COALESCE(finished_at, NOW()),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
+`
+
+type FinishExaminationRow struct {
+	ID              int64
+	SpecialistID    int64
+	CreatedByUserID int64
+	QuestionnaireID pgtype.Int8
+	Status          string
+	CreatedAt       pgtype.Timestamptz
+	StartedAt       pgtype.Timestamptz
+	FinishedAt      pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) FinishExamination(ctx context.Context, id int64) (FinishExaminationRow, error) {
+	row := q.db.QueryRow(ctx, finishExamination, id)
+	var i FinishExaminationRow
+	err := row.Scan(
+		&i.ID,
+		&i.SpecialistID,
+		&i.CreatedByUserID,
+		&i.QuestionnaireID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getExaminationByID = `-- name: GetExaminationByID :one
 SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
 FROM examinations
@@ -136,6 +215,42 @@ type GetExaminationByIDRow struct {
 func (q *Queries) GetExaminationByID(ctx context.Context, id int64) (GetExaminationByIDRow, error) {
 	row := q.db.QueryRow(ctx, getExaminationByID, id)
 	var i GetExaminationByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.SpecialistID,
+		&i.CreatedByUserID,
+		&i.QuestionnaireID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getExaminationForUpdate = `-- name: GetExaminationForUpdate :one
+SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
+FROM examinations
+WHERE id = $1
+FOR UPDATE
+`
+
+type GetExaminationForUpdateRow struct {
+	ID              int64
+	SpecialistID    int64
+	CreatedByUserID int64
+	QuestionnaireID pgtype.Int8
+	Status          string
+	CreatedAt       pgtype.Timestamptz
+	StartedAt       pgtype.Timestamptz
+	FinishedAt      pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) GetExaminationForUpdate(ctx context.Context, id int64) (GetExaminationForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getExaminationForUpdate, id)
+	var i GetExaminationForUpdateRow
 	err := row.Scan(
 		&i.ID,
 		&i.SpecialistID,

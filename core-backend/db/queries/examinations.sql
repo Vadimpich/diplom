@@ -36,6 +36,12 @@ SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_
 FROM examinations
 WHERE id = $1;
 
+-- name: GetExaminationForUpdate :one
+SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
+FROM examinations
+WHERE id = $1
+FOR UPDATE;
+
 -- name: ListExaminations :many
 SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
 FROM examinations
@@ -46,6 +52,24 @@ SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_
 FROM examinations
 WHERE specialist_id = $1
 ORDER BY created_at DESC, id DESC;
+
+-- name: CountAnswersForExamination :one
+SELECT COUNT(*)
+FROM answers
+WHERE examination_id = $1;
+
+-- name: CountExaminationQuestions :one
+SELECT COUNT(*)
+FROM examination_questions
+WHERE examination_id = $1;
+
+-- name: CreateExaminationProcessingLaunch :exec
+INSERT INTO examination_processing_launches (
+    examination_id
+) VALUES (
+    $1
+)
+ON CONFLICT DO NOTHING;
 
 -- name: UpdateExaminationStatus :one
 UPDATE examinations
@@ -59,6 +83,15 @@ SET
         WHEN $2 = 'ready_for_processing' THEN NOW()
         ELSE finished_at
     END,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at;
+
+-- name: FinishExamination :one
+UPDATE examinations
+SET
+    status = 'ready_for_processing',
+    finished_at = COALESCE(finished_at, NOW()),
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at;

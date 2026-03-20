@@ -15,6 +15,7 @@ const (
 var (
 	ErrInvalidInput      = errors.New("examinations: invalid input")
 	ErrInvalidTransition = errors.New("examinations: invalid transition")
+	ErrAnswersIncomplete = errors.New("examinations: answers incomplete")
 )
 
 type Examination struct {
@@ -29,6 +30,16 @@ type Examination struct {
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
+type ExaminationQuestion struct {
+	ID               int64
+	ExaminationID    int64
+	SpecialistID     int64
+	QuestionnaireID  int64
+	SourceQuestionID *int64
+	Position         int32
+	QuestionText     string
+}
+
 type CreateInput struct {
 	SpecialistID    int64
 	CreatedByUserID int64
@@ -41,6 +52,7 @@ type Repository interface {
 	GetByID(context.Context, int64) (Examination, error)
 	ListBySpecialistID(context.Context, int64) ([]Examination, error)
 	UpdateStatus(context.Context, int64, string) (Examination, error)
+	Finish(context.Context, int64) (Examination, error)
 }
 
 type Service struct {
@@ -91,15 +103,5 @@ func (s *Service) ListBySpecialistID(ctx context.Context, specialistID int64) ([
 }
 
 func (s *Service) Finish(ctx context.Context, id int64) (Examination, error) {
-	exam, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return Examination{}, err
-	}
-	if exam.Status == StatusReadyForProcessing {
-		return exam, nil
-	}
-	if exam.Status != StatusCollectingAnswers {
-		return Examination{}, ErrInvalidTransition
-	}
-	return s.repo.UpdateStatus(ctx, id, StatusReadyForProcessing)
+	return s.repo.Finish(ctx, id)
 }

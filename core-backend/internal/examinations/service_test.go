@@ -88,3 +88,7 @@ func (s *examRepoStub) ListBySpecialistID(context.Context, int64) ([]Examination
 func (s *examRepoStub) UpdateStatus(context.Context, int64, string) (Examination, error) {
 	return Examination{}, nil
 }
+
+func (s *examRepoStub) Finish(context.Context, int64) (Examination, error) {
+	return Examination{}, nil
+}

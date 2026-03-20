@@ -130,6 +130,63 @@ func (r *SQLCRepository) UpdateStatus(ctx context.Context, id int64, status stri
 	return mapUpdateExamination(row), nil
 }
 
+func (r *SQLCRepository) Finish(ctx context.Context, id int64) (Examination, error) {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Examination{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	queries := sqlcdb.New(tx)
+	exam, err := queries.GetExaminationForUpdate(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Examination{}, repository.ErrNotFound
+		}
+		return Examination{}, err
+	}
+
+	if exam.Status == StatusReadyForProcessing {
+		if err := queries.CreateExaminationProcessingLaunch(ctx, id); err != nil {
+			return Examination{}, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return Examination{}, err
+		}
+		return mapGetExaminationForUpdate(exam), nil
+	}
+	if exam.Status != StatusCollectingAnswers {
+		return Examination{}, ErrInvalidTransition
+	}
+
+	answerCount, err := queries.CountAnswersForExamination(ctx, id)
+	if err != nil {
+		return Examination{}, err
+	}
+	questionCount, err := queries.CountExaminationQuestions(ctx, id)
+	if err != nil {
+		return Examination{}, err
+	}
+	if answerCount < questionCount {
+		return Examination{}, ErrAnswersIncomplete
+	}
+
+	if err := queries.CreateExaminationProcessingLaunch(ctx, id); err != nil {
+		return Examination{}, err
+	}
+	row, err := queries.FinishExamination(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Examination{}, repository.ErrNotFound
+		}
+		return Examination{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Examination{}, err
+	}
+	return mapFinishExamination(row), nil
+}
+
 func mapCreateExamination(row sqlcdb.CreateExaminationRow) Examination {
 	return buildExamination(
 		row.ID,
@@ -145,6 +202,20 @@ func mapCreateExamination(row sqlcdb.CreateExaminationRow) Examination {
 }
 
 func mapGetExamination(row sqlcdb.GetExaminationByIDRow) Examination {
+	return buildExamination(
+		row.ID,
+		row.SpecialistID,
+		row.CreatedByUserID,
+		row.QuestionnaireID,
+		row.Status,
+		row.CreatedAt,
+		row.StartedAt,
+		row.FinishedAt,
+		row.UpdatedAt,
+	)
+}
+
+func mapGetExaminationForUpdate(row sqlcdb.GetExaminationForUpdateRow) Examination {
 	return buildExamination(
 		row.ID,
 		row.SpecialistID,
@@ -187,6 +258,20 @@ func mapListExaminationBySpecialist(row sqlcdb.ListExaminationsBySpecialistIDRow
 }
 
 func mapUpdateExamination(row sqlcdb.UpdateExaminationStatusRow) Examination {
+	return buildExamination(
+		row.ID,
+		row.SpecialistID,
+		row.CreatedByUserID,
+		row.QuestionnaireID,
+		row.Status,
+		row.CreatedAt,
+		row.StartedAt,
+		row.FinishedAt,
+		row.UpdatedAt,
+	)
+}
+
+func mapFinishExamination(row sqlcdb.FinishExaminationRow) Examination {
 	return buildExamination(
 		row.ID,
 		row.SpecialistID,

@@ -59,6 +59,8 @@ func mapDomainError(err error) (int, string) {
 		return http.StatusBadRequest, "invalid examination payload"
 	case errors.Is(err, examinations.ErrInvalidTransition):
 		return http.StatusConflict, "invalid examination status transition"
+	case errors.Is(err, examinations.ErrAnswersIncomplete):
+		return http.StatusConflict, "examination answers are incomplete"
 	case errors.Is(err, questionnaires.ErrInvalidInput):
 		return http.StatusBadRequest, "invalid questionnaire payload"
 	case errors.Is(err, answers.ErrInvalidInput):
