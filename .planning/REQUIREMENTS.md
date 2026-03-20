@@ -7,9 +7,9 @@
 
 ### Access Control
 
-- [ ] **ACCS-01**: Пользователь может получить access token по логину и паролю через защищённый auth flow
-- [ ] **ACCS-02**: Пользователь может обновить access token через refresh flow без повторного ввода логина и пароля
-- [ ] **ACCS-03**: Пользователь может завершить сессию через logout с отзывом refresh token
+- [x] **ACCS-01**: Пользователь может получить access token по логину и паролю через защищённый auth flow
+- [x] **ACCS-02**: Пользователь может обновить access token через refresh flow без повторного ввода логина и пароля
+- [x] **ACCS-03**: Пользователь может завершить сессию через logout с отзывом refresh token
 - [ ] **ACCS-04**: Backend ограничивает доступ к admin и operator возможностям по ролям на стороне сервера, а не только во frontend
 
 ### Examination Flow
@@ -87,9 +87,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACCS-01 | Phase 1 | Pending |
-| ACCS-02 | Phase 1 | Pending |
-| ACCS-03 | Phase 1 | Pending |
+| ACCS-01 | Phase 1 | Complete |
+| ACCS-02 | Phase 1 | Complete |
+| ACCS-03 | Phase 1 | Complete |
 | ACCS-04 | Phase 1 | Pending |
 | EXAM-01 | Phase 1 | Pending |
 | EXAM-02 | Phase 1 | Pending |
