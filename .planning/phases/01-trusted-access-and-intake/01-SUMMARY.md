@@ -106,3 +106,9 @@ None - no external service configuration required.
 
 - Phase 1 now has the backend session foundation required for later RBAC and frontend BFF work.
 - Remaining Phase 1 plans still need server-side role enforcement and examination intake hardening.
+
+## Self-Check: PASSED
+
+- Found `.planning/phases/01-trusted-access-and-intake/01-SUMMARY.md`
+- Found commit `2be10d9`
+- Found commit `a40bc09`
