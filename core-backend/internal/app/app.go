@@ -62,7 +62,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 
 	specialistsService := specialists.NewService(specialists.NewRepository(queries))
-	examinationsService := examinations.NewService(examinations.NewRepository(queries))
+	examinationsService := examinations.NewService(examinations.NewRepository(db.Pool()))
 	questionnairesService := questionnaires.NewService(questionnaires.NewRepository(db.Pool()))
 	answersService := answers.NewService(answers.NewRepository(queries), s3Client)
 

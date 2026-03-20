@@ -29,6 +29,16 @@ type Examination struct {
 	QuestionnaireID pgtype.Int8
 }
 
+type ExaminationQuestion struct {
+	ID               int64
+	ExaminationID    int64
+	SpecialistID     int64
+	QuestionnaireID  int64
+	SourceQuestionID pgtype.Int8
+	Position         int32
+	QuestionText     string
+}
+
 type Question struct {
 	ID        int64
 	Text      string
