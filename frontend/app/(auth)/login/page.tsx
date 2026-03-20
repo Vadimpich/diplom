@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 const loginSchema = z.object({
   login: z.string().min(1, "Введите логин"),
@@ -23,6 +25,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const sessionQuery = useCurrentUser();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -38,6 +41,13 @@ export default function LoginPage() {
       router.refresh();
     },
   });
+
+  useEffect(() => {
+    if (!sessionQuery.data) {
+      return;
+    }
+    router.replace(sessionQuery.data.role.slug === "admin" ? "/admin/users" : "/operator");
+  }, [router, sessionQuery.data]);
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
