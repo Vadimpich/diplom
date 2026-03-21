@@ -47,7 +47,11 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	}
 	authHandler := AuthHandler{service: deps.AuthService}
 	specialistsHandler := SpecialistsHandler{service: deps.Specialists}
-	examinationsHandler := ExaminationsHandler{service: deps.Examinations, finisher: deps.Processing}
+	examinationsHandler := ExaminationsHandler{service: deps.Examinations}
+	if deps.Processing != nil {
+		examinationsHandler.finisher = deps.Processing
+		examinationsHandler.statusProvider = deps.Processing
+	}
 	questionnairesHandler := QuestionnairesHandler{service: deps.Questionnaires}
 	answersHandler := AnswersHandler{
 		service:       deps.Answers,
@@ -87,6 +91,7 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 			operatorOrAdmin.Get("/examinations", examinationsHandler.List)
 			operatorOrAdmin.Post("/examinations", examinationsHandler.Create)
 			operatorOrAdmin.Get("/examinations/{id}", examinationsHandler.GetByID)
+			operatorOrAdmin.Get("/examinations/{id}/processing-status", examinationsHandler.ProcessingStatus)
 			operatorOrAdmin.Post("/examinations/{id}/start", examinationsHandler.Start)
 			operatorOrAdmin.Post("/examinations/{id}/finish", examinationsHandler.Finish)
 			operatorOrAdmin.Post("/answers", answersHandler.Create)

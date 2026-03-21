@@ -3,17 +3,24 @@ package http
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"dimplom/internal/examinations"
+	"dimplom/internal/processing"
 )
 
 type ExaminationsHandler struct {
-	service  *examinations.Service
-	finisher finisher
+	service        *examinations.Service
+	finisher       finisher
+	statusProvider statusProvider
 }
 
 type finisher interface {
 	Finish(context.Context, int64) (examinations.Examination, error)
+}
+
+type statusProvider interface {
+	GetStatus(context.Context, int64) (processing.ProcessingStatusResponse, error)
 }
 
 type createExaminationRequest struct {
@@ -134,4 +141,32 @@ func (h ExaminationsHandler) Finish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, item)
+}
+
+func (h ExaminationsHandler) ProcessingStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := parseInt64Param(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid examination id")
+		return
+	}
+
+	if h.statusProvider == nil {
+		writeJSON(w, http.StatusOK, processing.ProcessingStatusResponse{
+			ExaminationID:  id,
+			Status:         examinations.StatusReadyForProcessing,
+			MessageVersion: processing.MessageVersionV1,
+			ChannelsTotal:  len(processing.MandatoryChannels),
+			UpdatedAt:      time.Now().UTC(),
+			Channels:       []processing.ChannelStatusDTO{},
+		})
+		return
+	}
+
+	status, err := h.statusProvider.GetStatus(r.Context(), id)
+	if err != nil {
+		code, message := mapDomainError(err)
+		writeError(w, code, message)
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
 }

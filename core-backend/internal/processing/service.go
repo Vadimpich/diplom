@@ -8,6 +8,7 @@ import (
 
 type FinishRepository interface {
 	FinishLaunch(context.Context, int64) (examinations.Examination, []ProcessingCommandEnvelope, error)
+	GetProcessingStatus(context.Context, int64) (ProcessingStatusResponse, error)
 }
 
 type Service struct {
@@ -24,4 +25,8 @@ func (s *Service) Finish(ctx context.Context, examinationID int64) (examinations
 		return examinations.Examination{}, err
 	}
 	return exam, nil
+}
+
+func (s *Service) GetStatus(ctx context.Context, examinationID int64) (ProcessingStatusResponse, error) {
+	return s.repo.GetProcessingStatus(ctx, examinationID)
 }

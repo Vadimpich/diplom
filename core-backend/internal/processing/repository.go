@@ -354,3 +354,288 @@ func routingKeyForChannel(channel string) string {
 		return "processing.command.paralinguistic"
 	}
 }
+
+func (r *SQLRepository) GetProcessingStatus(ctx context.Context, examinationID int64) (ProcessingStatusResponse, error) {
+	const query = `
+SELECT
+	e.id,
+	e.status,
+	e.finished_at,
+	e.updated_at,
+	cr.channel,
+	cr.status,
+	cr.attempt_count,
+	cr.max_attempts,
+	cr.message_version,
+	cr.last_error_code,
+	cr.last_error_message,
+	cr.broker_message_id,
+	cr.broker_correlation_id,
+	cr.queued_at,
+	cr.started_at,
+	cr.finished_at
+FROM examinations e
+LEFT JOIN examination_channel_runs cr
+	ON cr.examination_id = e.id
+WHERE e.id = $1
+ORDER BY cr.channel ASC`
+
+	rows, err := r.pool.Query(ctx, query, examinationID)
+	if err != nil {
+		return ProcessingStatusResponse{}, err
+	}
+	defer rows.Close()
+
+	response := ProcessingStatusResponse{
+		ExaminationID:  examinationID,
+		MessageVersion: MessageVersionV1,
+		ChannelsTotal:  len(MandatoryChannels),
+		Channels:       make([]ChannelStatusDTO, 0, len(MandatoryChannels)),
+	}
+
+	var found bool
+	for rows.Next() {
+		found = true
+		var (
+			examID          int64
+			examStatus      string
+			examFinishedAt  pgtype.Timestamptz
+			examUpdatedAt   pgtype.Timestamptz
+			channel         pgtype.Text
+			channelStatus   pgtype.Text
+			attemptCount    pgtype.Int4
+			maxAttempts     pgtype.Int4
+			messageVersion  pgtype.Int4
+			lastErrorCode   pgtype.Text
+			lastErrorMsg    pgtype.Text
+			brokerMessageID pgtype.Text
+			brokerCorrID    pgtype.Text
+			queuedAt        pgtype.Timestamptz
+			startedAt       pgtype.Timestamptz
+			finishedAt      pgtype.Timestamptz
+		)
+		if err := rows.Scan(
+			&examID,
+			&examStatus,
+			&examFinishedAt,
+			&examUpdatedAt,
+			&channel,
+			&channelStatus,
+			&attemptCount,
+			&maxAttempts,
+			&messageVersion,
+			&lastErrorCode,
+			&lastErrorMsg,
+			&brokerMessageID,
+			&brokerCorrID,
+			&queuedAt,
+			&startedAt,
+			&finishedAt,
+		); err != nil {
+			return ProcessingStatusResponse{}, err
+		}
+
+		response.ExaminationID = examID
+		response.Status = examStatus
+		if examUpdatedAt.Valid {
+			response.UpdatedAt = examUpdatedAt.Time
+		}
+		if examFinishedAt.Valid {
+			response.FinishedAt = &examFinishedAt.Time
+		}
+
+		if channel.Valid {
+			dto := ChannelStatusDTO{
+				Channel:        channel.String,
+				Status:         channelStatus.String,
+				AttemptCount:   attemptCount.Int32,
+				MaxAttempts:    maxAttempts.Int32,
+				MessageVersion: int(messageVersion.Int32),
+			}
+			if queuedAt.Valid {
+				dto.QueuedAt = &queuedAt.Time
+			}
+			if startedAt.Valid {
+				dto.StartedAt = &startedAt.Time
+			}
+			if finishedAt.Valid {
+				dto.FinishedAt = &finishedAt.Time
+			}
+			if lastErrorCode.Valid {
+				dto.LastErrorCode = &lastErrorCode.String
+			}
+			if lastErrorMsg.Valid {
+				dto.LastErrorMessage = &lastErrorMsg.String
+			}
+			if brokerMessageID.Valid {
+				dto.BrokerMessageID = &brokerMessageID.String
+			}
+			if brokerCorrID.Valid {
+				dto.BrokerCorrelationID = &brokerCorrID.String
+			}
+			response.Channels = append(response.Channels, dto)
+			if isTerminalChannelStatus(dto.Status) {
+				response.ChannelsComplete++
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return ProcessingStatusResponse{}, err
+	}
+	if !found {
+		return ProcessingStatusResponse{}, repository.ErrNotFound
+	}
+	response.Terminal = response.ChannelsComplete == len(MandatoryChannels) && len(response.Channels) == len(MandatoryChannels)
+	return response, nil
+}
+
+func isTerminalChannelStatus(status string) bool {
+	switch status {
+	case "succeeded", "failed_fatal", "exhausted":
+		return true
+	default:
+		return false
+	}
+}
+
+func (r *SQLRepository) ListPendingOutbox(ctx context.Context, limit int32) ([]OutboxMessage, error) {
+	const query = `
+SELECT
+	id,
+	examination_id,
+	channel_run_id,
+	channel,
+	exchange_name,
+	routing_key,
+	attempt_count,
+	max_attempts,
+	message_version,
+	payload,
+	COALESCE(broker_correlation_id, '')
+FROM processing_outbox
+WHERE status = 'pending'
+	AND attempt_count < max_attempts
+ORDER BY created_at ASC, id ASC
+LIMIT $1`
+
+	rows, err := r.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]OutboxMessage, 0)
+	for rows.Next() {
+		var item OutboxMessage
+		var payload []byte
+		if err := rows.Scan(
+			&item.ID,
+			&item.ExaminationID,
+			&item.ChannelRunID,
+			&item.Channel,
+			&item.ExchangeName,
+			&item.RoutingKey,
+			&item.AttemptCount,
+			&item.MaxAttempts,
+			&item.MessageVersion,
+			&payload,
+			&item.BrokerCorrelation,
+		); err != nil {
+			return nil, err
+		}
+		item.Payload = payload
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *SQLRepository) MarkOutboxPublished(ctx context.Context, update PublishedOutboxUpdate) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	const outboxQuery = `
+UPDATE processing_outbox
+SET
+	status = 'published',
+	attempt_count = $2,
+	broker_message_id = $3,
+	broker_correlation_id = $4,
+	last_error_code = NULL,
+	last_error_message = NULL,
+	published_at = $5,
+	updated_at = NOW()
+WHERE id = $1`
+	if _, err := tx.Exec(
+		ctx,
+		outboxQuery,
+		update.OutboxID,
+		update.AttemptCount,
+		update.BrokerMessageID,
+		update.BrokerCorrelation,
+		update.PublishedAt,
+	); err != nil {
+		return err
+	}
+
+	const runQuery = `
+UPDATE examination_channel_runs
+SET
+	status = 'queued',
+	attempt_count = $2,
+	broker_message_id = $3,
+	broker_correlation_id = $4,
+	last_error_code = NULL,
+	last_error_message = NULL,
+	queued_at = $5,
+	updated_at = NOW()
+WHERE id = $1`
+	if _, err := tx.Exec(
+		ctx,
+		runQuery,
+		update.ChannelRunID,
+		update.AttemptCount,
+		update.BrokerMessageID,
+		update.BrokerCorrelation,
+		update.PublishedAt,
+	); err != nil {
+		return err
+	}
+
+	const examQuery = `
+UPDATE examinations
+SET
+	status = 'processing',
+	updated_at = NOW()
+WHERE id = $1
+	AND status = 'ready_for_processing'`
+	if _, err := tx.Exec(ctx, examQuery, update.ExaminationID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *SQLRepository) MarkOutboxFailed(ctx context.Context, update FailedOutboxUpdate) error {
+	status := update.Status
+	if status == "" {
+		status = outboxStatusPending
+	}
+
+	const query = `
+UPDATE processing_outbox
+SET
+	status = $2,
+	attempt_count = $3,
+	last_error_code = $4,
+	last_error_message = $5,
+	updated_at = NOW()
+WHERE id = $1`
+	_, err := r.pool.Exec(ctx, query, update.OutboxID, status, update.AttemptCount, update.ErrorCode, update.ErrorMessage)
+	return err
+}

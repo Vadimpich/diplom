@@ -689,6 +689,7 @@ Queues:
 Retry/DLX assumptions для RabbitMQ `3.13.x`:
 - очереди команд должны быть durable; предпочтительный тип для bounded retries: quorum queue;
 - так как в RabbitMQ `3.13.x` нет безопасного default `delivery-limit`, система обязана явно задавать retry policy и DLX behavior для очередей команд;
+- core backend relay объявляет `processing.commands.dlx` и задаёт для каждой command queue аргументы `x-queue-type=quorum`, `x-dead-letter-exchange=processing.commands.dlx`, `x-delivery-limit=<PROCESSING_OUTBOX_MAX_ATTEMPTS>`;
 - повторные доставки ограничиваются `max_attempts`, хранимым в PostgreSQL и отражаемым в DTO;
 - DLX/poison-message semantics используются только как транспортный механизм, но не как источник истины для UI;
 - результаты всех каналов публикуются в единый exchange/queue `processing.results` / `qq.processing.results` с единой envelope shape.
@@ -957,6 +958,9 @@ Worker runtime env:
 Поддерживаемые переменные окружения:
 - `HTTP_ADDR`, по умолчанию `:8080`
 - `MIGRATIONS_DIR`, по умолчанию `migrations`
+- `RABBITMQ_URL`, по умолчанию `amqp://guest:guest@localhost:5672/`
+- `PROCESSING_OUTBOX_POLL_INTERVAL`, по умолчанию `1s`
+- `PROCESSING_OUTBOX_MAX_ATTEMPTS`, по умолчанию `3`
 - `JWT_ISSUER`, по умолчанию `core-backend`
 - `JWT_ACCESS_TTL`, по умолчанию `15m`
 - `MINIO_USE_SSL`, по умолчанию `false`

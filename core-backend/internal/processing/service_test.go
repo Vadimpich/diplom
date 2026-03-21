@@ -191,6 +191,10 @@ func (s *finishRepoStub) FinishLaunch(context.Context, int64) (examinations.Exam
 	return s.finishResult, s.outboxCommands, nil
 }
 
+func (s *finishRepoStub) GetProcessingStatus(context.Context, int64) (processing.ProcessingStatusResponse, error) {
+	return processing.ProcessingStatusResponse{}, nil
+}
+
 func TestFinishPropagatesRepositoryError(t *testing.T) {
 	expectedErr := errors.New("boom")
 	service := processing.NewService(&finishRepoStub{finishErr: expectedErr})

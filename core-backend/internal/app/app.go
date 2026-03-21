@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -20,8 +21,9 @@ import (
 )
 
 type App struct {
-	server *http.Server
-	db     *postgres.Client
+	server    *http.Server
+	db        *postgres.Client
+	publisher *processing.Relay
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -64,7 +66,13 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	specialistsService := specialists.NewService(specialists.NewRepository(queries))
 	examinationsService := examinations.NewService(examinations.NewRepository(db.Pool()))
-	processingService := processing.NewService(processing.NewRepository(db.Pool(), cfg.S3Bucket))
+	processingRepository := processing.NewRepository(db.Pool(), cfg.S3Bucket)
+	processingService := processing.NewService(processingRepository)
+	processingRelay := processing.NewRelay(processingRepository, processing.RelayConfig{
+		BrokerURL:    cfg.RabbitMQURL,
+		PollInterval: cfg.OutboxPollInterval,
+		MaxAttempts:  cfg.OutboxMaxAttempts,
+	})
 	questionnairesService := questionnaires.NewService(questionnaires.NewRepository(db.Pool()))
 	answersService := answers.NewService(answers.NewRepository(queries), s3Client)
 
@@ -88,8 +96,9 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 
 	return &App{
-		server: server,
-		db:     db,
+		server:    server,
+		db:        db,
+		publisher: processingRelay,
 	}, nil
 }
 
@@ -99,6 +108,9 @@ func (a *App) Run(ctx context.Context) error {
 	go func() {
 		errCh <- a.server.ListenAndServe()
 	}()
+	if a.publisher != nil {
+		go a.publisher.Run(ctx)
+	}
 
 	select {
 	case <-ctx.Done():
@@ -107,6 +119,9 @@ func (a *App) Run(ctx context.Context) error {
 
 		return a.server.Shutdown(shutdownCtx)
 	case err := <-errCh:
+		if err != nil && err != http.ErrServerClosed {
+			log.Printf("http server stopped err=%v", err)
+		}
 		return err
 	}
 }
