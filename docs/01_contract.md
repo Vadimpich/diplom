@@ -524,7 +524,7 @@ Endpoints:
 ```
 
 Технические детали:
-- список должен отражать авторитетные backend-статусы `created`, `collecting_answers`, `ready_for_processing`;
+- список должен отражать авторитетные backend-статусы `created`, `collecting_answers`, `ready_for_processing`, `processing`, `failed`;
 - UI не должен вычислять эти статусы из local draft state, cookie-кэша или optimistic флагов.
 
 Ошибки:
@@ -549,7 +549,7 @@ Endpoints:
 ### POST /examinations/{id}/finish
 
 Назначение:
-- перевод обследования в статус `ready_for_processing`.
+- перевод обследования в статус `ready_for_processing` и атомарная фиксация намерения на запуск асинхронной обработки.
 
 Ответ `200 OK`: объект `Examination`.
 
@@ -557,12 +557,215 @@ Endpoints:
 - переход допустим из `collecting_answers`;
 - если обследование уже в `ready_for_processing`, endpoint идемпотентно возвращает текущее состояние;
 - backend переводит обследование в `ready_for_processing` только если число сохранённых ответов совпадает с числом snapshot-вопросов `examination_questions`;
-- processing launch защищён server-side fence в БД, поэтому повторный `finish` не должен создавать дублирующий запуск;
+- `POST /examinations/{id}/finish` в той же PostgreSQL-транзакции обязан:
+  - создать или переиспользовать launch fence;
+  - создать по одной записи `examination_channel_runs` для обязательных каналов `text`, `acoustic`, `paralinguistic`;
+  - создать по одной pending-записи в `processing_outbox` для публикации команд в RabbitMQ;
+- processing launch защищён server-side fence в БД, поэтому повторный `finish` не должен создавать дублирующий запуск или повторные channel-run/outbox записи;
 - любые другие переходы дают ошибку.
 
 Ошибки:
 - `404 Not Found` если обследование не найдено;
 - `409 Conflict` при недопустимом переходе статуса или неполном наборе ответов.
+
+### GET /examinations/{id}/processing-status
+
+Назначение:
+- получение backend-authoritative состояния конвейера обработки по обследованию;
+- отображение progress/failure по каналам без обращения к RabbitMQ из UI.
+
+Ответ `200 OK`:
+
+```json
+{
+  "examination_id": 100,
+  "status": "processing",
+  "message_version": 1,
+  "channels_total": 3,
+  "channels_completed": 1,
+  "terminal": false,
+  "started_at": "2026-03-21T09:00:00Z",
+  "updated_at": "2026-03-21T09:01:00Z",
+  "finished_at": null,
+  "failed_at": null,
+  "channels": [
+    {
+      "channel": "text",
+      "status": "succeeded",
+      "attempt_count": 1,
+      "max_attempts": 3,
+      "message_version": 1,
+      "queued_at": "2026-03-21T09:00:01Z",
+      "started_at": "2026-03-21T09:00:03Z",
+      "finished_at": "2026-03-21T09:00:10Z",
+      "last_error_code": null,
+      "last_error_message": null,
+      "broker_message_id": "msg-100-text-1",
+      "broker_correlation_id": "exam-100-text-v1"
+    },
+    {
+      "channel": "acoustic",
+      "status": "processing",
+      "attempt_count": 1,
+      "max_attempts": 3,
+      "message_version": 1,
+      "queued_at": "2026-03-21T09:00:01Z",
+      "started_at": "2026-03-21T09:00:05Z",
+      "finished_at": null,
+      "last_error_code": null,
+      "last_error_message": null,
+      "broker_message_id": "msg-100-acoustic-1",
+      "broker_correlation_id": "exam-100-acoustic-v1"
+    },
+    {
+      "channel": "paralinguistic",
+      "status": "queued",
+      "attempt_count": 0,
+      "max_attempts": 3,
+      "message_version": 1,
+      "queued_at": "2026-03-21T09:00:01Z",
+      "started_at": null,
+      "finished_at": null,
+      "last_error_code": null,
+      "last_error_message": null,
+      "broker_message_id": null,
+      "broker_correlation_id": "exam-100-paralinguistic-v1"
+    }
+  ]
+}
+```
+
+Правила:
+- endpoint возвращает состояние, вычисленное из PostgreSQL (`examinations`, `examination_channel_runs`, `processing_outbox`, `channel_results`), а не из состояния очередей RabbitMQ;
+- общее поле `status` для обследования в Phase 2 допускает значения `ready_for_processing`, `processing`, `failed`;
+- детальное состояние каналов живёт только в `channels[*]` и не должно дублироваться в основном объекте `Examination`;
+- `terminal=true` означает, что все обязательные каналы достигли финального состояния (`succeeded` либо терминальная ошибка с переводом обследования в `failed`);
+- `last_error_message` предназначено для операторской диагностики и не должно содержать stack trace или чувствительные данные.
+
+Ошибки:
+- `404 Not Found` если обследование не найдено;
+- `409 Conflict` если обследование ещё не было переведено в `ready_for_processing`.
+
+## Asynchronous Processing Contract
+
+### Mandatory channels
+
+Обязательные каналы Phase 2:
+- `text`
+- `acoustic`
+- `paralinguistic`
+
+### Versioning
+
+- `message_version` обязателен во всех processing command/result envelopes;
+- начальная версия контрактов Phase 2: `1`;
+- несовместимые изменения envelope shape требуют увеличения `message_version` и обновления этого документа до изменения кода.
+
+### AMQP topology
+
+Транспорт:
+- RabbitMQ `3.13.x`;
+- topology должна быть объявлена core backend и/или инициализацией инфраструктуры до запуска workers;
+- PostgreSQL остаётся source of truth для progress, retry ledger и terminal failures.
+
+Exchanges:
+- `processing.commands` (`topic`, durable) — публикация команд на обработку;
+- `processing.results` (`topic`, durable) — публикация унифицированных результатов каналов.
+
+Routing keys:
+- команды:
+  - `processing.command.text`
+  - `processing.command.acoustic`
+  - `processing.command.paralinguistic`
+- результаты:
+  - `processing.result`
+
+Queues:
+- `qq.processing.text` — binding `processing.command.text`
+- `qq.processing.acoustic` — binding `processing.command.acoustic`
+- `qq.processing.paralinguistic` — binding `processing.command.paralinguistic`
+- `qq.processing.results` — binding `processing.result`
+
+Retry/DLX assumptions для RabbitMQ `3.13.x`:
+- очереди команд должны быть durable; предпочтительный тип для bounded retries: quorum queue;
+- так как в RabbitMQ `3.13.x` нет безопасного default `delivery-limit`, система обязана явно задавать retry policy и DLX behavior для очередей команд;
+- повторные доставки ограничиваются `max_attempts`, хранимым в PostgreSQL и отражаемым в DTO;
+- DLX/poison-message semantics используются только как транспортный механизм, но не как источник истины для UI;
+- результаты всех каналов публикуются в единый exchange/queue `processing.results` / `qq.processing.results` с единой envelope shape.
+
+### Processing command envelope v1
+
+Назначение:
+- одна публикация на один `examination_channel_run`;
+- payload должен ссылаться на S3-объекты, а не содержать бинарное аудио.
+
+```json
+{
+  "message_version": 1,
+  "message_id": "6f8664a1-12f8-4fd4-817d-3784a55296f7",
+  "correlation_id": "exam-100-text-v1",
+  "examination_id": 100,
+  "specialist_id": 10,
+  "channel": "text",
+  "attempt": 1,
+  "max_attempts": 3,
+  "requested_at": "2026-03-21T09:00:01Z",
+  "answers": [
+    {
+      "answer_id": 500,
+      "question_id": 9001,
+      "audio_s3_bucket": "dimplom-audio",
+      "audio_s3_key": "examinations/100/answers/500/audio.webm",
+      "answer_text": "Ответ обследуемого"
+    }
+  ]
+}
+```
+
+Поля:
+- `message_version`: обязательное целое;
+- `message_id`: уникальный идентификатор сообщения для transport-level traceability;
+- `correlation_id`: общий идентификатор попытки обработки обследования/канала;
+- `examination_id`, `specialist_id`: обязательные доменные идентификаторы;
+- `channel`: одно из обязательных значений `text`, `acoustic`, `paralinguistic`;
+- `attempt`: номер попытки публикации/обработки, начиная с `1`;
+- `max_attempts`: максимальное число попыток для данного канала;
+- `requested_at`: время формирования команды в core backend;
+- `answers[*].audio_s3_bucket` и `answers[*].audio_s3_key`: обязательные ссылки на объект в S3;
+- `answers[*].answer_text`: текстовая транскрипция/ответ, доступная всем каналам как часть общего контракта;
+- передача бинарных audio bytes в RabbitMQ запрещена.
+
+### Channel result envelope v1
+
+Назначение:
+- единый формат для `text`, `acoustic`, `paralinguistic`;
+- core backend принимает result envelope channel-neutral способом и сам обновляет PostgreSQL state machine.
+
+```json
+{
+  "message_version": 1,
+  "message_id": "544147f4-5d1f-4c45-8b1f-baa5a638969c",
+  "correlation_id": "exam-100-text-v1",
+  "examination_id": 100,
+  "channel": "text",
+  "attempt": 1,
+  "status": "succeeded",
+  "completed_at": "2026-03-21T09:00:10Z",
+  "model_version": "text-stub-0.1.0",
+  "error_code": null,
+  "error_message": null,
+  "payload": {
+    "summary": "stub result"
+  }
+}
+```
+
+Поля:
+- `status`: одно из `succeeded`, `temporary_error`, `fatal_error`;
+- `payload`: channel-specific JSON object, но envelope shape одинакова для всех каналов;
+- `error_code` и `error_message` обязательны при `temporary_error` и `fatal_error`, должны быть пустыми при `succeeded`;
+- `completed_at` обязателен для всех terminal result-сообщений;
+- worker не должен публиковать разные envelope shapes для разных каналов.
 
 ## Answers API
 
@@ -803,6 +1006,8 @@ Migrations bootstrap:
 - `created`
 - `collecting_answers`
 - `ready_for_processing`
+- `processing`
+- `failed`
 
 ### answers
 
@@ -839,12 +1044,17 @@ Migrations bootstrap:
 
 ## Workflow Status Model
 
-В рамках текущего синхронного этапа реализованы и разрешены только статусы обследования:
+В рамках текущего API-контракта разрешены статусы обследования:
 - `created`
 - `collecting_answers`
 - `ready_for_processing`
+- `processing`
+- `failed`
 
-Статусы `processing`, `waiting_results`, `aggregating`, `decision_pending`, `completed`, `failed` пока не реализованы в коде и не используются API этого этапа.
+Правила модели статусов:
+- `processing` и `failed` используются как coarse-grained examination runtime states в основном объекте `Examination`;
+- детальный прогресс по каналам, попыткам и ошибкам публикуется только через `GET /examinations/{id}/processing-status`;
+- статусы `waiting_results`, `aggregating`, `decision_pending`, `completed` остаются вне контракта текущего этапа.
 
 ## Frontend runtime configuration
 
