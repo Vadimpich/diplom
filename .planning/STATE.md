@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 02-asynchronous-multichannel-processing-03-PLAN.md
-last_updated: "2026-03-21T07:07:45.174Z"
+stopped_at: Completed 02-asynchronous-multichannel-processing-02-PLAN.md
+last_updated: "2026-03-21T07:14:53.290Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 3 of 6
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 7 min
 - Total execution time: 1.5 hours
 
@@ -39,15 +39,16 @@ Plan: 3 of 6
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-trusted-access-and-intake | 8 | 3500s | 437s |
-| 02-asynchronous-multichannel-processing | 2 | 1020s | 510s |
+| 02-asynchronous-multichannel-processing | 3 | 3060s | 1020s |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-06, 01-07, 01-08, 02-01, 02-03
+- Last 5 plans: 01-07, 01-08, 02-01, 02-03, 02-02
 - Trend: Improving
 
 | Phase 02-asynchronous-multichannel-processing P01 | 600 | 2 tasks | 8 files |
 | Phase 02-asynchronous-multichannel-processing P03 | 420 | 2 tasks | 13 files |
+| Phase 02-asynchronous-multichannel-processing P02 | 2040 | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [Phase 02-asynchronous-multichannel-processing]: Each mandatory channel now runs as an independent FastAPI plus aio-pika worker that consumes only its own queue and publishes the same result envelope shape.
 - [Phase 02-asynchronous-multichannel-processing]: Workers bind their own queue and routing key from env so the local Compose stack remains reproducible without hidden broker bootstrap steps.
 - [Phase 02-asynchronous-multichannel-processing]: Local stack stays on rabbitmq:3.13-management-alpine; retry and DLX behavior remain explicit contract assumptions instead of relying on RabbitMQ 4 defaults.
+- [Phase 02-asynchronous-multichannel-processing]: Finish persists channel runs and outbox rows in the same PostgreSQL transaction as the processing launch fence.
+- [Phase 02-asynchronous-multichannel-processing]: RabbitMQ command topology is declared explicitly for 3.13 with quorum queues, DLX, delivery-limit, and publisher confirms.
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T07:07:45.171Z
-Stopped at: Completed 02-asynchronous-multichannel-processing-03-PLAN.md
+Last session: 2026-03-21T07:14:53.287Z
+Stopped at: Completed 02-asynchronous-multichannel-processing-02-PLAN.md
 Resume file: None
