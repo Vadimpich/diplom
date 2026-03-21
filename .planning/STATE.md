@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed Phase 1 — Trusted Access And Intake
-last_updated: "2026-03-20T14:10:00.000Z"
+stopped_at: Completed 02-asynchronous-multichannel-processing-01-PLAN.md
+last_updated: "2026-03-21T06:57:34.971Z"
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 14
+  completed_plans: 9
 ---
 
 # Project State
@@ -19,33 +19,34 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-20)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Phase 2 — Asynchronous Multichannel Processing
+**Current focus:** Phase 02 — asynchronous-multichannel-processing
 
 ## Current Position
 
-Phase: 2 (Asynchronous Multichannel Processing) — READY TO PLAN
-Plan: 0 of 0
-Status: Phase 1 complete
-Progress: [██░░░░░░░░] 20%
+Phase: 02 (asynchronous-multichannel-processing) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
-- Average duration: 9 min
-- Total execution time: 1.2 hours
+- Total plans completed: 9
+- Average duration: 8 min
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-trusted-access-and-intake | 8 | 3500s | 437s |
+| 02-asynchronous-multichannel-processing | 1 | 600s | 600s |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-04, 01-05, 01-06, 01-07, 01-08
+- Last 5 plans: 01-05, 01-06, 01-07, 01-08, 02-01
 - Trend: Improving
+
+| Phase 02-asynchronous-multichannel-processing P01 | 600 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 - [Phase 01-trusted-access-and-intake]: Answer uploads are bound to examination, snapshot question, and specialist; duplicate answers per question are rejected.
 - [Phase 01-trusted-access-and-intake]: Finish is idempotent and fenced at the DB layer before processing starts.
 - [Phase 01-trusted-access-and-intake]: Specialist history UI renders backend workflow statuses as the source of truth.
+- [Phase 02-asynchronous-multichannel-processing]: Phase 2 uses one versioned command envelope and one versioned result envelope for all mandatory channels.
+- [Phase 02-asynchronous-multichannel-processing]: PostgreSQL, not RabbitMQ, remains the source of truth for processing progress and terminal failures.
+- [Phase 02-asynchronous-multichannel-processing]: The existing examination_processing_launches fence stays in place and is extended by channel runs plus outbox rows.
 
 ### Pending Todos
 
@@ -74,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T14:10:00.000Z
-Stopped at: Completed Phase 1 — Trusted Access And Intake
+Last session: 2026-03-21T06:57:34.969Z
+Stopped at: Completed 02-asynchronous-multichannel-processing-01-PLAN.md
 Resume file: None

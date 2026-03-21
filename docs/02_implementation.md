@@ -27,3 +27,10 @@
 - В intake-контуре ответы начали связываться не только с обследованием, но и с snapshot-вопросом/специалистом: `POST /answers` теперь требует `examination_question_id` и `specialist_id`, а backend валидирует принадлежность snapshot-вопроса конкретному обследованию и отклоняет дубликаты по одному вопросу.
 - Завершение обследования переведено на transactional finish fence: `POST /examinations/{id}/finish` требует полноты ответов по `examination_questions`, идемпотентно удерживает единственный processing launch и оставляет `GET /specialists/{id}/examinations` авторитетным источником workflow-статусов.
 - Specialist history UI на `/operator/specialists/[id]` теперь показывает статусы `created`, `collecting_answers`, `ready_for_processing` и timestamps напрямую из backend API, без вычисления workflow из локального состояния браузера.
+
+## 2026-03-21
+
+- Для Phase 2 опубликован единый processing contract в `docs/01_contract.md`: добавлены versioned AMQP envelopes, topology `processing.commands` / `processing.results`, endpoint `GET /examinations/{id}/processing-status` и расширенная status vocabulary обследования (`processing`, `failed`) при сохранении PostgreSQL как source of truth.
+- В `core-backend/internal/processing/contracts.go` зафиксированы обязательные каналы `text`, `acoustic`, `paralinguistic` и DTO/envelope-структуры, чтобы следующие планы опирались на один и тот же Go-контракт.
+- Добавлены RED-тесты `core-backend/internal/processing/service_test.go` и `core-backend/internal/http/processing_status_test.go`: они намеренно фиксируют ещё не реализованные fan-out после `finish` и availability processing-status endpoint до появления publisher/result-consumer логики.
+- Добавлена миграция `000006_processing_pipeline` и SQL skeleton `db/queries/processing.sql` для durable outbox, per-channel runtime state и normalized result storage без пересмотра существующего finish fence.
