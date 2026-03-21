@@ -42,7 +42,20 @@ export interface SpecialistsResponse {
 export type ExaminationStatus =
   | "created"
   | "collecting_answers"
-  | "ready_for_processing";
+  | "ready_for_processing"
+  | "processing"
+  | "failed";
+
+export type ProcessingChannelName = "text" | "acoustic" | "paralinguistic";
+
+export type ProcessingChannelStatus =
+  | "queued"
+  | "processing"
+  | "succeeded"
+  | "failed_temporary"
+  | "failed_fatal"
+  | "exhausted"
+  | "retry_scheduled";
 
 export interface Examination {
   id: number;
@@ -58,6 +71,35 @@ export interface Examination {
 
 export interface ExaminationsResponse {
   items: Examination[];
+}
+
+export interface ExaminationProcessingStatusChannel {
+  channel: ProcessingChannelName;
+  status: ProcessingChannelStatus;
+  attempt_count: number;
+  max_attempts: number;
+  message_version: number;
+  queued_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  broker_message_id: string | null;
+  broker_correlation_id: string | null;
+}
+
+export interface ExaminationProcessingStatus {
+  examination_id: number;
+  status: Extract<ExaminationStatus, "ready_for_processing" | "processing" | "failed">;
+  message_version: number;
+  channels_total: number;
+  channels_completed: number;
+  terminal: boolean;
+  started_at: string | null;
+  updated_at: string;
+  finished_at: string | null;
+  failed_at: string | null;
+  channels: ExaminationProcessingStatusChannel[];
 }
 
 export interface Answer {

@@ -10,6 +10,7 @@ import type {
   Answer,
   ApiErrorShape,
   Examination,
+  ExaminationProcessingStatus,
   ExaminationsResponse,
   HealthResponse,
   LoginResponse,
@@ -186,6 +187,9 @@ export const apiClient = {
   },
   getExamination(id: number) {
     return request<Examination>(`/examinations/${id}`);
+  },
+  getExaminationProcessingStatus(id: number) {
+    return request<ExaminationProcessingStatus>(`/examinations/${id}/processing-status`);
   },
   getSpecialistExaminations(id: number) {
     return request<ExaminationsResponse>(`/specialists/${id}/examinations`);
