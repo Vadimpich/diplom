@@ -693,6 +693,19 @@ Retry/DLX assumptions для RabbitMQ `3.13.x`:
 - DLX/poison-message semantics используются только как транспортный механизм, но не как источник истины для UI;
 - результаты всех каналов публикуются в единый exchange/queue `processing.results` / `qq.processing.results` с единой envelope shape.
 
+Local Compose topology Phase 2:
+- сервисы `text-worker`, `acoustic-worker`, `paralinguistic-worker` стартуют в одном `docker-compose.yml` вместе с `frontend`, `core-backend`, `postgres`, `rabbitmq`, `minio`;
+- каждый worker читает только свою очередь через env `WORKER_QUEUE_NAME` и bind-ит её к `WORKER_COMMAND_EXCHANGE` + своему routing key;
+- все workers публикуют результат только в `PROCESSING_RESULT_EXCHANGE=processing.results` с routing key `PROCESSING_RESULT_ROUTING_KEY=processing.result`;
+- workers используют только S3 references из command envelope и runtime env `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY_ID`, `MINIO_SECRET_ACCESS_KEY`, `MINIO_USE_SSL`;
+- локальный compose не меняет версию broker: используется `rabbitmq:3.13-management-alpine`, поэтому retry/DLX policy должна оставаться явной и совместимой с RabbitMQ `3.13.x`.
+
+Worker runtime env:
+- общие: `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_VHOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY_ID`, `MINIO_SECRET_ACCESS_KEY`, `MINIO_USE_SSL`, `WORKER_PREFETCH_COUNT`;
+- `text-worker`: `TEXT_WORKER_QUEUE_NAME=qq.processing.text`, `TEXT_WORKER_COMMAND_ROUTING_KEY=processing.command.text`;
+- `acoustic-worker`: `ACOUSTIC_WORKER_QUEUE_NAME=qq.processing.acoustic`, `ACOUSTIC_WORKER_COMMAND_ROUTING_KEY=processing.command.acoustic`;
+- `paralinguistic-worker`: `PARALINGUISTIC_WORKER_QUEUE_NAME=qq.processing.paralinguistic`, `PARALINGUISTIC_WORKER_COMMAND_ROUTING_KEY=processing.command.paralinguistic`.
+
 ### Processing command envelope v1
 
 Назначение:
@@ -766,6 +779,7 @@ Retry/DLX assumptions для RabbitMQ `3.13.x`:
 - `error_code` и `error_message` обязательны при `temporary_error` и `fatal_error`, должны быть пустыми при `succeeded`;
 - `completed_at` обязателен для всех terminal result-сообщений;
 - worker не должен публиковать разные envelope shapes для разных каналов.
+- stub workers текущей фазы обязаны заполнять `model_version` и использовать `temporary_error` для transport/S3 availability failures, `fatal_error` для невалидного payload или отсутствующего S3 object reference.
 
 ## Answers API
 
