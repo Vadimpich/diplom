@@ -17,10 +17,10 @@ created: 2026-03-20
 
 | Property | Value |
 |----------|-------|
-| **Framework** | Go stdlib `testing` + `net/http/httptest`, Next.js lint/typecheck, Docker Compose smoke |
+| **Framework** | Go stdlib `testing` + `net/http/httptest`, Next.js lint/build/typecheck, Docker Compose smoke |
 | **Config file** | none |
 | **Quick run command** | `cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels|TestProcessingStatusEndpoint' -count=1 && go test ./internal/channelresults ./internal/processing -run 'TestIndependentChannelCompletion|TestRetryBudget|TestFatalVsTemporaryError|TestMandatoryChannelExhaustionFailsExamination' -count=1` |
-| **Full suite command** | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build && cd /home/katya/dimplom && docker compose up -d --build && docker compose ps` |
+| **Full suite command** | `cd /home/katya/dimplom && docker compose up -d --build && docker compose ps && cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` |
 | **Estimated runtime** | ~180 seconds |
 
 ---
@@ -28,7 +28,7 @@ created: 2026-03-20
 ## Sampling Rate
 
 - **After every task commit:** Run `cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels|TestProcessingStatusEndpoint' -count=1 && go test ./internal/channelresults ./internal/processing -run 'TestIndependentChannelCompletion|TestRetryBudget|TestFatalVsTemporaryError|TestMandatoryChannelExhaustionFailsExamination' -count=1`
-- **After every plan wave:** Run `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build && cd /home/katya/dimplom && docker compose up -d --build && docker compose ps`
+- **After every plan wave:** Run `cd /home/katya/dimplom && docker compose up -d --build && docker compose ps && cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit`
 - **Before `$gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 180 seconds
 
@@ -48,7 +48,7 @@ created: 2026-03-20
 | 2-04-02 | 04 | 3 | PIPE-04 | HTTP status projection | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestProcessingStatusEndpoint|TestProcessingStatusEndpointReturnsTerminalError' -count=1` | ❌ W0 | ⬜ pending |
 | 2-05-01 | 05 | 4 | RSLT-01 | frontend progress polling | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
 | 2-05-02 | 05 | 4 | RSLT-01 | UI integration | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build` | ❌ W0 | ⬜ pending |
-| 2-06-01 | 06 | 4 | QUAL-03 | end-to-end stack | `cd /home/katya/dimplom && docker compose up -d --build && docker compose ps && cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build` | ❌ W0 | ⬜ pending |
+| 2-06-01 | 06 | 4 | QUAL-03 | end-to-end stack | `cd /home/katya/dimplom && docker compose up -d --build && docker compose ps && cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` | ✅ | ✅ green |
 | 2-06-02 | 06 | 4 | QUAL-03 | implementation log | `cd /home/katya/dimplom && rg -n "transactional outbox|channel queues|processing-status|stub worker" docs/02_implementation.md` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*

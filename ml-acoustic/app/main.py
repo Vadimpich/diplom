@@ -63,6 +63,7 @@ class WorkerConfig:
     app_name: str
     listen_port: int
     prefetch_count: int
+    max_delivery_attempts: int
     rabbitmq_url: str
     command_exchange: str
     result_exchange: str
@@ -106,6 +107,7 @@ def load_config() -> WorkerConfig:
         app_name=os.getenv("WORKER_APP_NAME", "acoustic-worker"),
         listen_port=int(os.getenv("WORKER_PORT", "8080")),
         prefetch_count=int(os.getenv("WORKER_PREFETCH_COUNT", "1")),
+        max_delivery_attempts=int(os.getenv("PROCESSING_OUTBOX_MAX_ATTEMPTS", "3")),
         rabbitmq_url=build_rabbitmq_url(),
         command_exchange=os.getenv("WORKER_COMMAND_EXCHANGE", "processing.commands"),
         result_exchange=os.getenv("WORKER_RESULT_EXCHANGE", "processing.results"),
@@ -151,7 +153,15 @@ class WorkerState:
             ExchangeType.TOPIC,
             durable=True,
         )
-        queue = await self.channel.declare_queue(self.config.command_queue, durable=True)
+        queue = await self.channel.declare_queue(
+            self.config.command_queue,
+            durable=True,
+            arguments={
+                "x-queue-type": "quorum",
+                "x-dead-letter-exchange": f"{self.config.command_exchange}.dlx",
+                "x-delivery-limit": self.config.max_delivery_attempts,
+            },
+        )
         await queue.bind(self.command_exchange, routing_key=COMMAND_ROUTING_KEY)
         self.consumer_tag = await queue.consume(self.on_message)
         self.consumer_ready = True
