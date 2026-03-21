@@ -9,6 +9,7 @@ import (
 
 	"dimplom/internal/answers"
 	"dimplom/internal/auth"
+	"dimplom/internal/channelresults"
 	"dimplom/internal/config"
 	"dimplom/internal/examinations"
 	httpserver "dimplom/internal/http"
@@ -21,9 +22,10 @@ import (
 )
 
 type App struct {
-	server    *http.Server
-	db        *postgres.Client
-	publisher *processing.Relay
+	server          *http.Server
+	db              *postgres.Client
+	publisher       *processing.Relay
+	resultsConsumer *processing.ResultsConsumer
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -68,11 +70,14 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	examinationsService := examinations.NewService(examinations.NewRepository(db.Pool()))
 	processingRepository := processing.NewRepository(db.Pool(), cfg.S3Bucket)
 	processingService := processing.NewService(processingRepository)
+	channelResultsRepository := channelresults.NewRepository(db.Pool())
+	channelResultsHandler := channelresults.NewHandler(channelResultsRepository)
 	processingRelay := processing.NewRelay(processingRepository, processing.RelayConfig{
 		BrokerURL:    cfg.RabbitMQURL,
 		PollInterval: cfg.OutboxPollInterval,
 		MaxAttempts:  cfg.OutboxMaxAttempts,
 	})
+	resultsConsumer := processing.NewResultsConsumer(cfg.RabbitMQURL, channelResultsHandler)
 	questionnairesService := questionnaires.NewService(questionnaires.NewRepository(db.Pool()))
 	answersService := answers.NewService(answers.NewRepository(queries), s3Client)
 
@@ -96,9 +101,10 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 
 	return &App{
-		server:    server,
-		db:        db,
-		publisher: processingRelay,
+		server:          server,
+		db:              db,
+		publisher:       processingRelay,
+		resultsConsumer: resultsConsumer,
 	}, nil
 }
 
@@ -110,6 +116,9 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 	if a.publisher != nil {
 		go a.publisher.Run(ctx)
+	}
+	if a.resultsConsumer != nil {
+		go a.resultsConsumer.Run(ctx)
 	}
 
 	select {
