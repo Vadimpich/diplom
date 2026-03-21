@@ -1,13 +1,19 @@
 package http
 
 import (
+	"context"
 	"net/http"
 
 	"dimplom/internal/examinations"
 )
 
 type ExaminationsHandler struct {
-	service *examinations.Service
+	service  *examinations.Service
+	finisher finisher
+}
+
+type finisher interface {
+	Finish(context.Context, int64) (examinations.Examination, error)
 }
 
 type createExaminationRequest struct {
@@ -115,7 +121,12 @@ func (h ExaminationsHandler) Finish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.service.Finish(r.Context(), id)
+	processor := h.finisher
+	if processor == nil {
+		processor = h.service
+	}
+
+	item, err := processor.Finish(r.Context(), id)
 	if err != nil {
 		status, message := mapDomainError(err)
 		writeError(w, status, message)

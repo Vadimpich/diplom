@@ -12,6 +12,7 @@ import (
 	"dimplom/internal/auth"
 	"dimplom/internal/examinations"
 	"dimplom/internal/postgres"
+	"dimplom/internal/processing"
 	"dimplom/internal/questionnaires"
 	"dimplom/internal/specialists"
 )
@@ -22,6 +23,7 @@ type Dependencies struct {
 	AuthTokens     auth.TokenManager
 	Specialists    *specialists.Service
 	Examinations   *examinations.Service
+	Processing     *processing.Service
 	Questionnaires *questionnaires.Service
 	Answers        *answers.Service
 	AllowedOrigins []string
@@ -45,7 +47,7 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	}
 	authHandler := AuthHandler{service: deps.AuthService}
 	specialistsHandler := SpecialistsHandler{service: deps.Specialists}
-	examinationsHandler := ExaminationsHandler{service: deps.Examinations}
+	examinationsHandler := ExaminationsHandler{service: deps.Examinations, finisher: deps.Processing}
 	questionnairesHandler := QuestionnairesHandler{service: deps.Questionnaires}
 	answersHandler := AnswersHandler{
 		service:       deps.Answers,

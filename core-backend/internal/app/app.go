@@ -13,6 +13,7 @@ import (
 	httpserver "dimplom/internal/http"
 	appmigrations "dimplom/internal/migrations"
 	"dimplom/internal/postgres"
+	"dimplom/internal/processing"
 	"dimplom/internal/questionnaires"
 	"dimplom/internal/specialists"
 	"dimplom/internal/storage"
@@ -63,6 +64,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	specialistsService := specialists.NewService(specialists.NewRepository(queries))
 	examinationsService := examinations.NewService(examinations.NewRepository(db.Pool()))
+	processingService := processing.NewService(processing.NewRepository(db.Pool(), cfg.S3Bucket))
 	questionnairesService := questionnaires.NewService(questionnaires.NewRepository(db.Pool()))
 	answersService := answers.NewService(answers.NewRepository(queries), s3Client)
 
@@ -72,6 +74,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		AuthTokens:     tokenManager,
 		Specialists:    specialistsService,
 		Examinations:   examinationsService,
+		Processing:     processingService,
 		Questionnaires: questionnairesService,
 		Answers:        answersService,
 		AllowedOrigins: cfg.AllowedOrigins,

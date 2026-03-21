@@ -3,6 +3,7 @@ package processing_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -18,7 +19,7 @@ func TestFinishCreatesOutboxForMandatoryChannels(t *testing.T) {
 			Status:       examinations.StatusReadyForProcessing,
 		},
 	}
-	service := examinations.NewService(repo)
+	service := processing.NewService(repo)
 
 	exam, err := service.Finish(context.Background(), 100)
 	if err != nil {
@@ -41,6 +42,71 @@ func TestFinishCreatesOutboxForMandatoryChannels(t *testing.T) {
 		}
 		if len(command.Answers) == 0 {
 			t.Fatal("expected pending command to carry S3 answer references")
+		}
+	}
+}
+
+func TestFinishIsIdempotentAndDoesNotDuplicatePendingWork(t *testing.T) {
+	repo := &finishRepoStub{
+		finishResult: examinations.Examination{
+			ID:           100,
+			SpecialistID: 10,
+			Status:       examinations.StatusReadyForProcessing,
+		},
+	}
+	service := processing.NewService(repo)
+
+	first, err := service.Finish(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("first finish: %v", err)
+	}
+	second, err := service.Finish(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("second finish: %v", err)
+	}
+
+	if first.Status != examinations.StatusReadyForProcessing || second.Status != examinations.StatusReadyForProcessing {
+		t.Fatal("expected repeated finish to remain idempotent")
+	}
+	if len(repo.outboxCommands) != len(processing.MandatoryChannels) {
+		t.Fatalf("expected exactly %d persisted commands after repeated finish, got %d", len(processing.MandatoryChannels), len(repo.outboxCommands))
+	}
+	if repo.finishCalls != 2 {
+		t.Fatalf("expected underlying finish flow to run on both attempts, got %d calls", repo.finishCalls)
+	}
+}
+
+func TestPendingCommandsCarryIdentifiersAndS3References(t *testing.T) {
+	repo := &finishRepoStub{
+		finishResult: examinations.Examination{
+			ID:           200,
+			SpecialistID: 20,
+			Status:       examinations.StatusReadyForProcessing,
+		},
+	}
+	service := processing.NewService(repo)
+
+	if _, err := service.Finish(context.Background(), 200); err != nil {
+		t.Fatalf("finish examination: %v", err)
+	}
+
+	for _, command := range repo.outboxCommands {
+		if command.ExaminationID != 200 {
+			t.Fatalf("expected examination_id=200, got %d", command.ExaminationID)
+		}
+		if command.SpecialistID != 20 {
+			t.Fatalf("expected specialist_id=20, got %d", command.SpecialistID)
+		}
+		if command.CorrelationID == "" {
+			t.Fatal("expected correlation_id for retry-safe publication")
+		}
+		for _, answer := range command.Answers {
+			if answer.AudioS3Bucket == "" || answer.AudioS3Key == "" {
+				t.Fatal("expected answer references to include S3 bucket and key")
+			}
+			if answer.QuestionID == 0 || answer.AnswerID == 0 {
+				t.Fatal("expected answer references to include identifiers")
+			}
 		}
 	}
 }
@@ -87,29 +153,49 @@ func TestChannelResultEnvelopeIsChannelNeutral(t *testing.T) {
 type finishRepoStub struct {
 	finishResult   examinations.Examination
 	finishErr      error
+	finishCalls    int
 	outboxCommands []processing.ProcessingCommandEnvelope
 }
 
-func (s *finishRepoStub) Create(context.Context, examinations.CreateInput) (examinations.Examination, error) {
-	return examinations.Examination{}, nil
+func (s *finishRepoStub) FinishLaunch(context.Context, int64) (examinations.Examination, []processing.ProcessingCommandEnvelope, error) {
+	s.finishCalls++
+	if s.finishErr != nil {
+		return examinations.Examination{}, nil, s.finishErr
+	}
+	if len(s.outboxCommands) == 0 {
+		commands := make([]processing.ProcessingCommandEnvelope, 0, len(processing.MandatoryChannels))
+		for idx, channel := range processing.MandatoryChannels {
+			commands = append(commands, processing.ProcessingCommandEnvelope{
+				MessageVersion: processing.MessageVersionV1,
+				MessageID:      channel + "-msg",
+				CorrelationID:  "exam-200-" + channel + "-v1",
+				ExaminationID:  s.finishResult.ID,
+				SpecialistID:   s.finishResult.SpecialistID,
+				Channel:        channel,
+				Attempt:        1,
+				MaxAttempts:    3,
+				RequestedAt:    time.Unix(1_742_550_000+int64(idx), 0).UTC(),
+				Answers: []processing.CommandAnswerReference{
+					{
+						AnswerID:      int64(idx + 1),
+						QuestionID:    int64(idx + 10),
+						AudioS3Bucket: "dimplom-audio",
+						AudioS3Key:    "examinations/200/answers/1/audio.webm",
+						AnswerText:    "Ответ обследуемого",
+					},
+				},
+			})
+		}
+		s.outboxCommands = commands
+	}
+	return s.finishResult, s.outboxCommands, nil
 }
 
-func (s *finishRepoStub) List(context.Context) ([]examinations.Examination, error) {
-	return nil, nil
-}
+func TestFinishPropagatesRepositoryError(t *testing.T) {
+	expectedErr := errors.New("boom")
+	service := processing.NewService(&finishRepoStub{finishErr: expectedErr})
 
-func (s *finishRepoStub) GetByID(context.Context, int64) (examinations.Examination, error) {
-	return examinations.Examination{}, nil
-}
-
-func (s *finishRepoStub) ListBySpecialistID(context.Context, int64) ([]examinations.Examination, error) {
-	return nil, nil
-}
-
-func (s *finishRepoStub) UpdateStatus(context.Context, int64, string) (examinations.Examination, error) {
-	return examinations.Examination{}, nil
-}
-
-func (s *finishRepoStub) Finish(context.Context, int64) (examinations.Examination, error) {
-	return s.finishResult, s.finishErr
+	if _, err := service.Finish(context.Background(), 100); !errors.Is(err, expectedErr) {
+		t.Fatalf("expected error %v, got %v", expectedErr, err)
+	}
 }
