@@ -12,6 +12,7 @@ import (
 	"dimplom/internal/answers"
 	"dimplom/internal/auth"
 	"dimplom/internal/examinations"
+	"dimplom/internal/processing"
 	"dimplom/internal/questionnaires"
 	"dimplom/internal/repository"
 	"dimplom/internal/specialists"
@@ -61,6 +62,8 @@ func mapDomainError(err error) (int, string) {
 		return http.StatusConflict, "invalid examination status transition"
 	case errors.Is(err, examinations.ErrAnswersIncomplete):
 		return http.StatusConflict, "examination answers are incomplete"
+	case errors.Is(err, processing.ErrProcessingStatusUnavailable):
+		return http.StatusConflict, "processing status is not available for this examination"
 	case errors.Is(err, questionnaires.ErrInvalidInput):
 		return http.StatusBadRequest, "invalid questionnaire payload"
 	case errors.Is(err, answers.ErrInvalidInput):

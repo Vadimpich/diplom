@@ -10,6 +10,8 @@ const (
 	StatusCreated            = "created"
 	StatusCollectingAnswers  = "collecting_answers"
 	StatusReadyForProcessing = "ready_for_processing"
+	StatusProcessing         = "processing"
+	StatusFailed             = "failed"
 )
 
 var (

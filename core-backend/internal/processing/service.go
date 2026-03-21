@@ -2,9 +2,12 @@ package processing
 
 import (
 	"context"
+	"errors"
 
 	"dimplom/internal/examinations"
 )
+
+var ErrProcessingStatusUnavailable = errors.New("processing: status unavailable")
 
 type FinishRepository interface {
 	FinishLaunch(context.Context, int64) (examinations.Examination, []ProcessingCommandEnvelope, error)

@@ -394,6 +394,8 @@ ORDER BY cr.channel ASC`
 	}
 
 	var found bool
+	var firstActivityAt *time.Time
+	var failedAt *time.Time
 	for rows.Next() {
 		found = true
 		var (
@@ -474,8 +476,17 @@ ORDER BY cr.channel ASC`
 				dto.BrokerCorrelationID = &brokerCorrID.String
 			}
 			response.Channels = append(response.Channels, dto)
+			if queuedAt.Valid {
+				firstActivityAt = earlierTime(firstActivityAt, queuedAt.Time)
+			}
+			if startedAt.Valid {
+				firstActivityAt = earlierTime(firstActivityAt, startedAt.Time)
+			}
 			if isTerminalChannelStatus(dto.Status) {
 				response.ChannelsComplete++
+			}
+			if response.Status == examinations.StatusFailed && finishedAt.Valid && isFailureChannelStatus(dto.Status) {
+				failedAt = laterTime(failedAt, finishedAt.Time)
 			}
 		}
 	}
@@ -485,7 +496,15 @@ ORDER BY cr.channel ASC`
 	if !found {
 		return ProcessingStatusResponse{}, repository.ErrNotFound
 	}
-	response.Terminal = response.ChannelsComplete == len(MandatoryChannels) && len(response.Channels) == len(MandatoryChannels)
+	switch response.Status {
+	case examinations.StatusReadyForProcessing, examinations.StatusProcessing, examinations.StatusFailed:
+	default:
+		return ProcessingStatusResponse{}, ErrProcessingStatusUnavailable
+	}
+	response.StartedAt = firstActivityAt
+	response.FailedAt = failedAt
+	response.Terminal = response.Status == examinations.StatusFailed ||
+		(response.ChannelsComplete == len(MandatoryChannels) && len(response.Channels) == len(MandatoryChannels))
 	return response, nil
 }
 
@@ -496,6 +515,31 @@ func isTerminalChannelStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+func isFailureChannelStatus(status string) bool {
+	switch status {
+	case "failed_fatal", "exhausted":
+		return true
+	default:
+		return false
+	}
+}
+
+func earlierTime(current *time.Time, candidate time.Time) *time.Time {
+	value := candidate.UTC()
+	if current == nil || value.Before(current.UTC()) {
+		return &value
+	}
+	return current
+}
+
+func laterTime(current *time.Time, candidate time.Time) *time.Time {
+	value := candidate.UTC()
+	if current == nil || value.After(current.UTC()) {
+		return &value
+	}
+	return current
 }
 
 func (r *SQLRepository) ListPendingOutbox(ctx context.Context, limit int32) ([]OutboxMessage, error) {
