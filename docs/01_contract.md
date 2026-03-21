@@ -1018,6 +1018,101 @@ Migrations bootstrap:
 - `audio_s3_key TEXT NOT NULL`
 - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
 
+### examination_processing_launches
+
+- `examination_id BIGINT PRIMARY KEY REFERENCES examinations(id) ON DELETE CASCADE`
+- `launched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+
+Назначение:
+- launch fence для идемпотентного старта Phase 2 processing pipeline;
+- не заменяется outbox-моделью, а используется как единственный guard от повторного fan-out при повторных `finish`.
+
+### examination_channel_runs
+
+- `id BIGSERIAL PRIMARY KEY`
+- `examination_id BIGINT NOT NULL REFERENCES examinations(id) ON DELETE CASCADE`
+- `channel TEXT NOT NULL`
+- `status TEXT NOT NULL`
+- `attempt_count INTEGER NOT NULL DEFAULT 0`
+- `max_attempts INTEGER NOT NULL DEFAULT 3`
+- `message_version INTEGER NOT NULL`
+- `last_error_code TEXT NULL`
+- `last_error_message TEXT NULL`
+- `broker_message_id TEXT NULL`
+- `broker_correlation_id TEXT NULL`
+- `queued_at TIMESTAMPTZ NULL`
+- `started_at TIMESTAMPTZ NULL`
+- `finished_at TIMESTAMPTZ NULL`
+- `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- `UNIQUE (examination_id, channel)`
+
+Допустимые значения `channel`:
+- `text`
+- `acoustic`
+- `paralinguistic`
+
+Допустимые значения `status`:
+- `pending`
+- `queued`
+- `processing`
+- `succeeded`
+- `retry_scheduled`
+- `failed_temporary`
+- `failed_fatal`
+- `exhausted`
+
+### processing_outbox
+
+- `id BIGSERIAL PRIMARY KEY`
+- `examination_id BIGINT NOT NULL REFERENCES examinations(id) ON DELETE CASCADE`
+- `channel_run_id BIGINT NOT NULL REFERENCES examination_channel_runs(id) ON DELETE CASCADE`
+- `channel TEXT NOT NULL`
+- `exchange_name TEXT NOT NULL`
+- `routing_key TEXT NOT NULL`
+- `status TEXT NOT NULL`
+- `attempt_count INTEGER NOT NULL DEFAULT 0`
+- `max_attempts INTEGER NOT NULL DEFAULT 3`
+- `message_version INTEGER NOT NULL`
+- `payload JSONB NOT NULL`
+- `broker_message_id TEXT NULL`
+- `broker_correlation_id TEXT NULL`
+- `last_error_code TEXT NULL`
+- `last_error_message TEXT NULL`
+- `published_at TIMESTAMPTZ NULL`
+- `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- `UNIQUE (channel_run_id)`
+
+Допустимые значения `status`:
+- `pending`
+- `published`
+- `failed`
+
+### channel_results
+
+- `id BIGSERIAL PRIMARY KEY`
+- `examination_id BIGINT NOT NULL REFERENCES examinations(id) ON DELETE CASCADE`
+- `channel_run_id BIGINT NOT NULL REFERENCES examination_channel_runs(id) ON DELETE CASCADE`
+- `channel TEXT NOT NULL`
+- `message_version INTEGER NOT NULL`
+- `attempt INTEGER NOT NULL`
+- `status TEXT NOT NULL`
+- `model_version TEXT NOT NULL`
+- `payload JSONB NOT NULL`
+- `error_code TEXT NULL`
+- `error_message TEXT NULL`
+- `broker_message_id TEXT NULL`
+- `broker_correlation_id TEXT NULL`
+- `completed_at TIMESTAMPTZ NOT NULL`
+- `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- `UNIQUE (channel_run_id, attempt)`
+
+Допустимые значения `status`:
+- `succeeded`
+- `temporary_error`
+- `fatal_error`
+
 ### questionnaires
 
 - `id BIGSERIAL PRIMARY KEY`
