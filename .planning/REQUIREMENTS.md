@@ -22,7 +22,7 @@
 ### Processing Pipeline
 
 - [x] **PIPE-01**: Core backend публикует задачи анализа в RabbitMQ для каналов `text`, `acoustic` и `paralinguistic` с версионируемым payload и ссылкой на аудио в S3
-- [ ] **PIPE-02**: Каждый ML-сервис получает задачу, обрабатывает аудио независимо от других сервисов и возвращает унифицированный результат своего канала
+- [x] **PIPE-02**: Каждый ML-сервис получает задачу, обрабатывает аудио независимо от других сервисов и возвращает унифицированный результат своего канала
 - [ ] **PIPE-03**: Система ограничивает повторные попытки обработки и фиксирует временные и фатальные ошибки по каждому каналу
 - [ ] **PIPE-04**: Если хотя бы один обязательный канал не завершился успешно после допустимых retry, обследование получает финальный error state
 
@@ -60,7 +60,7 @@
 
 - [ ] **QUAL-01**: Все межсервисные и HTTP-контракты системы зафиксированы и версионируются в `docs/01_contract.md`
 - [ ] **QUAL-02**: Критичные части workflow покрыты тестами на уровне unit/integration/API, включая статусные переходы, идемпотентность и обработку ошибок
-- [ ] **QUAL-03**: Локальный self-hosted запуск воспроизводим через контейнерный стек для frontend, core backend, PostgreSQL, RabbitMQ, S3 и последующих аналитических сервисов
+- [x] **QUAL-03**: Локальный self-hosted запуск воспроизводим через контейнерный стек для frontend, core backend, PostgreSQL, RabbitMQ, S3 и последующих аналитических сервисов
 
 ## v2 Requirements
 
@@ -96,7 +96,7 @@
 | EXAM-03 | Phase 1 | Complete |
 | EXAM-04 | Phase 1 | Complete |
 | PIPE-01 | Phase 2 | Complete |
-| PIPE-02 | Phase 2 | Pending |
+| PIPE-02 | Phase 2 | Complete |
 | PIPE-03 | Phase 2 | Pending |
 | PIPE-04 | Phase 2 | Pending |
 | AGGR-01 | Phase 3 | Pending |
@@ -116,7 +116,7 @@
 | OBSV-03 | Phase 5 | Pending |
 | QUAL-01 | Phase 5 | Pending |
 | QUAL-02 | Phase 5 | Pending |
-| QUAL-03 | Phase 2 | Pending |
+| QUAL-03 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total

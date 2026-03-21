@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-PLAN.md - Publish versioned processing contracts, DB schema, and failing verification scaffolds for outbox plus progress DTOs.
 - [ ] 02-PLAN.md - Extend the finish fence into transactional outbox fan-out and add the RabbitMQ publisher relay with explicit 3.13 queue semantics.
-- [ ] 03-PLAN.md - Add stub-but-runnable `text`, `acoustic`, and `paralinguistic` worker services and wire them into local Compose.
+- [x] 03-PLAN.md - Add stub-but-runnable `text`, `acoustic`, and `paralinguistic` worker services and wire them into local Compose.
 - [ ] 04-PLAN.md - Consume unified channel results, persist retry and failure state, and expose backend-authoritative processing progress.
 - [ ] 05-PLAN.md - Replace the placeholder operator processing page with typed polling of per-channel progress.
 - [ ] 06-PLAN.md - Verify the full stack, refresh validation/runbook metadata, and append the Phase 2 implementation log entry.
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
-| 2. Asynchronous Multichannel Processing | 1/6 | In Progress | - |
+| 2. Asynchronous Multichannel Processing | 2/6 | In Progress | - |
 | 3. Aggregated Baseline-Aware Profiles | 0/TBD | Not started | - |
 | 4. Decision Delivery To Operator | 0/TBD | Not started | - |
 | 5. Operational Trustworthiness | 0/TBD | Not started | - |
