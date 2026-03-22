@@ -9,15 +9,15 @@ files_modified:
   - docker-compose.yml
   - .env.example
   - docs/01_contract.md
-  - ml-text/Dockerfile
-  - ml-text/requirements.txt
-  - ml-text/app/main.py
-  - ml-acoustic/Dockerfile
-  - ml-acoustic/requirements.txt
-  - ml-acoustic/app/main.py
-  - ml-paralinguistic/Dockerfile
-  - ml-paralinguistic/requirements.txt
-  - ml-paralinguistic/app/main.py
+  - ml-services/ml-text/Dockerfile
+  - ml-services/ml-text/requirements.txt
+  - ml-services/ml-text/app/main.py
+  - ml-services/ml-acoustic/Dockerfile
+  - ml-services/ml-acoustic/requirements.txt
+  - ml-services/ml-acoustic/app/main.py
+  - ml-services/ml-paralinguistic/Dockerfile
+  - ml-services/ml-paralinguistic/requirements.txt
+  - ml-services/ml-paralinguistic/app/main.py
 autonomous: true
 requirements:
   - PIPE-02
@@ -63,8 +63,8 @@ Output: three minimal Python worker services, Compose wiring, and documented run
 
 <task type="auto">
   <name>Task 1: Create three independent runnable worker shells</name>
-  <files>ml-text/Dockerfile, ml-text/requirements.txt, ml-text/app/main.py, ml-acoustic/Dockerfile, ml-acoustic/requirements.txt, ml-acoustic/app/main.py, ml-paralinguistic/Dockerfile, ml-paralinguistic/requirements.txt, ml-paralinguistic/app/main.py</files>
-  <action>Create `ml-text`, `ml-acoustic`, and `ml-paralinguistic` services as lightweight FastAPI + `aio-pika` workers with health endpoints and robust RabbitMQ connections. Each service should consume only its own command queue, fetch the referenced audio object from MinIO/S3, emit a stub normalized payload with `model_version`, and classify failures as `temporary_error` or `fatal_error` in the unified result envelope. Keep them stateless and independent; they must not write to PostgreSQL or call other channel services.</action>
+  <files>ml-services/ml-text/Dockerfile, ml-services/ml-text/requirements.txt, ml-services/ml-text/app/main.py, ml-services/ml-acoustic/Dockerfile, ml-services/ml-acoustic/requirements.txt, ml-services/ml-acoustic/app/main.py, ml-services/ml-paralinguistic/Dockerfile, ml-services/ml-paralinguistic/requirements.txt, ml-services/ml-paralinguistic/app/main.py</files>
+  <action>Create `ml-services/ml-text`, `ml-services/ml-acoustic`, and `ml-services/ml-paralinguistic` services as lightweight FastAPI + `aio-pika` workers with health endpoints and robust RabbitMQ connections. Each service should consume only its own command queue, fetch the referenced audio object from MinIO/S3, emit a stub normalized payload with `model_version`, and classify failures as `temporary_error` or `fatal_error` in the unified result envelope. Keep them stateless and independent; they must not write to PostgreSQL or call other channel services.</action>
   <verify>
     <automated>cd /home/katya/dimplom && docker compose up -d --build text-worker acoustic-worker paralinguistic-worker && docker compose ps</automated>
   </verify>
@@ -88,7 +88,7 @@ Bring up the full Compose stack and confirm the three worker containers are pres
 </verification>
 
 <success_criteria>
-- `ml-text`, `ml-acoustic`, and `ml-paralinguistic` exist as runnable services.
+- `ml-services/ml-text`, `ml-services/ml-acoustic`, and `ml-services/ml-paralinguistic` exist as runnable services.
 - Compose starts the full Phase 2 stack with those services included.
 - Workers use the shared documented command/result contract and S3 references.
 </success_criteria>

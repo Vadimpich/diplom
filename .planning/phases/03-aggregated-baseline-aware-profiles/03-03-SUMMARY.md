@@ -15,8 +15,8 @@ tech-stack:
   added: [fastapi, pydantic, numpy, scipy, pytest, uvicorn]
   patterns: [compute-only service boundary, robust statistics gating, internal compose service wiring]
 key-files:
-  created: [ml-baseline/app/main.py, ml-baseline/app/schemas.py, ml-baseline/app/algorithms.py, ml-baseline/Dockerfile]
-  modified: [ml-baseline/tests/test_service.py, ml-baseline/tests/test_algorithms.py, docker-compose.yml, .env.example, docs/01_contract.md, docs/02_implementation.md]
+  created: [ml-services/ml-baseline/app/main.py, ml-services/ml-baseline/app/schemas.py, ml-services/ml-baseline/app/algorithms.py, ml-services/ml-baseline/Dockerfile]
+  modified: [ml-services/ml-baseline/tests/test_service.py, ml-services/ml-baseline/tests/test_algorithms.py, docker-compose.yml, .env.example, docs/01_contract.md, docs/02_implementation.md]
 key-decisions:
   - "Baseline service remains compute-only and does not access PostgreSQL or RabbitMQ directly."
   - "Baseline refresh eligibility uses median plus MAD with an outlier freeze threshold instead of mean and standard deviation."
@@ -42,7 +42,7 @@ completed: 2026-03-22
 - **Files modified:** 12
 
 ## Accomplishments
-- Added `ml-baseline` as a standalone FastAPI service with `POST /baseline/calculate` and `GET /health`.
+- Added `ml-services/ml-baseline` as a standalone FastAPI service with `POST /baseline/calculate` and `GET /health`.
 - Implemented robust baseline math using median, MAD, bounded history, and outlier-gated updates.
 - Wired the service into local compose with explicit `BASELINE_*` env vars and kept it internal-only.
 - Synced `docs/01_contract.md` and appended the implementation log in `docs/02_implementation.md`.
@@ -53,11 +53,11 @@ completed: 2026-03-22
 2. **Task 2: Implement robust update gating and local compose wiring** - `510d041` (test), `791aa4c` (feat)
 
 ## Files Created/Modified
-- `ml-baseline/app/main.py` - FastAPI app and baseline calculation endpoint.
-- `ml-baseline/app/schemas.py` - Versioned request and response models.
-- `ml-baseline/app/algorithms.py` - Robust statistics helpers, outlier freeze, and bounded update logic.
-- `ml-baseline/Dockerfile` - Container runtime for the baseline service.
-- `docker-compose.yml` - Internal-only `ml-baseline` service wiring.
+- `ml-services/ml-baseline/app/main.py` - FastAPI app and baseline calculation endpoint.
+- `ml-services/ml-baseline/app/schemas.py` - Versioned request and response models.
+- `ml-services/ml-baseline/app/algorithms.py` - Robust statistics helpers, outlier freeze, and bounded update logic.
+- `ml-services/ml-baseline/Dockerfile` - Container runtime for the baseline service.
+- `docker-compose.yml` - Internal-only `ml-services/ml-baseline` service wiring.
 - `.env.example` - Baseline runtime environment variables.
 - `docs/01_contract.md` - Updated baseline response contract with metric scores and `next_baseline`.
 - `docs/02_implementation.md` - Append-only implementation log entry for plan 03.
@@ -71,18 +71,18 @@ completed: 2026-03-22
 
 ### Auto-fixed Issues
 
-**1. [Rule 3 - Blocking] Added a dedicated Dockerfile for `ml-baseline`**
+**1. [Rule 3 - Blocking] Added a dedicated Dockerfile for `ml-services/ml-baseline`**
 - **Found during:** Task 2 (Implement robust update gating and local compose wiring)
 - **Issue:** Compose wiring for the new baseline service could not be runnable without a container build definition.
-- **Fix:** Added `ml-baseline/Dockerfile` following the existing Python service pattern and parameterized host/port startup via `BASELINE_*`.
-- **Files modified:** `ml-baseline/Dockerfile`
-- **Verification:** Focused pytest suite passed and compose YAML parse confirmed `ml-baseline` exists as a service.
+- **Fix:** Added `ml-services/ml-baseline/Dockerfile` following the existing Python service pattern and parameterized host/port startup via `BASELINE_*`.
+- **Files modified:** `ml-services/ml-baseline/Dockerfile`
+- **Verification:** Focused pytest suite passed and compose YAML parse confirmed `ml-services/ml-baseline` exists as a service.
 - **Committed in:** `791aa4c` (part of task commit)
 
 **2. [Rule 3 - Blocking] Used an isolated temporary Python venv for verification**
 - **Found during:** Task 1 and Task 2 verification
 - **Issue:** System Python in the local environment lacked `pytest`, which blocked required test execution.
-- **Fix:** Created `/tmp/dimplom-ml-baseline-venv` outside the repository and installed only the packages needed to run the focused `ml-baseline` tests.
+- **Fix:** Created `/tmp/dimplom-ml-baseline-venv` outside the repository and installed only the packages needed to run the focused `ml-services/ml-baseline` tests.
 - **Files modified:** None in repository
 - **Verification:** `pytest` commands for service and algorithm tests passed in the isolated environment.
 - **Committed in:** No repository files changed
@@ -93,8 +93,8 @@ completed: 2026-03-22
 **Impact on plan:** Both fixes were necessary to verify the new service and keep the runtime wiring reproducible. No scope creep beyond the plan boundary.
 
 ## Issues Encountered
-- `docker compose config` could not run because the `docker` CLI is unavailable in this WSL distro. As a fallback, the compose file was parsed via Python to confirm that `ml-baseline` is present and has no published `ports`.
-- Installing `scipy` into the temporary verification venv failed with a wheel filesystem error, but the repository dependency was still pinned in `ml-baseline/requirements.txt` and the focused tests did not require SciPy at runtime.
+- `docker compose config` could not run because the `docker` CLI is unavailable in this WSL distro. As a fallback, the compose file was parsed via Python to confirm that `ml-services/ml-baseline` is present and has no published `ports`.
+- Installing `scipy` into the temporary verification venv failed with a wheel filesystem error, but the repository dependency was still pinned in `ml-services/ml-baseline/requirements.txt` and the focused tests did not require SciPy at runtime.
 
 ## User Setup Required
 

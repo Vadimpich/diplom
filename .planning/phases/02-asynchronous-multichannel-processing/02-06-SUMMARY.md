@@ -16,7 +16,7 @@ tech-stack:
   patterns: [transactional outbox runtime validation, compose health-gated startup, quorum queue parity across publisher and workers]
 key-files:
   created: [.planning/phases/02-asynchronous-multichannel-processing/02-06-SUMMARY.md]
-  modified: [README.md, .env.example, docker-compose.yml, .planning/phases/02-asynchronous-multichannel-processing/02-VALIDATION.md, ml-text/app/main.py, ml-acoustic/app/main.py, ml-paralinguistic/app/main.py, docs/02_implementation.md]
+  modified: [README.md, .env.example, docker-compose.yml, .planning/phases/02-asynchronous-multichannel-processing/02-VALIDATION.md, ml-services/ml-text/app/main.py, ml-services/ml-acoustic/app/main.py, ml-services/ml-paralinguistic/app/main.py, docs/02_implementation.md]
 key-decisions:
   - "Core backend now receives an explicit compose-managed RABBITMQ_URL because its runtime ignores host/port fragments without the full broker URL."
   - "Workers declare the same quorum/DLX queue arguments as the outbox relay so RabbitMQ topology stays reproducible across fresh and repeated local startups."
@@ -58,9 +58,9 @@ Each task was committed atomically:
 - `.env.example` - Explicit RabbitMQ URL and retry env for the shipped async stack.
 - `docker-compose.yml` - Health-gated startup and explicit broker wiring for reproducible local compose runs.
 - `.planning/phases/02-asynchronous-multichannel-processing/02-VALIDATION.md` - Updated full-suite command and green status for plan 06 smoke.
-- `ml-text/app/main.py` - Queue declaration parity with relay topology.
-- `ml-acoustic/app/main.py` - Queue declaration parity with relay topology.
-- `ml-paralinguistic/app/main.py` - Queue declaration parity with relay topology.
+- `ml-services/ml-text/app/main.py` - Queue declaration parity with relay topology.
+- `ml-services/ml-acoustic/app/main.py` - Queue declaration parity with relay topology.
+- `ml-services/ml-paralinguistic/app/main.py` - Queue declaration parity with relay topology.
 - `docs/02_implementation.md` - Append-only Phase 2 completion record.
 
 ## Decisions Made
@@ -84,7 +84,7 @@ Each task was committed atomically:
 - **Found during:** Task 1
 - **Issue:** Worker-declared queues lacked quorum/DLX arguments, causing `PRECONDITION_FAILED` against RabbitMQ when relay and workers reused the same queue names.
 - **Fix:** Updated all three workers to declare queues with matching quorum, dead-letter exchange, and delivery-limit arguments; documented one-time `down -v` for stale pre-fix broker volumes.
-- **Files modified:** `ml-text/app/main.py`, `ml-acoustic/app/main.py`, `ml-paralinguistic/app/main.py`, `README.md`, `.planning/phases/02-asynchronous-multichannel-processing/02-VALIDATION.md`
+- **Files modified:** `ml-services/ml-text/app/main.py`, `ml-services/ml-acoustic/app/main.py`, `ml-services/ml-paralinguistic/app/main.py`, `README.md`, `.planning/phases/02-asynchronous-multichannel-processing/02-VALIDATION.md`
 - **Verification:** Fresh `docker compose down -v && docker compose up -d --build && docker compose ps`, `docker compose logs --since=30s core-backend text-worker acoustic-worker paralinguistic-worker`
 - **Committed in:** `23cbebf`
 

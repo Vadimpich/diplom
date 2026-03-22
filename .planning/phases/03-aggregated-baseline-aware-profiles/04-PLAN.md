@@ -82,7 +82,7 @@ aggregated terminal success after baseline snapshot persistence
   <name>Task 1: Add the baseline HTTP client and runtime configuration</name>
   <files>core-backend/internal/baselineclient/client.go, core-backend/internal/baselineclient/client_test.go, core-backend/internal/config/config.go, core-backend/internal/app/app.go</files>
   <behavior>
-    - Test 1: client sends the versioned request envelope expected by `ml-baseline`.
+    - Test 1: client sends the versioned request envelope expected by `ml-services/ml-baseline`.
     - Test 2: client maps transport and malformed-response errors to safe backend errors without leaking stack traces.
     - Test 3: runtime wiring can inject baseline URL, timeout, and algorithm version through env/config.
   </behavior>
@@ -90,7 +90,7 @@ aggregated terminal success after baseline snapshot persistence
   <verify>
     <automated>cd /home/katya/dimplom/core-backend && go test ./internal/baselineclient -run 'TestClientSendsBaselineRequest|TestClientHandlesTransportFailure' -count=1</automated>
   </verify>
-  <done>The core backend has a tested baseline HTTP client and runtime config needed to talk to `ml-baseline` safely.</done>
+  <done>The core backend has a tested baseline HTTP client and runtime config needed to talk to `ml-services/ml-baseline` safely.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -115,7 +115,7 @@ Run the targeted aggregation, baseline-client, and processing tests and confirm 
 </verification>
 
 <success_criteria>
-- Core backend integrates with `ml-baseline` through a narrow tested client.
+- Core backend integrates with `ml-services/ml-baseline` through a narrow tested client.
 - Baseline metadata and deviations are persisted in PostgreSQL under core ownership.
 - `aggregated` is the Phase 3 terminal success state for processing-status and examination workflow.
 </success_criteria>

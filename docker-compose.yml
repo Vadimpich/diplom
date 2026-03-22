@@ -126,7 +126,7 @@ services:
 
   text-worker:
     build:
-      context: ./ml-text
+      context: ./ml-services/ml-text
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -161,7 +161,7 @@ services:
 
   acoustic-worker:
     build:
-      context: ./ml-acoustic
+      context: ./ml-services/ml-acoustic
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -196,7 +196,7 @@ services:
 
   paralinguistic-worker:
     build:
-      context: ./ml-paralinguistic
+      context: ./ml-services/ml-paralinguistic
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -231,7 +231,7 @@ services:
 
   ml-baseline:
     build:
-      context: ./ml-baseline
+      context: ./ml-services/ml-baseline
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:

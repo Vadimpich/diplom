@@ -78,7 +78,7 @@ The main compatibility risk is status vocabulary. Phase 2 currently treats “al
 
 **Installation:**
 ```bash
-cd /home/katya/dimplom/ml-baseline
+cd /home/katya/dimplom/ml-services/ml-baseline
 pip install fastapi==0.135.1 pydantic==2.12.5 numpy==2.4.3 scipy==1.17.1 uvicorn==0.34.0
 ```
 
@@ -102,7 +102,7 @@ core-backend/
 ├── internal/results/                  # aggregate + trend DTOs for operator-facing endpoints
 └── migrations/                        # examination_profiles, metric rows, baseline tables
 
-ml-baseline/
+ml-services/ml-baseline/
 ├── app/main.py                        # FastAPI service
 ├── app/schemas.py                     # request/response envelopes
 └── app/algorithms.py                  # robust center/scale and update gating
@@ -389,7 +389,7 @@ func explain(profile AggregatedProfile) []string {
 | Framework | Go stdlib `testing` + `net/http/httptest`; frontend `eslint` + `next build` + `tsc`; Python baseline service `pytest` |
 | Config file | `none` for Go/frontend; `none — see Wave 0` for Python baseline |
 | Quick run command | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/results ./internal/http -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistTrendHistory' -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` |
-| Full suite command | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && cd /home/katya/dimplom/ml-baseline && pytest -q` |
+| Full suite command | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q` |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
@@ -397,9 +397,9 @@ func explain(profile AggregatedProfile) []string {
 | AGGR-01 | Aggregation does not start until all mandatory channels are `succeeded` | unit/service | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestAggregationReadyOnlyAfterAllChannelsSucceeded -count=1` | ❌ Wave 0 |
 | AGGR-02 | One versioned canonical profile is persisted per examination | unit/repository | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestAggregationStoresVersionedProfile -count=1` | ❌ Wave 0 |
 | AGGR-03 | Stored profile includes per-channel contributions and deterministic explanations | unit/service | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestAggregationIncludesContributionsAndExplanations -count=1` | ❌ Wave 0 |
-| BASE-01 | Baseline response includes general and personal deviation for each canonical metric | unit/Python | `cd /home/katya/dimplom/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation` | ❌ Wave 0 |
+| BASE-01 | Baseline response includes general and personal deviation for each canonical metric | unit/Python | `cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation` | ❌ Wave 0 |
 | BASE-02 | Baseline metadata persists refresh time, exam count, and algorithm version | integration | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestBaselineMetadataPersistedOnProfile -count=1` | ❌ Wave 0 |
-| BASE-03 | Outlier exam does not automatically mutate the personal baseline | unit/Python | `cd /home/katya/dimplom/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update` | ❌ Wave 0 |
+| BASE-03 | Outlier exam does not automatically mutate the personal baseline | unit/Python | `cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update` | ❌ Wave 0 |
 | RSLT-03 | Specialist history returns dynamics of key indicators across examinations | HTTP + frontend | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run TestSpecialistTrendHistoryEndpoint -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` | ❌ Wave 0 |
 
 ### Sampling Rate
@@ -410,9 +410,9 @@ func explain(profile AggregatedProfile) []string {
 ### Wave 0 Gaps
 - [ ] `/home/katya/dimplom/core-backend/internal/aggregation/service_test.go` — covers `AGGR-01`, `AGGR-02`, `AGGR-03`
 - [ ] `/home/katya/dimplom/core-backend/internal/http/results_handler_test.go` — covers `RSLT-03`
-- [ ] `/home/katya/dimplom/ml-baseline/tests/test_algorithms.py` — covers `BASE-01`, `BASE-03`
-- [ ] `/home/katya/dimplom/ml-baseline/tests/test_service.py` — covers baseline contract shape
-- [ ] Framework install: `cd /home/katya/dimplom/ml-baseline && pip install pytest`
+- [ ] `/home/katya/dimplom/ml-services/ml-baseline/tests/test_algorithms.py` — covers `BASE-01`, `BASE-03`
+- [ ] `/home/katya/dimplom/ml-services/ml-baseline/tests/test_service.py` — covers baseline contract shape
+- [ ] Framework install: `cd /home/katya/dimplom/ml-services/ml-baseline && pip install pytest`
 
 ## Sources
 

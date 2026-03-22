@@ -12,8 +12,8 @@ files_modified:
   - core-backend/internal/aggregation/contracts.go
   - core-backend/internal/aggregation/service_test.go
   - core-backend/internal/http/results_handler_test.go
-  - ml-baseline/tests/test_service.py
-  - ml-baseline/tests/test_algorithms.py
+  - ml-services/ml-baseline/tests/test_service.py
+  - ml-services/ml-baseline/tests/test_algorithms.py
 autonomous: true
 requirements:
   - AGGR-02
@@ -29,7 +29,7 @@ must_haves:
   artifacts:
     - docs/01_contract.md documents Phase 3 HTTP, DB, and baseline-service contracts.
     - core-backend/migrations/000007_aggregated_profiles.up.sql creates authoritative tables for aggregated profiles, metric snapshots, and baseline state.
-    - core-backend/internal/aggregation/service_test.go and ml-baseline/tests/*.py pin the expected behaviors before implementation.
+    - core-backend/internal/aggregation/service_test.go and ml-services/ml-baseline/tests/*.py pin the expected behaviors before implementation.
   key_links:
     - Channel success must unlock aggregation, but terminal success cannot be reported until baseline-enriched profile persistence completes.
     - Baseline request and response envelopes must remain versioned and narrow because the Python service is compute-only.
@@ -93,7 +93,7 @@ Phase 4 KESMI delivery must not be pulled into this phase
 
 <task type="auto" tdd="true">
   <name>Task 1: Lock the Phase 3 contracts and status vocabulary</name>
-  <files>docs/01_contract.md, core-backend/internal/aggregation/service_test.go, core-backend/internal/http/results_handler_test.go, ml-baseline/tests/test_service.py, ml-baseline/tests/test_algorithms.py</files>
+  <files>docs/01_contract.md, core-backend/internal/aggregation/service_test.go, core-backend/internal/http/results_handler_test.go, ml-services/ml-baseline/tests/test_service.py, ml-services/ml-baseline/tests/test_algorithms.py</files>
   <behavior>
     - Test 1: aggregation result DTO returns one versioned canonical profile with normalized metrics, per-channel contributions, explanation bullets, and baseline snapshot metadata.
     - Test 2: `/processing-status` treats `aggregating` as in-progress and `aggregated` as terminal success, while `failed` remains terminal failure.
@@ -102,7 +102,7 @@ Phase 4 KESMI delivery must not be pulled into this phase
   </behavior>
   <action>Update `docs/01_contract.md` first. Add the canonical aggregated profile schema, baseline request/response envelopes, `GET /examinations/{id}/result`, and `GET /specialists/{id}/result-history`. Expand the Phase 3 examination status vocabulary to `created`, `collecting_answers`, `ready_for_processing`, `processing`, `aggregating`, `aggregated`, and `failed`, and update `GET /examinations/{id}/processing-status` so `terminal=true` means `aggregated` or `failed`, not merely “all channels succeeded.” Keep Phase 4 concerns out: do not add KESMI request/response contracts or final recommendation fields beyond neutral placeholders reserved for later phases. In the same task, add RED tests in Go and Python that pin these contracts without pretending the current stub payloads have final clinical semantics.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && cd /home/katya/dimplom/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation tests/test_algorithms.py::test_outlier_freezes_baseline_update</automated>
+    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation tests/test_algorithms.py::test_outlier_freezes_baseline_update</automated>
   </verify>
   <done>`docs/01_contract.md` becomes the single source of truth for Phase 3 result, history, status, and baseline-service contracts, and the new tests fail only because implementation is not present yet.</done>
 </task>

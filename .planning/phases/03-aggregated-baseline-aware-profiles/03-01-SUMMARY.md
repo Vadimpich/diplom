@@ -15,7 +15,7 @@ tech-stack:
   added: []
   patterns: [core-owned aggregation persistence, compute-only baseline boundary, canonical aggregated DTO]
 key-files:
-  created: [core-backend/internal/aggregation/service_test.go, core-backend/internal/http/results_handler_test.go, ml-baseline/tests/test_service.py, ml-baseline/tests/test_algorithms.py, core-backend/migrations/000007_aggregated_profiles.up.sql, core-backend/migrations/000007_aggregated_profiles.down.sql, core-backend/db/queries/aggregation.sql, core-backend/internal/aggregation/contracts.go, .planning/phases/03-aggregated-baseline-aware-profiles/03-01-SUMMARY.md]
+  created: [core-backend/internal/aggregation/service_test.go, core-backend/internal/http/results_handler_test.go, ml-services/ml-baseline/tests/test_service.py, ml-services/ml-baseline/tests/test_algorithms.py, core-backend/migrations/000007_aggregated_profiles.up.sql, core-backend/migrations/000007_aggregated_profiles.down.sql, core-backend/db/queries/aggregation.sql, core-backend/internal/aggregation/contracts.go, .planning/phases/03-aggregated-baseline-aware-profiles/03-01-SUMMARY.md]
   modified: [docs/01_contract.md, docs/02_implementation.md]
 key-decisions:
   - "Aggregation remains core-owned in Go; only baseline crosses into a Python compute boundary."
@@ -59,8 +59,8 @@ Each task was committed atomically:
 - `docs/01_contract.md` - Phase 3 status, result, history, and baseline-service contracts.
 - `core-backend/internal/aggregation/service_test.go` - RED scaffold for canonical profile persistence.
 - `core-backend/internal/http/results_handler_test.go` - RED HTTP coverage for `aggregating` semantics and specialist result history.
-- `ml-baseline/tests/test_service.py` - RED baseline service contract test.
-- `ml-baseline/tests/test_algorithms.py` - RED baseline outlier-gating test.
+- `ml-services/ml-baseline/tests/test_service.py` - RED baseline service contract test.
+- `ml-services/ml-baseline/tests/test_algorithms.py` - RED baseline outlier-gating test.
 - `core-backend/migrations/000007_aggregated_profiles.up.sql` - Phase 3 schema for aggregated profile and baseline tables.
 - `core-backend/migrations/000007_aggregated_profiles.down.sql` - rollback for Phase 3 schema and status vocabulary.
 - `core-backend/db/queries/aggregation.sql` - query skeletons for readiness, persistence, baseline state, and history projection.

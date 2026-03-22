@@ -20,7 +20,7 @@ created: 2026-03-22
 | **Framework** | Go stdlib `testing` + `net/http/httptest`, frontend lint/build/typecheck, Python `pytest` for baseline service |
 | **Config file** | none |
 | **Quick run command** | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestAggregationIncludesContributionsAndExplanations|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` |
-| **Full suite command** | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q` |
+| **Full suite command** | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q` |
 | **Estimated runtime** | ~210 seconds |
 
 ---
@@ -28,7 +28,7 @@ created: 2026-03-22
 ## Sampling Rate
 
 - **After every task commit:** Run `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -count=1`
-- **After every plan wave:** Run `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q`
+- **After every plan wave:** Run `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q`
 - **Before `$gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 210 seconds
 
@@ -38,19 +38,19 @@ created: 2026-03-22
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 3-01-01 | 01 | 1 | AGGR-02, AGGR-03, BASE-01 | contracts + RED tests | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation tests/test_algorithms.py::test_outlier_freezes_baseline_update` | ✅ | ✅ green |
+| 3-01-01 | 01 | 1 | AGGR-02, AGGR-03, BASE-01 | contracts + RED tests | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation tests/test_algorithms.py::test_outlier_freezes_baseline_update` | ✅ | ✅ green |
 | 3-01-02 | 01 | 1 | AGGR-02, BASE-02, RSLT-03 | schema + contracts | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestSpecialistResultHistoryEndpoint' -count=1` | ✅ | ✅ green |
 | 3-02-01 | 02 | 2 | AGGR-01, AGGR-02, AGGR-03 | normalization + explanations | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestAggregationIncludesContributionsAndExplanations' -count=1` | ✅ | ✅ green |
 | 3-02-02 | 02 | 2 | AGGR-01 | aggregating state transition | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/processing -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestProcessingStatusShowsAggregating' -count=1` | ✅ | ✅ green |
-| 3-03-01 | 03 | 2 | BASE-01, BASE-02 | baseline HTTP contract | `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation` | ✅ | ✅ green |
-| 3-03-02 | 03 | 2 | BASE-03 | robust update gating + compose wiring | `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update tests/test_service.py::test_returns_general_and_personal_deviation` | ✅ | ✅ green |
+| 3-03-01 | 03 | 2 | BASE-01, BASE-02 | baseline HTTP contract | `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation` | ✅ | ✅ green |
+| 3-03-02 | 03 | 2 | BASE-03 | robust update gating + compose wiring | `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update tests/test_service.py::test_returns_general_and_personal_deviation` | ✅ | ✅ green |
 | 3-04-01 | 04 | 3 | BASE-01 | baseline HTTP client | `cd /home/katya/dimplom/core-backend && go test ./internal/baselineclient -count=1` | ✅ | ✅ green |
 | 3-04-02 | 04 | 3 | BASE-01, BASE-02, BASE-03, AGGR-01 | baseline persistence + aggregated terminal status | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/processing -count=1` | ✅ | ✅ green |
 | 3-05-01 | 05 | 4 | AGGR-03 | result endpoint | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/results -run 'TestSpecialistResultHistoryEndpoint' -count=1` | ✅ | ✅ green |
 | 3-05-02 | 05 | 4 | RSLT-03 | specialist result-history endpoint | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/results -run 'TestSpecialistResultHistoryEndpoint' -count=1` | ✅ | ✅ green |
 | 3-06-01 | 06 | 5 | AGGR-03, RSLT-03 | frontend typed contracts | `cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` | ✅ | ✅ green |
 | 3-06-02 | 06 | 5 | RSLT-03 | frontend result/history/processing navigation | `cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` | ✅ | ✅ green |
-| 3-06-03 | 06 | 5 | AGGR-03, RSLT-03 | docs + full regression | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q && cd /home/katya/dimplom && rg -n 'aggregated|baseline|result-history|/examinations/\\{id\\}/result' README.md .planning/phases/03-aggregated-baseline-aware-profiles/03-VALIDATION.md docs/02_implementation.md` | ✅ | ✅ green |
+| 3-06-03 | 06 | 5 | AGGR-03, RSLT-03 | docs + full regression | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q && cd /home/katya/dimplom && rg -n 'aggregated|baseline|result-history|/examinations/\\{id\\}/result' README.md .planning/phases/03-aggregated-baseline-aware-profiles/03-VALIDATION.md docs/02_implementation.md` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -60,8 +60,8 @@ created: 2026-03-22
 
 - [x] `/home/katya/dimplom/core-backend/internal/aggregation/service_test.go` — covers `AGGR-01`, `AGGR-02`, `AGGR-03`
 - [x] `/home/katya/dimplom/core-backend/internal/http/results_handler_test.go` or equivalent trend/history HTTP tests — covers `RSLT-03`
-- [x] `/home/katya/dimplom/ml-baseline/tests/test_service.py` — covers `BASE-01`
-- [x] `/home/katya/dimplom/ml-baseline/tests/test_algorithms.py` — covers `BASE-03`
+- [x] `/home/katya/dimplom/ml-services/ml-baseline/tests/test_service.py` — covers `BASE-01`
+- [x] `/home/katya/dimplom/ml-services/ml-baseline/tests/test_algorithms.py` — covers `BASE-03`
 - [x] `/home/katya/dimplom/core-backend/internal/aggregation/` integration seam for baseline client responses — required so baseline persistence is not validated only by mocks
 - [x] `/home/katya/dimplom/frontend/app/(app)/operator/examinations/[id]/processing/page.tsx` compatibility coverage — required so `aggregating` continues to route/render correctly during the Phase 3 status expansion
 

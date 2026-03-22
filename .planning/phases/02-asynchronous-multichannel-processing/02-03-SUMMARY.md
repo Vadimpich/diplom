@@ -15,7 +15,7 @@ tech-stack:
   added: [fastapi, aio-pika, minio, uvicorn, docker-compose]
   patterns: [independent per-channel workers, S3 reference fetch before stub inference, unified AMQP result envelope]
 key-files:
-  created: [ml-text/app/main.py, ml-acoustic/app/main.py, ml-paralinguistic/app/main.py]
+  created: [ml-services/ml-text/app/main.py, ml-services/ml-acoustic/app/main.py, ml-services/ml-paralinguistic/app/main.py]
   modified: [docker-compose.yml, .env.example, docs/01_contract.md, docs/02_implementation.md]
 key-decisions:
   - "Each mandatory channel runs as an independent FastAPI plus aio-pika worker that consumes only its own queue and publishes the same result envelope shape."
@@ -42,7 +42,7 @@ completed: 2026-03-21
 - **Files modified:** 13
 
 ## Accomplishments
-- Added runnable `ml-text`, `ml-acoustic`, and `ml-paralinguistic` worker services with `/health`, robust AMQP reconnect, S3 object fetch, and stub normalized payloads.
+- Added runnable `ml-services/ml-text`, `ml-services/ml-acoustic`, and `ml-services/ml-paralinguistic` worker services with `/health`, robust AMQP reconnect, S3 object fetch, and stub normalized payloads.
 - Extended root `docker-compose.yml` and `.env.example` so frontend, core backend, PostgreSQL, RabbitMQ, MinIO, and all mandatory workers share one reproducible local topology.
 - Synchronized `docs/01_contract.md` and appended `docs/02_implementation.md` so queue names, routing keys, runtime env, and worker error semantics stay authoritative.
 
@@ -54,9 +54,9 @@ Each task was committed atomically:
 2. **Task 2: Wire workers into the reproducible local stack** - `03f6d1b` (feat)
 
 ## Files Created/Modified
-- `ml-text/app/main.py` - Text worker shell with per-queue AMQP consume loop, MinIO fetch, and unified result publishing.
-- `ml-acoustic/app/main.py` - Acoustic worker shell with the same contract and channel-specific stub payload.
-- `ml-paralinguistic/app/main.py` - Paralinguistic worker shell with the same contract and channel-specific stub payload.
+- `ml-services/ml-text/app/main.py` - Text worker shell with per-queue AMQP consume loop, MinIO fetch, and unified result publishing.
+- `ml-services/ml-acoustic/app/main.py` - Acoustic worker shell with the same contract and channel-specific stub payload.
+- `ml-services/ml-paralinguistic/app/main.py` - Paralinguistic worker shell with the same contract and channel-specific stub payload.
 - `docker-compose.yml` - Adds worker services, broker/object-storage dependencies, and healthchecks.
 - `.env.example` - Documents worker queue, exchange, routing key, and shared runtime env.
 - `docs/01_contract.md` - Documents Compose topology alignment and worker error-classification rules.

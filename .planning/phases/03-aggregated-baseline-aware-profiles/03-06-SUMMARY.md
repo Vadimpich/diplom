@@ -12,4 +12,4 @@ completed: 2026-03-22
 - Verification:
   - `cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit`
   - `cd /home/katya/dimplom/core-backend && go test ./... -count=1`
-  - `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q`
+  - `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q`
