@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Trusted Access And Intake** - Secure server-side access and make examination intake reliably reach processing-ready state.
 - [x] **Phase 2: Asynchronous Multichannel Processing** - Run mandatory `text`, `acoustic`, and `paralinguistic` analysis through RabbitMQ with bounded retries and visible channel progress. (completed 2026-03-21)
-- [ ] **Phase 3: Aggregated Baseline-Aware Profiles** - Turn channel outputs into a versioned, interpretable profile with baseline deviation and history dynamics.
+- [x] **Phase 3: Aggregated Baseline-Aware Profiles** - Turn channel outputs into a versioned, interpretable profile with baseline deviation and history dynamics. (completed 2026-03-22)
 - [ ] **Phase 4: Decision Delivery To Operator** - Deliver normalized results into KЭСМИ and expose final recommendation or integration failure to the operator.
 - [ ] **Phase 5: Operational Trustworthiness** - Make contracts, tests, deployment, audit, and observability sufficient for production-like operation.
 
@@ -62,11 +62,11 @@ Plans:
 **Plans**: 6 plans
 Plans:
 - [x] 01-PLAN.md - Publish Phase 3 contracts, schema, and RED tests for aggregated profiles, baseline, and result-history DTOs.
-- [ ] 02-PLAN.md - Add core-owned aggregation readiness, normalized profile persistence, and `aggregating` status handling.
+- [x] 02-PLAN.md - Add core-owned aggregation readiness, normalized profile persistence, and `aggregating` status handling.
 - [x] 03-PLAN.md - Create the standalone Python baseline service, robust update rules, and compose wiring.
-- [ ] 04-PLAN.md - Integrate core aggregation with baseline responses, persist snapshots, and finalize `aggregated` semantics.
-- [ ] 05-PLAN.md - Expose canonical result and specialist trend endpoints from the core backend.
-- [ ] 06-PLAN.md - Connect operator result/history UI to the new DTOs and refresh validation/runbook/docs.
+- [x] 04-PLAN.md - Integrate core aggregation with baseline responses, persist snapshots, and finalize `aggregated` semantics.
+- [x] 05-PLAN.md - Expose canonical result and specialist trend endpoints from the core backend.
+- [x] 06-PLAN.md - Connect operator result/history UI to the new DTOs and refresh validation/runbook/docs.
 
 ### Phase 4: Decision Delivery To Operator
 **Goal**: The final examination profile is delivered to the external decision-support layer, and the operator receives the real final recommendation together with integration diagnostics.
@@ -99,6 +99,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
 | 2. Asynchronous Multichannel Processing | 6/6 | Complete   | 2026-03-21 |
-| 3. Aggregated Baseline-Aware Profiles | 2/6 | In Progress | - |
+| 3. Aggregated Baseline-Aware Profiles | 6/6 | Complete | 2026-03-22 |
 | 4. Decision Delivery To Operator | 0/TBD | Not started | - |
 | 5. Operational Trustworthiness | 0/TBD | Not started | - |

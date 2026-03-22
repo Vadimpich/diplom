@@ -28,7 +28,7 @@
 
 ### Aggregation
 
-- [ ] **AGGR-01**: Aggregator ожидает успешные результаты всех обязательных каналов перед формированием итогового профиля
+- [x] **AGGR-01**: Aggregator ожидает успешные результаты всех обязательных каналов перед формированием итогового профиля
 - [x] **AGGR-02**: Aggregator нормализует результаты каналов и сохраняет агрегированный, версионируемый профиль состояния обследования
 - [x] **AGGR-03**: Система сохраняет вклад каждого аналитического канала и интерпретируемое объяснение результата
 
@@ -99,7 +99,7 @@
 | PIPE-02 | Phase 2 | Complete |
 | PIPE-03 | Phase 2 | Complete |
 | PIPE-04 | Phase 2 | Complete |
-| AGGR-01 | Phase 3 | Pending |
+| AGGR-01 | Phase 3 | Complete |
 | AGGR-02 | Phase 3 | Complete |
 | AGGR-03 | Phase 3 | Complete |
 | BASE-01 | Phase 3 | Complete |
@@ -125,4 +125,4 @@
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after roadmap creation*
+*Last updated: 2026-03-22 after Phase 3 completion*

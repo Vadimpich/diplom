@@ -205,6 +205,18 @@ export default function ExaminationProcessingPage() {
                   </div>
                 </div>
 
+                {data.status === "aggregated" ? (
+                  <Alert variant="success">
+                    Backend завершил baseline-aware агрегацию. Можно переходить на экран результата.
+                  </Alert>
+                ) : null}
+
+                {data.status === "aggregating" ? (
+                  <Alert variant="warning">
+                    Все обязательные каналы завершились, сейчас core backend собирает канонический профиль и baseline snapshot.
+                  </Alert>
+                ) : null}
+
                 {data.status === "failed" ? (
                   <Alert variant="danger">
                     Backend перевёл обследование в `failed`. Детали по каналу смотрите в карточках ниже.

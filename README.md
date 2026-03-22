@@ -1,6 +1,6 @@
 # Dimplom local stack
 
-Локальный self-hosted стек для Phase 2:
+Локальный self-hosted стек для Phase 3:
 
 - PostgreSQL
 - RabbitMQ с management UI
@@ -8,6 +8,7 @@
 - core backend
 - frontend
 - `text`, `acoustic`, `paralinguistic` stub workers
+- `ml-baseline`
 
 ## Требования
 
@@ -33,6 +34,7 @@ cp .env.example .env
 - `HTTP_ADDR`
 - `JWT_*`
 - `PROCESSING_*`
+- `BASELINE_*`
 - `*_WORKER_*`
 
 `DATABASE_URL` и `RABBITMQ_URL` для core backend собираются через `docker-compose.yml`/`.env`, поэтому backend и workers используют один и тот же локальный broker topology без ручного bootstrap.
@@ -67,20 +69,31 @@ docker compose up -d postgres rabbitmq minio
 - core backend: `8080`
 - frontend: `3000`
 
-## Проверка Phase 2
+`ml-baseline` остаётся внутренним сервисом Compose и не публикует отдельный host-port наружу.
 
-Полная локальная проверка Phase 2:
+## Проверка Phase 3
+
+Полная локальная проверка Phase 3:
 
 ```bash
 docker compose up -d --build
 docker compose ps
 cd /home/katya/dimplom/core-backend && go test ./... -count=1
 cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit
+source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-baseline && pytest -q
 ```
 
 Примечание по frontend: `next build` генерирует актуальные `.next/types` для App Router. Если рабочее дерево уже содержит устаревшие `.next` артефакты, запускайте `npm run build` перед отдельным `npx tsc --noEmit`.
 Если локальный RabbitMQ volume остался от ранних Phase 2 итераций с другой topology, один раз выполните `docker compose down -v` перед `up -d --build`.
 
+Полезные Phase 3 endpoint-проверки:
+
+```bash
+curl -H "Authorization: Bearer <jwt>" http://localhost:8080/examinations/<id>/processing-status
+curl -H "Authorization: Bearer <jwt>" http://localhost:8080/examinations/<id>/result
+curl -H "Authorization: Bearer <jwt>" http://localhost:8080/specialists/<id>/result-history
+```
+
 ## Примечание
 
-В compose уже зафиксированы queue/exchange env для `processing.commands`, `processing.results`, `qq.processing.text`, `qq.processing.acoustic`, `qq.processing.paralinguistic`, общего result routing key и `PROCESSING_OUTBOX_MAX_ATTEMPTS=3`. Backend relay и worker-сервисы должны использовать один и тот же retry/DLX baseline локального async pipeline.
+В compose уже зафиксированы queue/exchange env для `processing.commands`, `processing.results`, `qq.processing.text`, `qq.processing.acoustic`, `qq.processing.paralinguistic`, общего result routing key и `PROCESSING_OUTBOX_MAX_ATTEMPTS=3`. Backend relay и worker-сервисы должны использовать один и тот же retry/DLX baseline локального async pipeline. Phase 3 поверх этого добавляет internal-only `ml-baseline`, backend-authoritative `aggregating` / `aggregated` workflow statuses и канонические result/history DTO.

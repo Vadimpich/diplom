@@ -10,6 +10,7 @@ import type {
   Answer,
   ApiErrorShape,
   Examination,
+  ExaminationResult,
   ExaminationProcessingStatus,
   ExaminationsResponse,
   HealthResponse,
@@ -17,6 +18,7 @@ import type {
   Questionnaire,
   QuestionnairesResponse,
   Specialist,
+  SpecialistResultHistoryResponse,
   SpecialistsResponse,
   User,
   UsersResponse,
@@ -191,8 +193,14 @@ export const apiClient = {
   getExaminationProcessingStatus(id: number) {
     return request<ExaminationProcessingStatus>(`/examinations/${id}/processing-status`);
   },
+  getExaminationResult(id: number) {
+    return request<ExaminationResult>(`/examinations/${id}/result`);
+  },
   getSpecialistExaminations(id: number) {
     return request<ExaminationsResponse>(`/specialists/${id}/examinations`);
+  },
+  getSpecialistResultHistory(id: number) {
+    return request<SpecialistResultHistoryResponse>(`/specialists/${id}/result-history`);
   },
   getQuestionnaires() {
     return request<QuestionnairesResponse>("/questionnaires");

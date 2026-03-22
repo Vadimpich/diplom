@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-stopped_at: Completed 03-aggregated-baseline-aware-profiles-03-PLAN.md
-last_updated: "2026-03-22T11:20:27.125Z"
+status: in_progress
+stopped_at: Completed 03-aggregated-baseline-aware-profiles-06-PLAN.md
+last_updated: "2026-03-22T14:35:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 20
 ---
 
 # Project State
@@ -19,18 +19,18 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-20)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Phase 03 — aggregated-baseline-aware-profiles
+**Current focus:** Phase 04 — decision-delivery-to-operator
 
 ## Current Position
 
-Phase: 03 (aggregated-baseline-aware-profiles) — EXECUTING
-Plan: 2 of 6
+Phase: 04 (decision-delivery-to-operator) — READY TO PLAN
+Plan: 0 of TBD
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 16
+- Total plans completed: 20
 - Average duration: 9 min
 - Total execution time: 2.4 hours
 
@@ -40,11 +40,11 @@ Plan: 2 of 6
 |-------|-------|-------|----------|
 | 01-trusted-access-and-intake | 8 | 3500s | 437s |
 | 02-asynchronous-multichannel-processing | 6 | 4343s | 724s |
-| 03-aggregated-baseline-aware-profiles | 2 | 1152s | 576s |
+| 03-aggregated-baseline-aware-profiles | 6 | 3900s | 650s |
 
 **Recent Trend:**
 
-- Last 5 plans: 02-02, 02-04, 02-05, 02-06, 03-01
+- Last 5 plans: 03-02, 03-03, 03-04, 03-05, 03-06
 - Trend: Improving
 
 | Phase 02-asynchronous-multichannel-processing P01 | 600 | 2 tasks | 8 files |
@@ -54,7 +54,11 @@ Plan: 2 of 6
 | Phase 02-asynchronous-multichannel-processing P05 | 338 | 2 tasks | 5 files |
 | Phase 02-asynchronous-multichannel-processing P06 | 585 | 2 tasks | 8 files |
 | Phase 03-aggregated-baseline-aware-profiles P01 | 600 | 2 tasks | 11 files |
+| Phase 03-aggregated-baseline-aware-profiles P02 | 840 | 2 tasks | 16 files |
 | Phase 03-aggregated-baseline-aware-profiles P03 | 552 | 2 tasks | 12 files |
+| Phase 03-aggregated-baseline-aware-profiles P04 | 840 | 2 tasks | 16 files |
+| Phase 03-aggregated-baseline-aware-profiles P05 | 840 | 2 tasks | 16 files |
+| Phase 03-aggregated-baseline-aware-profiles P06 | 2280 | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -99,11 +103,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Aggregator, baseline, KЭСМИ integration, and final operator result views are still not implemented; Phase 3 starts from a now-reproducible async pipeline baseline.
-- RED coverage now includes aggregation contract scaffolds, result-history endpoint expectations, and baseline update gating, but the corresponding implementations are still absent.
+- Phase 3 завершена; следующий крупный пробел — отсутствует внешняя KЭСМИ integration и финальная recommendation delivery из Phase 4.
+- В текущей WSL-среде `docker compose config` остаётся зависимым от наличия Docker CLI, поэтому compose smoke требует полноценного docker runtime.
 
 ## Session Continuity
 
-Last session: 2026-03-22T11:20:27.122Z
-Stopped at: Completed 03-aggregated-baseline-aware-profiles-03-PLAN.md
+Last session: 2026-03-22T14:35:00.000Z
+Stopped at: Completed 03-aggregated-baseline-aware-profiles-06-PLAN.md
 Resume file: None

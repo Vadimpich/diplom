@@ -44,6 +44,8 @@ export type ExaminationStatus =
   | "collecting_answers"
   | "ready_for_processing"
   | "processing"
+  | "aggregating"
+  | "aggregated"
   | "failed";
 
 export type ProcessingChannelName = "text" | "acoustic" | "paralinguistic";
@@ -90,7 +92,10 @@ export interface ExaminationProcessingStatusChannel {
 
 export interface ExaminationProcessingStatus {
   examination_id: number;
-  status: Extract<ExaminationStatus, "ready_for_processing" | "processing" | "failed">;
+  status: Extract<
+    ExaminationStatus,
+    "ready_for_processing" | "processing" | "aggregating" | "aggregated" | "failed"
+  >;
   message_version: number;
   channels_total: number;
   channels_completed: number;
@@ -142,4 +147,91 @@ export interface ApiErrorShape {
   message?: string;
   error?: string;
   details?: string;
+}
+
+export interface ResultSummary {
+  overall_score: number;
+  overall_band: string;
+  primary_metric_key: string;
+  neutral_recommendation_placeholder: string;
+}
+
+export interface ResultMetric {
+  key: string;
+  label: string;
+  value: number;
+  scale: string;
+  direction: string;
+}
+
+export interface ResultChannelContribution {
+  channel: ProcessingChannelName;
+  metric_key: string;
+  weight: number;
+  contribution: number;
+  evidence_keys: string[];
+}
+
+export interface ResultExplanation {
+  position: number;
+  kind: string;
+  text: string;
+}
+
+export interface ResultBaselineDeviation {
+  delta: number;
+  band: string;
+  reference_population_version?: string;
+  baseline_exam_count?: number;
+  update_eligible?: boolean;
+}
+
+export interface ExaminationResult {
+  schema_version: number;
+  aggregation_version: string;
+  examination_id: number;
+  specialist_id: number;
+  status: Extract<ExaminationStatus, "aggregated" | "aggregating">;
+  generated_at: string;
+  summary: ResultSummary;
+  metrics: ResultMetric[];
+  channel_contributions: ResultChannelContribution[];
+  explanations: ResultExplanation[];
+  baseline_snapshot: {
+    algorithm_version: string;
+    refreshed_at: string;
+    general: ResultBaselineDeviation;
+    personal: ResultBaselineDeviation;
+  };
+}
+
+export interface SpecialistResultHistoryMetric {
+  key: string;
+  label: string;
+  value: number;
+  previous_value?: number | null;
+  delta_from_previous?: number | null;
+}
+
+export interface SpecialistResultHistoryItem {
+  examination_id: number;
+  generated_at: string;
+  status: Extract<ExaminationStatus, "aggregated">;
+  summary: {
+    overall_score: number;
+    overall_band: string;
+  };
+  baseline_snapshot: {
+    algorithm_version: string;
+    refreshed_at: string;
+    general_delta: number;
+    personal_delta: number;
+    baseline_exam_count: number;
+  };
+  key_metrics: SpecialistResultHistoryMetric[];
+}
+
+export interface SpecialistResultHistoryResponse {
+  specialist_id: number;
+  items: SpecialistResultHistoryItem[];
 }

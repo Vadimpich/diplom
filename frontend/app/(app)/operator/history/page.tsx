@@ -13,8 +13,17 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatDateTime } from "@/lib/utils";
 
 function getExaminationHref(examinationId: number, specialistId: number, status: string) {
-  if (status === "ready_for_processing" || status === "processing" || status === "failed") {
+  if (
+    status === "ready_for_processing" ||
+    status === "processing" ||
+    status === "aggregating" ||
+    status === "failed"
+  ) {
     return `/operator/examinations/${examinationId}/processing?specialistId=${specialistId}`;
+  }
+
+  if (status === "aggregated") {
+    return `/operator/examinations/${examinationId}/results?specialistId=${specialistId}`;
   }
 
   return `/operator/examinations/${examinationId}?specialistId=${specialistId}`;
@@ -41,7 +50,7 @@ export default function OperatorHistoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="История обследований"
-        description="Общий список обследований из `GET /examinations`; результаты анализа будут подключены позже."
+        description="Общий список обследований из `GET /examinations` с переходом либо в processing, либо в готовый result view."
       />
       <Card>
         <CardHeader>

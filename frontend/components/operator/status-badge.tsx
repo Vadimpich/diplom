@@ -3,7 +3,7 @@ import type { ExaminationStatus } from "@/lib/api/types";
 
 const statusConfig: Record<
   ExaminationStatus,
-  { label: string; variant: "neutral" | "warning" | "info" | "danger" }
+  { label: string; variant: "neutral" | "warning" | "info" | "danger" | "success" }
 > = {
   created: {
     label: "Создано",
@@ -20,6 +20,14 @@ const statusConfig: Record<
   processing: {
     label: "Обрабатывается",
     variant: "info",
+  },
+  aggregating: {
+    label: "Агрегация профиля",
+    variant: "warning",
+  },
+  aggregated: {
+    label: "Результат готов",
+    variant: "success",
   },
   failed: {
     label: "Ошибка обработки",

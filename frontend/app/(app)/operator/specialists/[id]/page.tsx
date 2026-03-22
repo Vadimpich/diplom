@@ -43,6 +43,11 @@ export default function SpecialistDetailPage() {
     queryFn: () => apiClient.getSpecialistExaminations(specialistId),
     enabled: Number.isFinite(specialistId) && specialistId > 0,
   });
+  const resultHistoryQuery = useQuery({
+    queryKey: ["specialist-result-history", specialistId],
+    queryFn: () => apiClient.getSpecialistResultHistory(specialistId),
+    enabled: Number.isFinite(specialistId) && specialistId > 0,
+  });
 
   useEffect(() => {
     if (specialistQuery.data) {
@@ -154,7 +159,7 @@ export default function SpecialistDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>История обследований</CardTitle>
-              <CardDescription>История по endpoint `GET /specialists/:id/examinations`.</CardDescription>
+              <CardDescription>Workflow-история и baseline-aware динамика по агрегированным результатам.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {historyQuery.isError ? (
@@ -191,8 +196,40 @@ export default function SpecialistDetailPage() {
                   ))}
                 </div>
               ) : null}
+              {resultHistoryQuery.data?.items.length ? (
+                <div className="space-y-3">
+                  {resultHistoryQuery.data.items.map((item) => (
+                    <div key={item.examination_id} className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">Агрегированный результат #{item.examination_id}</p>
+                        <ExaminationStatusBadge status={item.status} />
+                      </div>
+                      <div className="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+                        <p>Generated: {formatDateTime(item.generated_at)}</p>
+                        <p>General delta: {item.baseline_snapshot.general_delta.toFixed(3)}</p>
+                        <p>Personal delta: {item.baseline_snapshot.personal_delta.toFixed(3)}</p>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {item.key_metrics.slice(0, 2).map((metric) => (
+                          <div key={metric.key} className="flex items-center justify-between text-sm">
+                            <span>{metric.label}</span>
+                            <span>{metric.value.toFixed(3)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4">
+                        <Button asChild size="sm">
+                          <Link href={`/operator/examinations/${item.examination_id}/results?specialistId=${specialistId}`}>
+                            Открыть результат
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
-              <Alert variant="warning">Страница показывает только авторитетные workflow-статусы и timestamps текущего backend API.</Alert>
+              <Alert variant="warning">Workflow и result-history читаются напрямую из backend DTO без клиентской переагрегации.</Alert>
             </CardContent>
           </Card>
         </div>
