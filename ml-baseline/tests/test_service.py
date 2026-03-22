@@ -11,8 +11,8 @@ def build_payload() -> dict:
         "examination_id": 101,
         "generated_at": "2026-03-22T10:02:08Z",
         "metrics": [
-            {"key": "overall_proxy_index", "value": 0.58},
-            {"key": "speech_stability_proxy", "value": 0.41},
+            {"key": "overall_proxy_index", "value": 0.49},
+            {"key": "speech_stability_proxy", "value": 0.405},
         ],
         "history": {
             "baseline_exam_count": 4,

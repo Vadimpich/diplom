@@ -229,6 +229,24 @@ services:
       retries: 10
       start_period: 20s
 
+  ml-baseline:
+    build:
+      context: ./ml-baseline
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      BASELINE_HTTP_HOST: ${BASELINE_HTTP_HOST:-0.0.0.0}
+      BASELINE_HTTP_PORT: ${BASELINE_HTTP_PORT:-8080}
+      BASELINE_REQUEST_TIMEOUT_MS: ${BASELINE_REQUEST_TIMEOUT_MS:-3000}
+      BASELINE_ALGORITHM_VERSION: ${BASELINE_ALGORITHM_VERSION:-baseline-v1}
+      BASELINE_MAX_HISTORY: ${BASELINE_MAX_HISTORY:-5}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${BASELINE_HTTP_PORT:-8080}/health', timeout=3).read()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
 volumes:
   postgres-data:
   rabbitmq-data:

@@ -505,16 +505,40 @@ Phase 3 baseline остаётся отдельным Python compute-only service
   "refreshed_at": "2026-03-22T10:02:09Z",
   "general_deviation": {
     "score": 0.21,
-    "band": "mild"
+    "band": "mild",
+    "metric_scores": {
+      "overall_proxy_index": {
+        "delta": 0.08,
+        "robust_z": 0.54,
+        "band": "low"
+      }
+    }
   },
   "personal_deviation": {
     "score": 0.37,
-    "band": "moderate"
+    "band": "moderate",
+    "metric_scores": {
+      "overall_proxy_index": {
+        "delta": 0.12,
+        "robust_z": 1.91,
+        "band": "mild"
+      }
+    }
   },
   "update_eligibility": {
     "eligible": false,
     "reason": "outlier_detected",
     "baseline_exam_count_after_update": 4
+  },
+  "next_baseline": {
+    "exam_count": 4,
+    "centers": {
+      "overall_proxy_index": 0.46
+    },
+    "scales": {
+      "overall_proxy_index": 0.03
+    },
+    "refreshed_at": "2026-03-22T10:02:09Z"
   }
 }
 ```
@@ -526,8 +550,10 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 
 Правила:
 - `general_deviation` и `personal_deviation` обязательны даже если history пустая;
+- `metric_scores` внутри обоих deviation-блоков содержат per-metric delta, robust z-score и severity band для канонических proxy-метрик;
 - `algorithm_version` и `refreshed_at` обязательны для persistence snapshot в core backend;
 - `update_eligibility` обязателен для outlier-gated baseline refresh;
+- `next_baseline` обязателен и содержит кандидатный snapshot baseline после применения bounded-history и outlier gate;
 - клинические выводы и KЭСМИ-поля в ответ baseline service не включаются.
 
 ### POST /users

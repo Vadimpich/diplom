@@ -1,7 +1,16 @@
+import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 
+from app.algorithms import (
+    GENERAL_REFERENCE_CENTER,
+    GENERAL_REFERENCE_SCALE,
+    build_next_baseline,
+    evaluate_update_eligibility,
+    robust_distance,
+    summarize_history,
+)
 from app.schemas import (
     BaselineCalculationRequest,
     BaselineCalculationResponse,
@@ -14,6 +23,8 @@ from app.schemas import (
 
 
 REQUIRED_METRIC_KEYS = {"overall_proxy_index", "speech_stability_proxy"}
+SUPPORTED_ALGORITHM_VERSION = os.getenv("BASELINE_ALGORITHM_VERSION", "baseline-v1")
+MAX_HISTORY = int(os.getenv("BASELINE_MAX_HISTORY", "5"))
 
 app = FastAPI(title="ml-baseline")
 
@@ -28,15 +39,18 @@ def metric_map(metrics: list) -> dict[str, float]:
 
 def build_deviation_section(
     current_metrics: dict[str, float],
-    reference_metrics: dict[str, float],
+    centers: dict[str, float],
+    scales: dict[str, float],
 ) -> DeviationSection:
     metric_scores: dict[str, DeviationMetricScore] = {}
     total = 0.0
 
     for key, current_value in current_metrics.items():
-        reference_value = reference_metrics.get(key, 0.0)
-        delta = round(current_value - reference_value, 4)
-        robust_z = round(delta / 0.1, 4)
+        delta, robust_z = robust_distance(
+            current_value=current_value,
+            center=centers.get(key, GENERAL_REFERENCE_CENTER),
+            scale=scales.get(key, GENERAL_REFERENCE_SCALE),
+        )
         band = "low"
         if abs(robust_z) >= 3:
             band = "high"
@@ -71,42 +85,47 @@ def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculati
             },
         )
 
-    history_vectors = payload.history.metric_vectors
-    if history_vectors:
-        last_vector = metric_map(history_vectors[-1].metrics)
-        mean_reference = {
-            key: round(
-                sum(metric_map(vector.metrics).get(key, 0.0) for vector in history_vectors) / len(history_vectors),
-                4,
-            )
-            for key in current_metrics
-        }
-    else:
-        last_vector = {key: 0.0 for key in current_metrics}
-        mean_reference = {key: 0.0 for key in current_metrics}
+    if payload.algorithm_version != SUPPORTED_ALGORITHM_VERSION:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unsupported_algorithm_version",
+                "supported_algorithm_version": SUPPORTED_ALGORITHM_VERSION,
+            },
+        )
 
-    general_deviation = build_deviation_section(current_metrics, last_vector)
-    personal_deviation = build_deviation_section(current_metrics, mean_reference)
+    history_vectors = [metric_map(vector.metrics) for vector in payload.history.metric_vectors]
+    history_summary = summarize_history(history_vectors)
+    refreshed_at = utc_now()
 
-    next_exam_count = len(history_vectors) + 1
-    next_baseline = NextBaselineSnapshot(
-        exam_count=next_exam_count,
-        centers={key: round((mean_reference.get(key, 0.0) + value) / 2, 4) for key, value in current_metrics.items()},
-        scales={key: round(abs(value - mean_reference.get(key, 0.0)), 4) for key, value in current_metrics.items()},
-        refreshed_at=utc_now(),
+    general_deviation = build_deviation_section(
+        current_metrics,
+        centers={key: GENERAL_REFERENCE_CENTER for key in current_metrics},
+        scales={key: GENERAL_REFERENCE_SCALE for key in current_metrics},
+    )
+    personal_deviation = build_deviation_section(
+        current_metrics,
+        centers={key: float(history_summary.get(key, {}).get("center", current_metrics[key])) for key in current_metrics},
+        scales={key: float(history_summary.get(key, {}).get("scale", GENERAL_REFERENCE_SCALE)) for key in current_metrics},
+    )
+    update_eligibility_data = evaluate_update_eligibility(history=history_vectors, current=current_metrics)
+    next_baseline = NextBaselineSnapshot.model_validate(
+        build_next_baseline(
+            history=history_vectors,
+            current=current_metrics,
+            refreshed_at=refreshed_at,
+            max_history=MAX_HISTORY,
+            update_eligibility=update_eligibility_data,
+        )
     )
 
     return BaselineCalculationResponse(
         schema_version=payload.schema_version,
         algorithm_version=payload.algorithm_version,
-        refreshed_at=utc_now(),
+        refreshed_at=refreshed_at,
         general_deviation=general_deviation,
         personal_deviation=personal_deviation,
-        update_eligibility=UpdateEligibility(
-            eligible=True,
-            reason="accepted",
-            baseline_exam_count_after_update=next_exam_count,
-        ),
+        update_eligibility=UpdateEligibility.model_validate(update_eligibility_data),
         next_baseline=next_baseline,
     )
 
