@@ -9,6 +9,7 @@ files_modified:
   - frontend/lib/api/types.ts
   - frontend/lib/api/client.ts
   - frontend/components/operator/status-badge.tsx
+  - frontend/app/(app)/operator/examinations/[id]/processing/page.tsx
   - frontend/app/(app)/operator/specialists/[id]/page.tsx
   - frontend/app/(app)/operator/examinations/[id]/results/page.tsx
   - frontend/app/(app)/operator/history/page.tsx
@@ -27,6 +28,7 @@ must_haves:
   artifacts:
     - frontend/lib/api/types.ts and frontend/lib/api/client.ts define the result/history DTOs and `aggregating`/`aggregated` statuses.
     - frontend/app/(app)/operator/examinations/[id]/results/page.tsx renders the real baseline-aware result view.
+    - frontend/app/(app)/operator/examinations/[id]/processing/page.tsx remains compatible with `aggregating` until `aggregated` is ready.
     - frontend/app/(app)/operator/specialists/[id]/page.tsx and frontend/app/(app)/operator/history/page.tsx expose trend navigation and status handling.
     - docs/02_implementation.md gains one append-only Phase 3 entry after verification passes.
   key_links:
@@ -95,12 +97,12 @@ result and specialist-history DTOs from the backend
 
 <task type="auto">
   <name>Task 2: Replace placeholders with real result and trend views</name>
-  <files>frontend/app/(app)/operator/examinations/[id]/results/page.tsx, frontend/app/(app)/operator/specialists/[id]/page.tsx, frontend/app/(app)/operator/history/page.tsx</files>
-  <action>Replace the placeholder results page with a real TanStack Query view that renders the aggregated profile summary, baseline deviations, channel contributions, and explanation bullets from `GET /examinations/{id}/result`. Extend the specialist detail page and operator history surface to fetch `GET /specialists/{id}/result-history` and show dynamics of key indicators across aggregated examinations. Keep navigation contract-driven: `aggregating` examinations still lead to the processing screen, while `aggregated` examinations lead to the results screen. Do not compute baseline or trend math in the browser beyond simple presentation formatting.</action>
+  <files>frontend/app/(app)/operator/examinations/[id]/results/page.tsx, frontend/app/(app)/operator/examinations/[id]/processing/page.tsx, frontend/app/(app)/operator/specialists/[id]/page.tsx, frontend/app/(app)/operator/history/page.tsx</files>
+  <action>Replace the placeholder results page with a real TanStack Query view that renders the aggregated profile summary, baseline deviations, channel contributions, and explanation bullets from `GET /examinations/{id}/result`. Extend the specialist detail page and operator history surface to fetch `GET /specialists/{id}/result-history` and show dynamics of key indicators across aggregated examinations. Keep navigation contract-driven: `aggregating` examinations still lead to the processing screen, while `aggregated` examinations lead to the results screen. Update the existing processing page only as needed so it keeps rendering correctly for the additive `aggregating` status and does not prematurely treat it as terminal success. Do not compute baseline or trend math in the browser beyond simple presentation formatting.</action>
   <verify>
     <automated>cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit</automated>
   </verify>
-  <done>The operator UI now shows the real Phase 3 result and history dynamics rather than shells, and navigation respects backend statuses.</done>
+  <done>The operator UI now shows the real Phase 3 result and history dynamics rather than shells, and both result-navigation and the existing processing screen remain compatible with backend statuses.</done>
 </task>
 
 <task type="auto">
