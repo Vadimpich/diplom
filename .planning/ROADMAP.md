@@ -59,7 +59,14 @@ Plans:
   2. Stored examination result includes normalized combined metrics, per-channel contribution, and a human-readable explanation of the outcome.
   3. Baseline output shows deviation from both general norm and specialist-specific norm together with algorithm version, refresh date, and supporting examination count.
   4. Specialist history view lets the operator inspect dynamics of key indicators across previous examinations against baseline.
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 01-PLAN.md - Publish Phase 3 contracts, schema, and RED tests for aggregated profiles, baseline, and result-history DTOs.
+- [ ] 02-PLAN.md - Add core-owned aggregation readiness, normalized profile persistence, and `aggregating` status handling.
+- [ ] 03-PLAN.md - Create the standalone Python baseline service, robust update rules, and compose wiring.
+- [ ] 04-PLAN.md - Integrate core aggregation with baseline responses, persist snapshots, and finalize `aggregated` semantics.
+- [ ] 05-PLAN.md - Expose canonical result and specialist trend endpoints from the core backend.
+- [ ] 06-PLAN.md - Connect operator result/history UI to the new DTOs and refresh validation/runbook/docs.
 
 ### Phase 4: Decision Delivery To Operator
 **Goal**: The final examination profile is delivered to the external decision-support layer, and the operator receives the real final recommendation together with integration diagnostics.
@@ -92,6 +99,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
 | 2. Asynchronous Multichannel Processing | 6/6 | Complete   | 2026-03-21 |
-| 3. Aggregated Baseline-Aware Profiles | 0/TBD | Not started | - |
+| 3. Aggregated Baseline-Aware Profiles | 0/6 | Not started | - |
 | 4. Decision Delivery To Operator | 0/TBD | Not started | - |
 | 5. Operational Trustworthiness | 0/TBD | Not started | - |
