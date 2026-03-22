@@ -58,12 +58,17 @@ type Repository interface {
 	MarkExaminationFailed(context.Context, int64, time.Time) error
 }
 
-type Service struct {
-	repo Repository
+type AggregationTrigger interface {
+	TryAggregate(context.Context, int64) error
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+type Service struct {
+	repo    Repository
+	trigger AggregationTrigger
+}
+
+func NewService(repo Repository, trigger AggregationTrigger) *Service {
+	return &Service{repo: repo, trigger: trigger}
 }
 
 type Handler struct {
@@ -71,8 +76,8 @@ type Handler struct {
 	service *Service
 }
 
-func NewHandler(repo *SQLRepository) *Handler {
-	service := NewService(repo)
+func NewHandler(repo *SQLRepository, trigger AggregationTrigger) *Handler {
+	service := NewService(repo, trigger)
 	return &Handler{
 		repo:    repo,
 		service: service,
@@ -301,5 +306,11 @@ func (r *SQLRepository) HandleResult(ctx context.Context, service *Service, enve
 	if err := service.ApplyResult(withTx(ctx, tx), envelope); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	if envelope.Status == processing.ResultStatusSucceeded && service.trigger != nil {
+		return service.trigger.TryAggregate(ctx, envelope.ExaminationID)
+	}
+	return nil
 }

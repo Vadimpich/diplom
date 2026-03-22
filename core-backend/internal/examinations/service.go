@@ -11,6 +11,8 @@ const (
 	StatusCollectingAnswers  = "collecting_answers"
 	StatusReadyForProcessing = "ready_for_processing"
 	StatusProcessing         = "processing"
+	StatusAggregating        = "aggregating"
+	StatusAggregated         = "aggregated"
 	StatusFailed             = "failed"
 )
 

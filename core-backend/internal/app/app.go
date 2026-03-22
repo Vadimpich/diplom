@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"dimplom/internal/answers"
+	"dimplom/internal/aggregation"
 	"dimplom/internal/auth"
+	"dimplom/internal/baselineclient"
 	"dimplom/internal/channelresults"
 	"dimplom/internal/config"
 	"dimplom/internal/examinations"
@@ -17,6 +19,7 @@ import (
 	"dimplom/internal/postgres"
 	"dimplom/internal/processing"
 	"dimplom/internal/questionnaires"
+	"dimplom/internal/results"
 	"dimplom/internal/specialists"
 	"dimplom/internal/storage"
 )
@@ -70,8 +73,16 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	examinationsService := examinations.NewService(examinations.NewRepository(db.Pool()))
 	processingRepository := processing.NewRepository(db.Pool(), cfg.S3Bucket)
 	processingService := processing.NewService(processingRepository)
+	baselineService := baselineclient.New(cfg.BaselineBaseURL, cfg.BaselineTimeout)
+	aggregationRepository := aggregation.NewRepository(db.Pool())
+	aggregationService := aggregation.NewService(
+		aggregationRepository,
+		baselineService,
+		cfg.BaselineReference,
+		cfg.BaselineAlgorithm,
+	)
 	channelResultsRepository := channelresults.NewRepository(db.Pool())
-	channelResultsHandler := channelresults.NewHandler(channelResultsRepository)
+	channelResultsHandler := channelresults.NewHandler(channelResultsRepository, aggregationService)
 	processingRelay := processing.NewRelay(processingRepository, processing.RelayConfig{
 		BrokerURL:    cfg.RabbitMQURL,
 		PollInterval: cfg.OutboxPollInterval,
@@ -80,6 +91,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	resultsConsumer := processing.NewResultsConsumer(cfg.RabbitMQURL, channelResultsHandler)
 	questionnairesService := questionnaires.NewService(questionnaires.NewRepository(db.Pool()))
 	answersService := answers.NewService(answers.NewRepository(queries), s3Client)
+	resultsService := results.NewService(results.NewRepository(db.Pool()))
 
 	handler := httpserver.NewRouter(httpserver.Dependencies{
 		DB:             db,
@@ -88,6 +100,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Specialists:    specialistsService,
 		Examinations:   examinationsService,
 		Processing:     processingService,
+		Results:        resultsService,
 		Questionnaires: questionnairesService,
 		Answers:        answersService,
 		AllowedOrigins: cfg.AllowedOrigins,

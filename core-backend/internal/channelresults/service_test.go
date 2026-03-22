@@ -12,7 +12,7 @@ import (
 
 func TestIndependentChannelCompletion(t *testing.T) {
 	repo := newRepositoryStub()
-	service := channelresults.NewService(repo)
+	service := channelresults.NewService(repo, nil)
 
 	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
 		MessageVersion: processing.MessageVersionV1,
@@ -49,7 +49,7 @@ func TestIndependentChannelCompletion(t *testing.T) {
 
 func TestRetryBudget(t *testing.T) {
 	repo := newRepositoryStub()
-	service := channelresults.NewService(repo)
+	service := channelresults.NewService(repo, nil)
 
 	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
 		MessageVersion: processing.MessageVersionV1,
@@ -86,7 +86,7 @@ func TestRetryBudget(t *testing.T) {
 
 func TestFatalVsTemporaryError(t *testing.T) {
 	repo := newRepositoryStub()
-	service := channelresults.NewService(repo)
+	service := channelresults.NewService(repo, nil)
 
 	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
 		MessageVersion: processing.MessageVersionV1,
@@ -127,7 +127,7 @@ func TestMandatoryChannelExhaustionFailsExamination(t *testing.T) {
 		AttemptCount:  2,
 		MaxAttempts:   3,
 	}
-	service := channelresults.NewService(repo)
+	service := channelresults.NewService(repo, nil)
 
 	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
 		MessageVersion: processing.MessageVersionV1,

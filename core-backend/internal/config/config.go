@@ -13,6 +13,10 @@ type Config struct {
 	AllowedOrigins      []string
 	DatabaseURL         string
 	RabbitMQURL         string
+	BaselineBaseURL     string
+	BaselineTimeout     time.Duration
+	BaselineAlgorithm   string
+	BaselineReference   string
 	MigrationsDir       string
 	JWTIssuer           string
 	JWTAccessSecret     string
@@ -40,6 +44,9 @@ func Load() (Config, error) {
 		S3UseSSL:           envBoolOrDefault("MINIO_USE_SSL", false),
 		MaxUploadSizeBytes: envInt64OrDefault("MAX_UPLOAD_SIZE_BYTES", 25<<20),
 		RabbitMQURL:        envOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		BaselineBaseURL:    envOrDefault("BASELINE_SERVICE_URL", "http://ml-baseline:8090"),
+		BaselineAlgorithm:  envOrDefault("BASELINE_ALGORITHM_VERSION", "baseline-v1"),
+		BaselineReference:  envOrDefault("BASELINE_GENERAL_REFERENCE_VERSION", "general-v1"),
 		OutboxMaxAttempts:  int32(envInt64OrDefault("PROCESSING_OUTBOX_MAX_ATTEMPTS", 3)),
 	}
 
@@ -59,6 +66,10 @@ func Load() (Config, error) {
 	cfg.OutboxPollInterval, err = envDurationOrDefault("PROCESSING_OUTBOX_POLL_INTERVAL", time.Second)
 	if err != nil {
 		return Config{}, fmt.Errorf("PROCESSING_OUTBOX_POLL_INTERVAL: %w", err)
+	}
+	cfg.BaselineTimeout, err = envDurationOrDefault("BASELINE_SERVICE_TIMEOUT", 3*time.Second)
+	if err != nil {
+		return Config{}, fmt.Errorf("BASELINE_SERVICE_TIMEOUT: %w", err)
 	}
 	cfg.InitialUserLogin = os.Getenv("INITIAL_USER_LOGIN")
 	cfg.InitialUserPassword = os.Getenv("INITIAL_USER_PASSWORD")

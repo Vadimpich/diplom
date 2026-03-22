@@ -110,14 +110,26 @@ type BaselineRequest struct {
 }
 
 type BaselineScore struct {
-	Score float64 `json:"score"`
-	Band  string  `json:"band"`
+	Score        float64                        `json:"score"`
+	Band         string                         `json:"band"`
+	MetricScores map[string]BaselineMetricScore `json:"metric_scores,omitempty"`
 }
 
 type BaselineUpdateEligibility struct {
 	Eligible                     bool   `json:"eligible"`
 	Reason                       string `json:"reason"`
 	BaselineExamCountAfterUpdate int    `json:"baseline_exam_count_after_update"`
+}
+
+type BaselineMetricScore struct {
+	Delta float64 `json:"delta"`
+	Band  string  `json:"band"`
+}
+
+type NextBaseline struct {
+	ExamCount int                `json:"exam_count"`
+	Centers   map[string]float64 `json:"centers"`
+	Scales    map[string]float64 `json:"scales"`
 }
 
 type BaselineResponse struct {
@@ -127,4 +139,5 @@ type BaselineResponse struct {
 	GeneralDeviation  BaselineScore             `json:"general_deviation"`
 	PersonalDeviation BaselineScore             `json:"personal_deviation"`
 	UpdateEligibility BaselineUpdateEligibility `json:"update_eligibility"`
+	NextBaseline      NextBaseline              `json:"next_baseline"`
 }

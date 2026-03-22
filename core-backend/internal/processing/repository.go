@@ -442,7 +442,7 @@ ORDER BY cr.channel ASC`
 		if examUpdatedAt.Valid {
 			response.UpdatedAt = examUpdatedAt.Time
 		}
-		if examFinishedAt.Valid {
+		if examFinishedAt.Valid && examStatus == examinations.StatusAggregated {
 			response.FinishedAt = &examFinishedAt.Time
 		}
 
@@ -482,7 +482,7 @@ ORDER BY cr.channel ASC`
 			if startedAt.Valid {
 				firstActivityAt = earlierTime(firstActivityAt, startedAt.Time)
 			}
-			if isTerminalChannelStatus(dto.Status) {
+			if dto.Status == "succeeded" {
 				response.ChannelsComplete++
 			}
 			if response.Status == examinations.StatusFailed && finishedAt.Valid && isFailureChannelStatus(dto.Status) {
@@ -497,14 +497,13 @@ ORDER BY cr.channel ASC`
 		return ProcessingStatusResponse{}, repository.ErrNotFound
 	}
 	switch response.Status {
-	case examinations.StatusReadyForProcessing, examinations.StatusProcessing, examinations.StatusFailed:
+	case examinations.StatusReadyForProcessing, examinations.StatusProcessing, examinations.StatusAggregating, examinations.StatusAggregated, examinations.StatusFailed:
 	default:
 		return ProcessingStatusResponse{}, ErrProcessingStatusUnavailable
 	}
 	response.StartedAt = firstActivityAt
 	response.FailedAt = failedAt
-	response.Terminal = response.Status == examinations.StatusFailed ||
-		(response.ChannelsComplete == len(MandatoryChannels) && len(response.Channels) == len(MandatoryChannels))
+	response.Terminal = response.Status == examinations.StatusFailed || response.Status == examinations.StatusAggregated
 	return response, nil
 }
 

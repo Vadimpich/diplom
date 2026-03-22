@@ -153,10 +153,12 @@ func (h ExaminationsHandler) ProcessingStatus(w http.ResponseWriter, r *http.Req
 	if h.statusProvider == nil {
 		writeJSON(w, http.StatusOK, processing.ProcessingStatusResponse{
 			ExaminationID:  id,
-			Status:         examinations.StatusReadyForProcessing,
+			Status:         examinations.StatusAggregating,
 			MessageVersion: processing.MessageVersionV1,
 			ChannelsTotal:  len(processing.MandatoryChannels),
+			ChannelsComplete: len(processing.MandatoryChannels),
 			UpdatedAt:      time.Now().UTC(),
+			Terminal:       false,
 			Channels:       []processing.ChannelStatusDTO{},
 		})
 		return

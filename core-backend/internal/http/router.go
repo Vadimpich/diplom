@@ -14,6 +14,7 @@ import (
 	"dimplom/internal/postgres"
 	"dimplom/internal/processing"
 	"dimplom/internal/questionnaires"
+	"dimplom/internal/results"
 	"dimplom/internal/specialists"
 )
 
@@ -24,6 +25,7 @@ type Dependencies struct {
 	Specialists    *specialists.Service
 	Examinations   *examinations.Service
 	Processing     *processing.Service
+	Results        *results.Service
 	Questionnaires *questionnaires.Service
 	Answers        *answers.Service
 	AllowedOrigins []string
@@ -53,6 +55,10 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		examinationsHandler.statusProvider = deps.Processing
 	}
 	questionnairesHandler := QuestionnairesHandler{service: deps.Questionnaires}
+	resultsHandler := ResultsHandler{}
+	if deps.Results != nil {
+		resultsHandler.service = deps.Results
+	}
 	answersHandler := AnswersHandler{
 		service:       deps.Answers,
 		maxUploadSize: deps.MaxUploadSize,
@@ -88,10 +94,12 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 			operatorOrAdmin.Put("/specialists/{id}", specialistsHandler.Update)
 			operatorOrAdmin.Delete("/specialists/{id}", specialistsHandler.Delete)
 			operatorOrAdmin.Get("/specialists/{id}/examinations", examinationsHandler.ListBySpecialist)
+			operatorOrAdmin.Get("/specialists/{id}/result-history", resultsHandler.GetSpecialistHistory)
 			operatorOrAdmin.Get("/examinations", examinationsHandler.List)
 			operatorOrAdmin.Post("/examinations", examinationsHandler.Create)
 			operatorOrAdmin.Get("/examinations/{id}", examinationsHandler.GetByID)
 			operatorOrAdmin.Get("/examinations/{id}/processing-status", examinationsHandler.ProcessingStatus)
+			operatorOrAdmin.Get("/examinations/{id}/result", resultsHandler.GetExaminationResult)
 			operatorOrAdmin.Post("/examinations/{id}/start", examinationsHandler.Start)
 			operatorOrAdmin.Post("/examinations/{id}/finish", examinationsHandler.Finish)
 			operatorOrAdmin.Post("/answers", answersHandler.Create)
