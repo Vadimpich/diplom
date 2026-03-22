@@ -61,7 +61,7 @@ Plans:
   4. Specialist history view lets the operator inspect dynamics of key indicators across previous examinations against baseline.
 **Plans**: 6 plans
 Plans:
-- [ ] 01-PLAN.md - Publish Phase 3 contracts, schema, and RED tests for aggregated profiles, baseline, and result-history DTOs.
+- [x] 01-PLAN.md - Publish Phase 3 contracts, schema, and RED tests for aggregated profiles, baseline, and result-history DTOs.
 - [ ] 02-PLAN.md - Add core-owned aggregation readiness, normalized profile persistence, and `aggregating` status handling.
 - [ ] 03-PLAN.md - Create the standalone Python baseline service, robust update rules, and compose wiring.
 - [ ] 04-PLAN.md - Integrate core aggregation with baseline responses, persist snapshots, and finalize `aggregated` semantics.
@@ -99,6 +99,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
 | 2. Asynchronous Multichannel Processing | 6/6 | Complete   | 2026-03-21 |
-| 3. Aggregated Baseline-Aware Profiles | 0/6 | Not started | - |
+| 3. Aggregated Baseline-Aware Profiles | 1/6 | In Progress | - |
 | 4. Decision Delivery To Operator | 0/TBD | Not started | - |
 | 5. Operational Trustworthiness | 0/TBD | Not started | - |
