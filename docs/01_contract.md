@@ -2,6 +2,24 @@
 
 ## HTTP API
 
+### Examination status vocabulary
+
+Единый статусный словарь обследования на Phase 3:
+
+- `created` — обследование создано, но оператор ещё не начал сбор ответов;
+- `collecting_answers` — идёт запись и загрузка ответов;
+- `ready_for_processing` — ответы собраны и обследование готово к асинхронной обработке;
+- `processing` — core backend ожидает результаты обязательных каналов `text`, `acoustic`, `paralinguistic`;
+- `aggregating` — все обязательные каналы успешно завершились, core backend формирует канонический агрегированный профиль и обогащает его baseline-данными;
+- `aggregated` — агрегированный профиль и baseline snapshot успешно сохранены, это terminal success для Phase 3;
+- `failed` — хотя бы один обязательный канал или post-processing этап завершился terminal failure.
+
+Правила:
+- PostgreSQL остаётся source of truth для coarse workflow status;
+- `terminal=true` в `GET /examinations/{id}/processing-status` означает только `aggregated` или `failed`;
+- факт успешного завершения всех каналов сам по себе больше не означает terminal success;
+- Phase 4 статусы и поля доставки в КЭСМИ в этот контракт не включаются.
+
 ### GET /health
 
 Назначение:
@@ -218,6 +236,299 @@ Endpoints:
 Ошибки:
 - `401 Unauthorized` если токен отсутствует или невалиден;
 - `403 Forbidden` если пользователь деактивирован.
+
+## Examination Result API
+
+### GET /examinations/{id}/processing-status
+
+Назначение:
+- отдать backend-authoritative состояние Phase 2/3 pipeline;
+- показать прогресс обязательных каналов и переход в `aggregating`/`aggregated`;
+- не опираться на broker management state или клиентские вычисления.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`.
+
+Доступ:
+- роли `operator` и `admin`.
+
+Ответ `200 OK`:
+
+```json
+{
+  "examination_id": 101,
+  "status": "aggregating",
+  "message_version": 1,
+  "channels_total": 3,
+  "channels_completed": 3,
+  "terminal": false,
+  "started_at": "2026-03-22T10:00:00Z",
+  "updated_at": "2026-03-22T10:02:00Z",
+  "finished_at": null,
+  "failed_at": null,
+  "channels": [
+    {
+      "channel": "text",
+      "status": "succeeded",
+      "attempt_count": 1,
+      "max_attempts": 3,
+      "message_version": 1,
+      "queued_at": "2026-03-22T10:00:00Z",
+      "started_at": "2026-03-22T10:00:02Z",
+      "finished_at": "2026-03-22T10:00:08Z",
+      "last_error_code": null,
+      "last_error_message": null,
+      "broker_message_id": "msg-text-101-1",
+      "broker_correlation_id": "exam-101-text-v1"
+    }
+  ]
+}
+```
+
+Правила:
+- допустимые `status`: `ready_for_processing`, `processing`, `aggregating`, `aggregated`, `failed`;
+- `terminal=false` для `ready_for_processing`, `processing`, `aggregating`;
+- `terminal=true` только для `aggregated` и `failed`;
+- `channels_completed` считает только каналы со статусом `succeeded`;
+- `finished_at` фиксирует момент terminal success `aggregated`;
+- `failed_at` фиксирует terminal failure;
+- endpoint не раскрывает raw worker payload.
+
+Ошибки:
+- `401 Unauthorized` если токен отсутствует или невалиден;
+- `403 Forbidden` если роль не имеет доступа;
+- `409 Conflict` если обследование ещё не вошло в processing pipeline.
+
+### GET /examinations/{id}/result
+
+Назначение:
+- вернуть один канонический агрегированный профиль обследования;
+- предоставить frontend и следующим фазам стабильный контракт, не зависящий от raw channel payload;
+- быть единственным HTTP-источником итогового результата на Phase 3.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`.
+
+Доступ:
+- роли `operator` и `admin`.
+
+Ответ `200 OK`:
+
+```json
+{
+  "schema_version": 1,
+  "aggregation_version": "agg-v1",
+  "examination_id": 101,
+  "specialist_id": 55,
+  "status": "aggregated",
+  "generated_at": "2026-03-22T10:02:10Z",
+  "summary": {
+    "overall_score": 0.58,
+    "overall_band": "elevated",
+    "primary_metric_key": "overall_proxy_index",
+    "neutral_recommendation_placeholder": "phase3_pending_external_decision"
+  },
+  "metrics": [
+    {
+      "key": "overall_proxy_index",
+      "label": "Сводный прокси-индекс",
+      "value": 0.58,
+      "scale": "0..1",
+      "direction": "higher_means_more_deviation"
+    }
+  ],
+  "channel_contributions": [
+    {
+      "channel": "text",
+      "metric_key": "overall_proxy_index",
+      "weight": 0.33,
+      "contribution": 0.17,
+      "evidence_keys": [
+        "text_proxy_signal"
+      ]
+    }
+  ],
+  "explanations": [
+    {
+      "position": 1,
+      "kind": "summary",
+      "text": "Повышение индекса в основном связано с proxy-метриками acoustic и paralinguistic каналов."
+    }
+  ],
+  "baseline_snapshot": {
+    "algorithm_version": "baseline-v1",
+    "refreshed_at": "2026-03-22T10:02:09Z",
+    "general": {
+      "delta": 0.21,
+      "band": "mild",
+      "reference_population_version": "general-v1"
+    },
+    "personal": {
+      "delta": 0.37,
+      "band": "moderate",
+      "baseline_exam_count": 4,
+      "update_eligible": false
+    }
+  }
+}
+```
+
+Правила:
+- профиль один на обследование;
+- контракт versioned через `schema_version`, а реализация агрегации versioned через `aggregation_version`;
+- названия метрик должны быть нейтральными и proxy-oriented до появления финальной ML-семантики;
+- поле `neutral_recommendation_placeholder` резервирует место под future decision delivery, но не содержит KЭСМИ контракта и не заменяет финальную рекомендацию;
+- raw payload stub-воркеров не является частью бизнес-контракта и наружу не отдаётся.
+
+Ошибки:
+- `401 Unauthorized` если токен отсутствует или невалиден;
+- `403 Forbidden` если роль не имеет доступа;
+- `404 Not Found` если агрегированный профиль ещё не сохранён.
+
+### GET /specialists/{id}/result-history
+
+Назначение:
+- отдать историю агрегированных обследований специалиста для трендов и baseline dynamics;
+- использовать только канонические агрегированные snapshot-данные.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`.
+
+Доступ:
+- роли `operator` и `admin`.
+
+Ответ `200 OK`:
+
+```json
+{
+  "specialist_id": 55,
+  "items": [
+    {
+      "examination_id": 101,
+      "generated_at": "2026-03-22T10:02:10Z",
+      "status": "aggregated",
+      "summary": {
+        "overall_score": 0.58,
+        "overall_band": "elevated"
+      },
+      "baseline_snapshot": {
+        "algorithm_version": "baseline-v1",
+        "refreshed_at": "2026-03-22T10:02:09Z",
+        "general_delta": 0.21,
+        "personal_delta": 0.37,
+        "baseline_exam_count": 4
+      },
+      "key_metrics": [
+        {
+          "key": "overall_proxy_index",
+          "label": "Сводный прокси-индекс",
+          "value": 0.58,
+          "previous_value": 0.46,
+          "delta_from_previous": 0.12
+        }
+      ]
+    }
+  ]
+}
+```
+
+Правила:
+- endpoint возвращает только обследования со статусом `aggregated`;
+- `key_metrics` предназначены для динамики и не заменяют полный result DTO;
+- история строится по сохранённым aggregated snapshots, а не по повторному вычислению raw channel payload.
+
+Ошибки:
+- `401 Unauthorized` если токен отсутствует или невалиден;
+- `403 Forbidden` если роль не имеет доступа;
+- `404 Not Found` если специалист не существует.
+
+## Baseline Service Contract
+
+Phase 3 baseline остаётся отдельным Python compute-only service boundary.
+
+Правила:
+- service не читает PostgreSQL core backend напрямую;
+- service не пишет состояние обследования или baseline в PostgreSQL;
+- core backend формирует request из канонического aggregated metric vector и history snapshot, затем транзакционно сохраняет response;
+- контракт versioned и intentionally narrow.
+
+### POST /baseline/calculate
+
+Назначение:
+- вычислить отклонение от общей и персональной baseline-нормы;
+- вернуть метаданные алгоритма и признак, допустимо ли обновлять персональную baseline текущим обследованием.
+
+Запрос:
+
+```json
+{
+  "schema_version": 1,
+  "algorithm_version": "baseline-v1",
+  "specialist_id": 55,
+  "examination_id": 101,
+  "generated_at": "2026-03-22T10:02:08Z",
+  "metrics": [
+    {
+      "key": "overall_proxy_index",
+      "value": 0.58
+    },
+    {
+      "key": "speech_stability_proxy",
+      "value": 0.41
+    }
+  ],
+  "history": {
+    "baseline_exam_count": 4,
+    "metric_vectors": [
+      {
+        "examination_id": 91,
+        "generated_at": "2026-03-20T10:02:08Z",
+        "metrics": [
+          {
+            "key": "overall_proxy_index",
+            "value": 0.46
+          }
+        ]
+      }
+    ]
+  },
+  "general_reference_population_version": "general-v1"
+}
+```
+
+Ответ `200 OK`:
+
+```json
+{
+  "schema_version": 1,
+  "algorithm_version": "baseline-v1",
+  "refreshed_at": "2026-03-22T10:02:09Z",
+  "general_deviation": {
+    "score": 0.21,
+    "band": "mild"
+  },
+  "personal_deviation": {
+    "score": 0.37,
+    "band": "moderate"
+  },
+  "update_eligibility": {
+    "eligible": false,
+    "reason": "outlier_detected",
+    "baseline_exam_count_after_update": 4
+  }
+}
+```
+
+Ошибки:
+- `400 Bad Request` если request schema невалидна;
+- `422 Unprocessable Entity` если обязательные metric keys отсутствуют;
+- `503 Service Unavailable` если baseline service временно недоступен.
+
+Правила:
+- `general_deviation` и `personal_deviation` обязательны даже если history пустая;
+- `algorithm_version` и `refreshed_at` обязательны для persistence snapshot в core backend;
+- `update_eligibility` обязателен для outlier-gated baseline refresh;
+- клинические выводы и KЭСМИ-поля в ответ baseline service не включаются.
 
 ### POST /users
 
