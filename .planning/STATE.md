@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 03-aggregated-baseline-aware-profiles-01-PLAN.md
-last_updated: "2026-03-22T11:09:47.914Z"
+stopped_at: Completed 03-aggregated-baseline-aware-profiles-03-PLAN.md
+last_updated: "2026-03-22T11:20:27.125Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -30,9 +30,9 @@ Plan: 2 of 6
 
 **Velocity:**
 
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: 9 min
-- Total execution time: 2.2 hours
+- Total execution time: 2.4 hours
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Plan: 2 of 6
 |-------|-------|-------|----------|
 | 01-trusted-access-and-intake | 8 | 3500s | 437s |
 | 02-asynchronous-multichannel-processing | 6 | 4343s | 724s |
-| 03-aggregated-baseline-aware-profiles | 1 | 600s | 600s |
+| 03-aggregated-baseline-aware-profiles | 2 | 1152s | 576s |
 
 **Recent Trend:**
 
@@ -54,6 +54,7 @@ Plan: 2 of 6
 | Phase 02-asynchronous-multichannel-processing P05 | 338 | 2 tasks | 5 files |
 | Phase 02-asynchronous-multichannel-processing P06 | 585 | 2 tasks | 8 files |
 | Phase 03-aggregated-baseline-aware-profiles P01 | 600 | 2 tasks | 11 files |
+| Phase 03-aggregated-baseline-aware-profiles P03 | 552 | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Recent decisions affecting current work:
 - [Phase 03-aggregated-baseline-aware-profiles]: Aggregation remains core-owned in Go; baseline stays a separate Python compute boundary.
 - [Phase 03-aggregated-baseline-aware-profiles]: Phase 3 terminal success is `aggregated`, not mere channel completion.
 - [Phase 03-aggregated-baseline-aware-profiles]: Result and history DTOs use canonical proxy-oriented snapshots instead of raw worker payloads.
+- [Phase 03-aggregated-baseline-aware-profiles]: Baseline service remains compute-only and never accesses PostgreSQL directly.
+- [Phase 03-aggregated-baseline-aware-profiles]: Baseline refresh eligibility uses median plus MAD with outlier freeze instead of mean/stddev.
+- [Phase 03-aggregated-baseline-aware-profiles]: Local compose wiring keeps ml-baseline internal-only without published host ports.
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T11:09:47.912Z
-Stopped at: Completed 03-aggregated-baseline-aware-profiles-01-PLAN.md
+Last session: 2026-03-22T11:20:27.122Z
+Stopped at: Completed 03-aggregated-baseline-aware-profiles-03-PLAN.md
 Resume file: None

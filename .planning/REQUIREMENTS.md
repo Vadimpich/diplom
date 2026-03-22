@@ -36,7 +36,7 @@
 
 - [x] **BASE-01**: Baseline service рассчитывает отклонение обследования от общей нормы и индивидуальной нормы специалиста
 - [x] **BASE-02**: Baseline-профиль хранит дату актуализации, число учтённых обследований и версию алгоритма
-- [ ] **BASE-03**: Алгоритм baseline устойчив к единичным аномальным обследованиям и не обновляет профиль бесконтрольно
+- [x] **BASE-03**: Алгоритм baseline устойчив к единичным аномальным обследованиям и не обновляет профиль бесконтрольно
 
 ### Decision Integration
 
@@ -104,7 +104,7 @@
 | AGGR-03 | Phase 3 | Complete |
 | BASE-01 | Phase 3 | Complete |
 | BASE-02 | Phase 3 | Complete |
-| BASE-03 | Phase 3 | Pending |
+| BASE-03 | Phase 3 | Complete |
 | KSMI-01 | Phase 4 | Pending |
 | KSMI-02 | Phase 4 | Pending |
 | KSMI-03 | Phase 4 | Pending |

@@ -63,7 +63,7 @@ Plans:
 Plans:
 - [x] 01-PLAN.md - Publish Phase 3 contracts, schema, and RED tests for aggregated profiles, baseline, and result-history DTOs.
 - [ ] 02-PLAN.md - Add core-owned aggregation readiness, normalized profile persistence, and `aggregating` status handling.
-- [ ] 03-PLAN.md - Create the standalone Python baseline service, robust update rules, and compose wiring.
+- [x] 03-PLAN.md - Create the standalone Python baseline service, robust update rules, and compose wiring.
 - [ ] 04-PLAN.md - Integrate core aggregation with baseline responses, persist snapshots, and finalize `aggregated` semantics.
 - [ ] 05-PLAN.md - Expose canonical result and specialist trend endpoints from the core backend.
 - [ ] 06-PLAN.md - Connect operator result/history UI to the new DTOs and refresh validation/runbook/docs.
@@ -99,6 +99,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
 | 2. Asynchronous Multichannel Processing | 6/6 | Complete   | 2026-03-21 |
-| 3. Aggregated Baseline-Aware Profiles | 1/6 | In Progress | - |
+| 3. Aggregated Baseline-Aware Profiles | 2/6 | In Progress | - |
 | 4. Decision Delivery To Operator | 0/TBD | Not started | - |
 | 5. Operational Trustworthiness | 0/TBD | Not started | - |
