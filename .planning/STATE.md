@@ -2,29 +2,29 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Gap Closure Phases Added
-stopped_at: Planned follow-up phases after milestone audit gaps
-last_updated: "2026-03-23T23:28:34+03:00"
+status: v1.0 milestone archived
+stopped_at: Archived roadmap, requirements, and audit for v1.0
+last_updated: "2026-03-24T00:13:20+03:00"
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 30
-  completed_plans: 30
+  completed_phases: 7
+  total_plans: 36
+  completed_plans: 36
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-03-20)
+See: `.planning/PROJECT.md` (updated 2026-03-24)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Plan Phase 06 — operator-result-reentry-and-metrics-truthfulness
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 06 (operator-result-reentry-and-metrics-truthfulness) — PLANNED
-Plan: 0 of 0
+Phase: none — milestone archived
+Plan: none
 
 ## Performance Metrics
 
@@ -107,11 +107,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 4 завершена; следующий крупный пробел — operational trustworthiness: audit trail, readiness/metrics, correlation, and critical regression coverage.
-- Финальные ML-модели и decision-модель WiMi ещё не готовы и разрабатываются отдельно; это не считалось архитектурным блокером для milestone v1.0 благодаря стабильным внутренним DTO, stub/mock integrations и contract-first adapter seams.
+- Финальные ML-модели и decision-модель WiMi ещё не готовы и разрабатываются отдельно; для milestone v1.0 это зафиксировано как не-блокирующий deferred item благодаря стабильным внутренним DTO, stub/mock integrations и contract-first adapter seams.
 
 ## Session Continuity
 
-Last session: 2026-03-23T23:28:34+03:00
-Stopped at: Added gap-closure phases after milestone audit
-Resume file: .planning/v1.0-v1.0-MILESTONE-AUDIT.md
+Last session: 2026-03-24T00:13:20+03:00
+Stopped at: Archived milestone v1.0 and created release tag context
+Resume file: .planning/MILESTONES.md
