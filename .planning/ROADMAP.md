@@ -69,20 +69,22 @@ Plans:
 - [x] 06-PLAN.md - Connect operator result/history UI to the new DTOs and refresh validation/runbook/docs.
 
 ### Phase 4: Decision Delivery To Operator
-**Goal**: The final examination profile is delivered to the external decision-support layer, and the operator receives the real final recommendation together with integration diagnostics.
+**Goal**: The final examination profile is delivered to the external decision-support layer, and the operator receives the final decision state together with integration diagnostics. If the real WiMi model is still unavailable, the phase must deliver an honest non-implemented decision state instead of inventing a recommendation.
 **Depends on**: Phase 3
 **Requirements**: KSMI-01, KSMI-02, KSMI-03, RSLT-02
 **Success Criteria** (what must be TRUE):
   1. Completed examination profile is sent to KЭСМИ through a dedicated integration boundary, and the system stores the external interaction result with correlation ID.
   2. Temporary transport failures are retried idempotently without duplicating business submissions, while business and transport errors are distinguished in stored state.
-  3. Operator result screen shows final recommendation `допуск / риск / недопуск`, key state metrics, baseline deviation, and channel contributions for successful integrations.
+  3. Operator result screen shows key state metrics, baseline deviation, channel contributions, and either the final recommendation `допуск / риск / недопуск` when the real model exists or the fixed `analysis_not_implemented_yet` state when it does not.
   4. If external delivery fails, operator sees the integration error reason instead of a placeholder or silent failure.
-**Execution note**: If the real WiMi decision model and final feature mapping are still unavailable, this phase should still implement the full adapter boundary, internal decision DTOs, persistence, status transitions, retry/error classification, and operator-facing diagnostics using stub/mock decision responses. Only the final model-specific mapping and live contract verification are deferred.
-**Plans**: 3 plans
+**Execution note**: If the real WiMi decision model and final feature mapping are still unavailable, this phase should still implement the full adapter boundary, internal decision DTOs, persistence, status transitions, retry/error classification, and operator-facing diagnostics using stub/mock decision responses. In that mode, successful delivery must stay honest and render `analysis_not_implemented_yet` instead of synthetic `допуск / риск / недопуск`. Only the final model-specific mapping and live contract verification are deferred.
+**Plans**: 5 plans
 Plans:
-- [ ] 04-01-PLAN.md - Publish Phase 4 decision contracts, RED tests, and the authoritative snapshot-plus-attempt schema.
-- [ ] 04-02-PLAN.md - Implement core-owned WiMi decision delivery, retry classification, and mandatory compose runtime wiring.
-- [ ] 04-03-PLAN.md - Project normalized decision results to the operator UI and refresh validation plus implementation metadata.
+- [x] 04-00-PLAN.md - Create Wave 0 RED scaffolds and smoke harness required by the Phase 4 validation contract.
+- [x] 04-01-PLAN.md - Publish Phase 4 decision contracts, RED tests, and the authoritative snapshot-plus-attempt schema.
+- [x] 04-02-PLAN.md - Implement core-owned WiMi decision delivery, retry classification, and durable relay recovery.
+- [x] 04-03-PLAN.md - Project normalized decision results to the operator UI and refresh validation plus implementation metadata.
+- [x] 04-04-PLAN.md - Make WiMi a mandatory compose service and prove startup plus response with runtime smoke verification.
 
 ### Phase 5: Operational Trustworthiness
 **Goal**: The target architecture is documented, testable, auditable, and observable enough to operate and evolve safely.
@@ -93,7 +95,12 @@ Plans:
   2. Each service exposes health or readiness and basic metrics for HTTP, database, queue, object storage, and error conditions.
   3. Logs and traces can be correlated end-to-end for one examination or request using a shared request ID or trace ID.
   4. Maintainers can rely on versioned documentation in `docs/01_contract.md` and automated tests covering status transitions, idempotency, and failure handling in critical workflow paths.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 05-01-PLAN.md - Lock Phase 5 audit and observability contracts, RED tests, and validation commands before implementation.
+- [ ] 05-02-PLAN.md - Add PostgreSQL-backed audit persistence and wire it to critical source-of-truth transitions.
+- [ ] 05-03-PLAN.md - Introduce shared structured logging and trace propagation across HTTP, RabbitMQ, and outbound service calls.
+- [ ] 05-04-PLAN.md - Ship readiness and metrics endpoints, minimal compose observability smoke, regression hardening, and final Phase 5 docs.
 
 ## Progress
 
