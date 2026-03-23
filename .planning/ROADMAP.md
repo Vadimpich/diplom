@@ -115,7 +115,11 @@ Plans:
   2. Operator can reopen final result state from history and see the same decision/baseline/channel data surface as the direct result flow.
   3. Frontend `/api/metrics` reports dependency health derived from the actual backend probe outcome instead of a hardcoded `up`.
   4. Regression tests cover both the history routing behavior and truthful frontend dependency metrics.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 06-01-PLAN.md - Fix operator history routing for `aggregated` / `decision_pending` / `completed` and align result-entry UX with backend statuses.
+- [ ] 06-02-PLAN.md - Replace static frontend dependency metrics with the shared live core readiness probe.
+- [ ] 06-03-PLAN.md - Add focused frontend regression coverage plus Phase 06 validation and implementation evidence.
 
 ### Phase 7: Verification Evidence And Requirement Revalidation
 **Goal**: Milestone requirements gain explicit verification evidence so the next milestone audit can mark satisfied requirements as truly satisfied rather than blocked on missing artifacts.
