@@ -15,8 +15,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Trusted Access And Intake** - Secure server-side access and make examination intake reliably reach processing-ready state.
 - [x] **Phase 2: Asynchronous Multichannel Processing** - Run mandatory `text`, `acoustic`, and `paralinguistic` analysis through RabbitMQ with bounded retries and visible channel progress. (completed 2026-03-21)
 - [x] **Phase 3: Aggregated Baseline-Aware Profiles** - Turn channel outputs into a versioned, interpretable profile with baseline deviation and history dynamics. (completed 2026-03-22)
-- [ ] **Phase 4: Decision Delivery To Operator** - Deliver normalized results into KЭСМИ and expose final recommendation or integration failure to the operator.
-- [ ] **Phase 5: Operational Trustworthiness** - Make contracts, tests, deployment, audit, and observability sufficient for production-like operation.
+- [x] **Phase 4: Decision Delivery To Operator** - Deliver normalized results into KЭСМИ and expose final recommendation or integration failure to the operator. (completed 2026-03-23)
+- [x] **Phase 5: Operational Trustworthiness** - Make contracts, tests, deployment, audit, and observability sufficient for production-like operation. (completed 2026-03-23)
+- [ ] **Phase 6: Operator Result Re-entry And Metrics Truthfulness** - Repair the operator history-to-result path for final decision states and make frontend observability metrics reflect real backend dependency status.
+- [ ] **Phase 7: Verification Evidence And Requirement Revalidation** - Add the missing verification evidence and revalidate the milestone requirements that remain blocked only by auditability gaps.
 
 ## Phase Details
 
@@ -95,22 +97,49 @@ Plans:
   2. Each service exposes health or readiness and basic metrics for HTTP, database, queue, object storage, and error conditions.
   3. Logs and traces can be correlated end-to-end for one examination or request using a shared request ID or trace ID.
   4. Maintainers can rely on versioned documentation in `docs/01_contract.md` and automated tests covering status transitions, idempotency, and failure handling in critical workflow paths.
-**Plans**: 4 plans
+**Plans**: 5 plans
 Plans:
-- [ ] 05-01-PLAN.md - Lock Phase 5 audit and observability contracts, RED tests, and validation commands before implementation.
-- [ ] 05-02-PLAN.md - Add PostgreSQL-backed audit persistence and wire it to critical source-of-truth transitions.
-- [ ] 05-03-PLAN.md - Introduce shared structured logging and trace propagation across HTTP, RabbitMQ, and outbound service calls.
-- [ ] 05-04-PLAN.md - Ship readiness and metrics endpoints, minimal compose observability smoke, regression hardening, and final Phase 5 docs.
+- [x] 05-01-PLAN.md - Lock Phase 5 audit and observability contracts, RED tests, and validation commands before implementation.
+- [x] 05-02-PLAN.md - Add PostgreSQL-backed audit persistence and wire it to auth, admin, examination, processing, result, and decision source-of-truth transitions.
+- [x] 05-03-PLAN.md - Introduce shared structured logging and trace propagation across the Go HTTP, RabbitMQ, and outbound service boundaries.
+- [x] 05-04-PLAN.md - Ship `/health`/`/ready`/`/metrics` runtime surfaces for frontend, core, and Python services and verify them in compose.
+- [x] 05-05-PLAN.md - Harden critical regression coverage and synchronize validation plus planning-state artifacts for milestone closure.
+
+### Phase 6: Operator Result Re-entry And Metrics Truthfulness
+**Goal**: Operators can reopen final decision-state examinations from history, and frontend observability surfaces report real dependency truth instead of static success.
+**Depends on**: Phase 5
+**Requirements**: EXAM-04, KSMI-03, RSLT-02, OBSV-02
+**Gap Closure**: Closes the milestone audit integration gaps around history re-entry and static frontend dependency metrics.
+**Success Criteria** (what must be TRUE):
+  1. Examination history routes `decision_pending` and `completed` examinations to the final result screen instead of the generic examination page.
+  2. Operator can reopen final result state from history and see the same decision/baseline/channel data surface as the direct result flow.
+  3. Frontend `/api/metrics` reports dependency health derived from the actual backend probe outcome instead of a hardcoded `up`.
+  4. Regression tests cover both the history routing behavior and truthful frontend dependency metrics.
+**Plans**: TBD
+
+### Phase 7: Verification Evidence And Requirement Revalidation
+**Goal**: Milestone requirements gain explicit verification evidence so the next milestone audit can mark satisfied requirements as truly satisfied rather than blocked on missing artifacts.
+**Depends on**: Phase 6
+**Requirements**: ACCS-01, PIPE-04, AGGR-01, RSLT-01, OBSV-01, OBSV-03, QUAL-01, QUAL-02
+**Gap Closure**: Closes the auditability blockers caused by missing phase verification artifacts and incomplete requirement revalidation evidence.
+**Success Criteria** (what must be TRUE):
+  1. Each completed phase contributing to milestone closure has explicit verification evidence aligned with the GSD audit workflow.
+  2. Requirement coverage for access, failure handling, aggregation gating, operator progress, audit trail, tracing, contracts, and critical-path regression is revalidated against the actual repository state.
+  3. `REQUIREMENTS.md`, planning artifacts, and milestone audit inputs no longer disagree about requirement completion status.
+  4. Re-running `$gsd-audit-milestone` can pass without failing on missing verification artifacts alone.
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trusted Access And Intake | 8/8 | Complete | 2026-03-20 |
 | 2. Asynchronous Multichannel Processing | 6/6 | Complete   | 2026-03-21 |
 | 3. Aggregated Baseline-Aware Profiles | 6/6 | Complete | 2026-03-22 |
-| 4. Decision Delivery To Operator | 0/TBD | Not started | - |
-| 5. Operational Trustworthiness | 0/TBD | Not started | - |
+| 4. Decision Delivery To Operator | 5/5 | Complete | 2026-03-23 |
+| 5. Operational Trustworthiness | 5/5 | Complete | 2026-03-23 |
+| 6. Operator Result Re-entry And Metrics Truthfulness | 0/0 | Planned | - |
+| 7. Verification Evidence And Requirement Revalidation | 0/0 | Planned | - |

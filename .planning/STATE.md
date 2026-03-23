@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 03-aggregated-baseline-aware-profiles-06-PLAN.md
-last_updated: "2026-03-22T14:35:00.000Z"
+status: Gap Closure Phases Added
+stopped_at: Planned follow-up phases after milestone audit gaps
+last_updated: "2026-03-23T23:28:34+03:00"
 progress:
-  total_phases: 5
-  completed_phases: 3
-  total_plans: 20
-  completed_plans: 20
+  total_phases: 7
+  completed_phases: 5
+  total_plans: 30
+  completed_plans: 30
 ---
 
 # Project State
@@ -19,18 +19,18 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-20)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Phase 04 — decision-delivery-to-operator
+**Current focus:** Plan Phase 06 — operator-result-reentry-and-metrics-truthfulness
 
 ## Current Position
 
-Phase: 04 (decision-delivery-to-operator) — READY TO PLAN
-Plan: 0 of TBD
+Phase: 06 (operator-result-reentry-and-metrics-truthfulness) — PLANNED
+Plan: 0 of 0
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 30
 - Average duration: 9 min
 - Total execution time: 2.4 hours
 
@@ -59,6 +59,10 @@ Plan: 0 of TBD
 | Phase 03-aggregated-baseline-aware-profiles P04 | 840 | 2 tasks | 16 files |
 | Phase 03-aggregated-baseline-aware-profiles P05 | 840 | 2 tasks | 16 files |
 | Phase 03-aggregated-baseline-aware-profiles P06 | 2280 | 3 tasks | 11 files |
+| Phase 04-decision-delivery-to-operator P01 | 720 | 2 tasks | 10 files |
+| Phase 04-decision-delivery-to-operator P02 | 960 | 2 tasks | 12 files |
+| Phase 04-decision-delivery-to-operator P03 | 900 | 2 tasks | 9 files |
+| Phase 04-decision-delivery-to-operator P04 | 840 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -103,11 +107,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 завершена; следующий крупный пробел — отсутствует внешняя KЭСМИ integration и финальная recommendation delivery из Phase 4.
-- В текущей WSL-среде `docker compose config` остаётся зависимым от наличия Docker CLI, поэтому compose smoke требует полноценного docker runtime.
+- Phase 4 завершена; следующий крупный пробел — operational trustworthiness: audit trail, readiness/metrics, correlation, and critical regression coverage.
+- Финальные ML-модели и decision-модель WiMi ещё не готовы и разрабатываются отдельно; это не считалось архитектурным блокером для milestone v1.0 благодаря стабильным внутренним DTO, stub/mock integrations и contract-first adapter seams.
 
 ## Session Continuity
 
-Last session: 2026-03-22T14:35:00.000Z
-Stopped at: Completed 03-aggregated-baseline-aware-profiles-06-PLAN.md
-Resume file: None
+Last session: 2026-03-23T23:28:34+03:00
+Stopped at: Added gap-closure phases after milestone audit
+Resume file: .planning/v1.0-v1.0-MILESTONE-AUDIT.md
