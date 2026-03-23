@@ -77,7 +77,12 @@ Plans:
   2. Temporary transport failures are retried idempotently without duplicating business submissions, while business and transport errors are distinguished in stored state.
   3. Operator result screen shows final recommendation `допуск / риск / недопуск`, key state metrics, baseline deviation, and channel contributions for successful integrations.
   4. If external delivery fails, operator sees the integration error reason instead of a placeholder or silent failure.
-**Plans**: TBD
+**Execution note**: If the real WiMi decision model and final feature mapping are still unavailable, this phase should still implement the full adapter boundary, internal decision DTOs, persistence, status transitions, retry/error classification, and operator-facing diagnostics using stub/mock decision responses. Only the final model-specific mapping and live contract verification are deferred.
+**Plans**: 3 plans
+Plans:
+- [ ] 04-01-PLAN.md - Publish Phase 4 decision contracts, RED tests, and the authoritative snapshot-plus-attempt schema.
+- [ ] 04-02-PLAN.md - Implement core-owned WiMi decision delivery, retry classification, and mandatory compose runtime wiring.
+- [ ] 04-03-PLAN.md - Project normalized decision results to the operator UI and refresh validation plus implementation metadata.
 
 ### Phase 5: Operational Trustworthiness
 **Goal**: The target architecture is documented, testable, auditable, and observable enough to operate and evolve safely.
