@@ -1,16 +1,9 @@
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppShell } from "@/components/layout/app-shell";
+import { AdminShell } from "@/components/layout/admin-shell";
 import { RouteGuard } from "@/components/layout/route-guard";
 import { AUTH_REFRESH_COOKIE } from "@/lib/constants";
-
-const navItems = [
-  { href: "/admin/users", label: "Пользователи" },
-  { href: "/admin/questionnaires", label: "Опросники" },
-  { href: "/admin/settings", label: "Настройки" },
-  { href: "/admin/monitoring", label: "Мониторинг" },
-];
 
 export default async function AdminLayout({
   children,
@@ -26,9 +19,7 @@ export default async function AdminLayout({
 
   return (
     <RouteGuard requiredRole="admin">
-      <AppShell title="Admin" subtitle="Управление системой" navItems={navItems}>
-        {children}
-      </AppShell>
+      <AdminShell>{children}</AdminShell>
     </RouteGuard>
   );
 }

@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { clearSession } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import type { RoleSlug } from "@/lib/api/types";
+import { getRoleHome } from "@/lib/navigation/role-home";
 
 export function RouteGuard({
   requiredRole,
@@ -25,7 +26,7 @@ export function RouteGuard({
     }
 
     if (data.role.slug !== requiredRole) {
-      router.replace(data.role.slug === "admin" ? "/admin/users" : "/operator");
+      router.replace(getRoleHome(data.role.slug));
     }
   }, [data, requiredRole, router]);
 

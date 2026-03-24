@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { getRoleHome } from "@/lib/navigation/role-home";
 
 const loginSchema = z.object({
   login: z.string().min(1, "Введите логин"),
@@ -37,7 +38,7 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: apiClient.login,
     onSuccess: (data) => {
-      router.replace(data.user.role.slug === "admin" ? "/admin/users" : "/operator");
+      router.replace(getRoleHome(data.user.role.slug));
       router.refresh();
     },
   });
@@ -46,7 +47,7 @@ export default function LoginPage() {
     if (!sessionQuery.data) {
       return;
     }
-    router.replace(sessionQuery.data.role.slug === "admin" ? "/admin/users" : "/operator");
+    router.replace(getRoleHome(sessionQuery.data.role.slug));
   }, [router, sessionQuery.data]);
 
   return (
