@@ -15,7 +15,7 @@ Milestone `v1.1` closes the remaining frontend and admin gaps on top of the ship
 - Integer phases continue milestone history and execute in numeric order
 - This milestone starts at Phase 8 because v1.0 ended at Phase 7
 
-- [ ] **Phase 8: UI Contours & Design Foundation** - Separate operator/admin shells and establish the shared design-system foundation.
+- [x] **Phase 8: UI Contours & Design Foundation** - Separate operator/admin shells and establish the shared design-system foundation.
 - [ ] **Phase 9: Admin Users & Questionnaires** - Deliver core admin CRUD workflows for users, roles, and questionnaire management.
 - [ ] **Phase 10: Admin Control Surfaces** - Deliver admin settings, system monitoring, and audit visibility from the UI.
 - [ ] **Phase 11: Operator UX & Visual Completion** - Bring operator workflows and primary screens to production-level feedback and finish quality.
@@ -34,7 +34,7 @@ Milestone `v1.1` closes the remaining frontend and admin gaps on top of the ship
 Plans:
 - [x] 08-01-PLAN.md — Lock shared tokens and reusable UI/feedback primitives.
 - [x] 08-02-PLAN.md — Build contour-aware shells and canonical role-home routing contracts.
-- [ ] 08-03-PLAN.md — Wire `/admin` overview entry, redirects, contour loading states, and final verification.
+- [x] 08-03-PLAN.md — Wire `/admin` overview entry, redirects, contour loading states, and final verification.
 **UI hint**: yes
 
 ### Phase 9: Admin Users & Questionnaires
@@ -46,7 +46,11 @@ Plans:
   2. Administrator can create a user, edit user data, and change roles through the UI with server-enforced permission validation.
   3. Administrator can create a questionnaire with title, description, and ordered questions.
   4. Administrator can edit questionnaire composition, reorder questions, and change publication state from the admin UI.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [x] 09-01-PLAN.md — Complete users list/create/edit UX and remove read-path audit pollution.
+- [ ] 09-02-PLAN.md — Complete questionnaire list/create/edit UX with explicit ordered-question builder controls.
+- [ ] 09-03-PLAN.md — Apply phase-level admin polish and verify the full users/questionnaires flow.
 **UI hint**: yes
 
 ### Phase 10: Admin Control Surfaces
@@ -78,7 +82,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. UI Contours & Design Foundation | v1.1 | 0/TBD | Not started | - |
-| 9. Admin Users & Questionnaires | v1.1 | 0/TBD | Not started | - |
+| 8. UI Contours & Design Foundation | v1.1 | 3/3 | Complete | 2026-03-24 |
+| 9. Admin Users & Questionnaires | v1.1 | 0/3 | Ready to execute | - |
 | 10. Admin Control Surfaces | v1.1 | 0/TBD | Not started | - |
 | 11. Operator UX & Visual Completion | v1.1 | 0/TBD | Not started | - |

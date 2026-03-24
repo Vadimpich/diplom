@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: UI & Admin Completion
 status: Ready to execute
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-24T12:25:52.994Z"
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-24T19:08:19.022Z"
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 3
-  completed_plans: 2
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 4
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-24)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Phase 08 — ui-contours-design-foundation
+**Current focus:** Phase 09 — admin-users-questionnaires
 
 ## Current Position
 
-Phase: 08 (ui-contours-design-foundation) — EXECUTING
+Phase: 09 (admin-users-questionnaires) — EXECUTING
 Plan: 2 of 3
 
 ## Performance Metrics
@@ -39,7 +39,8 @@ Plan: 2 of 3
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-07 (v1.0 shipped) | 36 | historical | historical |
-| 08-11 (v1.1 planned) | 0 | - | - |
+| Phase 08 | 3 | in progress milestone | 20 min |
+| 09-11 (v1.1 planned) | 0 | - | - |
 
 **Recent Trend:**
 
@@ -48,6 +49,8 @@ Plan: 2 of 3
 
 | Phase 08 P01 | 20 min | 2 tasks | 17 files |
 | Phase 08 P02 | 15 min | 2 tasks | 11 files |
+| Phase 08 P03 | 45 min | 3 tasks | 21 files |
+| Phase 09 P01 | 10min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -63,10 +66,15 @@ Recent decisions affecting current work:
 - [Phase 08]: Shared skeleton, confirmation, and toast primitives are mounted once at app level and must be reused by later contour and CRUD phases. — This prevents page-local feedback drift and makes Phase 8 foundation materially reusable for Phases 9-11.
 - [Phase 08]: Admin and operator home routing is centralized in one role-home helper; `/admin/users` is no longer the canonical admin home target. — Phase 8 requires explicit contour ownership and D-16 forbids keeping admin home as an incidental users-page redirect.
 - [Phase 08]: OperatorShell and AdminShell evolve as separate contour wrappers on one shared AppShell frame. — This preserves one codebase and one foundation while preventing the same-shell-different-menu anti-pattern called out in Phase 8 context.
+- [Phase 08]: Browser-side frontend traffic and server-side Next handlers must use different backend base URLs in Compose. — The browser needs a host-reachable backend URL (`localhost:18080`), while frontend server handlers and readiness probes must keep using the internal compose address (`core-backend:8080`).
+- [Phase 09]: Phase 9 users workflow stays contract-first on existing user DTOs; frontend completion uses shared user-list/user-form components instead of new endpoints or client-side permission rules.
+- [Phase 09]: admin.user_updated audit emission is bound only to UpdateUser; GetUserByID remains audit-neutral so admin navigation does not pollute mutation history.
 
 ### Pending Todos
 
-None yet.
+- Execute Phase 09 plan 01: users CRUD completion and audit read-path fix.
+- Execute Phase 09 plan 02: questionnaire builder completion.
+- Execute Phase 09 plan 03: phase-level polish and runtime verification.
 
 ### Blockers/Concerns
 
@@ -74,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T12:25:42.590Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-24T19:08:19.021Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
