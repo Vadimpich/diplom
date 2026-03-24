@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getRoleHome } from "@/lib/navigation/role-home";
@@ -49,6 +50,45 @@ export default function LoginPage() {
     }
     router.replace(getRoleHome(sessionQuery.data.role.slug));
   }, [router, sessionQuery.data]);
+
+  if (sessionQuery.isLoading || sessionQuery.data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <section className="rounded-[32px] border border-border/60 bg-primary p-8 text-primary-foreground shadow-panel md:p-12">
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-36 bg-white/20 from-white/10 via-white/25 to-white/10" />
+              <Skeleton className="h-12 w-full max-w-2xl bg-white/20 from-white/10 via-white/25 to-white/10" />
+              <Skeleton className="h-5 w-full max-w-xl bg-white/15 from-white/10 via-white/20 to-white/10" />
+              <Skeleton className="h-5 w-full max-w-lg bg-white/15 from-white/10 via-white/20 to-white/10" />
+            </div>
+            <div className="mt-10 grid gap-4 md:grid-cols-2">
+              <Skeleton className="h-36 w-full rounded-3xl bg-white/15 from-white/10 via-white/20 to-white/10" />
+              <Skeleton className="h-36 w-full rounded-3xl bg-white/15 from-white/10 via-white/20 to-white/10" />
+            </div>
+          </section>
+
+          <Card className="border-border/70">
+            <CardHeader className="space-y-3">
+              <Skeleton className="h-8 w-44" />
+              <Skeleton className="h-5 w-full max-w-xs" />
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-11 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-18" />
+                <Skeleton className="h-11 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">

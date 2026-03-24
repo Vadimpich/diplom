@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
-import { Spinner } from "@/components/ui/spinner";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { clearSession } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import type { RoleSlug } from "@/lib/api/types";
@@ -19,16 +20,17 @@ export function RouteGuard({
 }) {
   const router = useRouter();
   const { data, isLoading, isError } = useCurrentUser();
+  const hasRoleMismatch = Boolean(data && data.role.slug !== requiredRole);
 
   useEffect(() => {
     if (!data) {
       return;
     }
 
-    if (data.role.slug !== requiredRole) {
+    if (hasRoleMismatch) {
       router.replace(getRoleHome(data.role.slug));
     }
-  }, [data, requiredRole, router]);
+  }, [data, hasRoleMismatch, router]);
 
   useEffect(() => {
     if (!isError) {
@@ -40,12 +42,36 @@ export function RouteGuard({
     });
   }, [isError, router]);
 
-  if (isLoading) {
+  if (isLoading || hasRoleMismatch) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-sm">
-          <Spinner />
-          Проверка прав доступа...
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-10 w-full max-w-md" />
+          <Skeleton className="h-5 w-full max-w-2xl" />
+        </div>
+        <div className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
+          <Card>
+            <CardHeader className="space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-full max-w-xl" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="space-y-3">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-full max-w-xs" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
