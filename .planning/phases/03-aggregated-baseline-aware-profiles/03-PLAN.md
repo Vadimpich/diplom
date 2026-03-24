@@ -42,8 +42,8 @@ Output: runnable FastAPI baseline service, algorithm tests, and compose/env wiri
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -85,7 +85,7 @@ From research baseline contract:
   </behavior>
   <action>Create the new `ml-services/ml-baseline` service with FastAPI and Pydantic models that mirror the contract already locked in `docs/01_contract.md`. Add one calculation endpoint and one health endpoint only. Package dependencies in `requirements.txt` with FastAPI, Pydantic, NumPy, SciPy, pytest, and uvicorn. Keep the service compute-only: no database client, no RabbitMQ consumer, and no attempts to own workflow state.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation</automated>
+    <automated>cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation</automated>
   </verify>
   <done>The baseline service has a versioned HTTP surface, validated schemas, and passing contract tests for response shape and health behavior.</done>
 </task>
@@ -100,7 +100,7 @@ From research baseline contract:
   </behavior>
   <action>Implement the MVP algorithm from research: robust center/scale using median and MAD, bounded history updates, and an outlier-freeze rule that prevents uncontrolled personal-baseline drift. Wire the FastAPI app to call those helpers and return the `next_baseline` snapshot when eligible. Update `docker-compose.yml` and `.env.example` so `ml-services/ml-baseline` runs in the local stack with internal-only networking and explicit env for host, port, timeout, and algorithm version. Do not publish the service as a public browser-facing endpoint.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update tests/test_service.py::test_returns_general_and_personal_deviation && cd /home/katya/dimplom && docker compose config --services | rg '^ml-baseline$'</automated>
+    <automated>cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update tests/test_service.py::test_returns_general_and_personal_deviation && cd /home/vadim/diplom && docker compose config --services | rg '^ml-baseline$'</automated>
   </verify>
   <done>The baseline service computes robust deviations, guards baseline updates against outliers, and is reproducibly wired into the local compose stack.</done>
 </task>

@@ -1,0 +1,1 @@
+Admin and operator home routing is centralized in one role-home helper; `/admin/users` is no longer the canonical admin home target.

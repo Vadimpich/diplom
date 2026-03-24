@@ -37,8 +37,8 @@ Output: documented message/API contracts, DB schema for outbox and channel runs,
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -87,7 +87,7 @@ PostgreSQL remains the source of truth for progress and failures
   </behavior>
   <action>Update `docs/01_contract.md` first with one versioned processing command envelope, one versioned channel result envelope, explicit shared AMQP topology (`processing.commands`, `processing.results`, per-channel routing keys and queue names, unified result routing, and RabbitMQ 3.13 retry/DLX assumptions), and one backend-authoritative `GET /examinations/{id}/processing-status` response. In the same contract update, explicitly broaden examination runtime status vocabulary to include `processing` and `failed` while reserving rich per-channel detail for the dedicated processing-status DTO. Create `core-backend/internal/processing/contracts.go` with exported channel constants and envelope structs mirroring the docs exactly. Add failing tests in `core-backend/internal/processing/service_test.go` and `core-backend/internal/http/processing_status_test.go` that pin the documented shapes, status vocabulary, and mandatory-channel fan-out. Do not introduce websocket contracts or queue-derived UI state.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels|TestProcessingStatusEndpoint' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels|TestProcessingStatusEndpoint' -count=1</automated>
   </verify>
   <done>`docs/01_contract.md` is the single source of truth for Phase 2 envelopes, topology, runtime statuses, and DTOs, and the new tests fail until implementation is added in later plans.</done>
 </task>
@@ -97,7 +97,7 @@ PostgreSQL remains the source of truth for progress and failures
   <files>core-backend/migrations/000006_processing_pipeline.up.sql, core-backend/migrations/000006_processing_pipeline.down.sql, core-backend/db/queries/processing.sql</files>
   <action>Create a migration that adds durable processing tables needed by the research-backed design: processing outbox rows, per-examination per-channel run rows, and normalized channel result rows. Include explicit fields for `channel`, `status`, `attempt_count`, `max_attempts`, `message_version`, `last_error_code`, `last_error_message`, broker identifiers, and timestamps required by the progress DTO. Add SQL queries for inserting channel runs/outbox rows atomically and reading progress projections. Preserve Phase 1 finish idempotency by extending the existing launch fence instead of replacing it.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels|TestProcessingStatusEndpoint' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels|TestProcessingStatusEndpoint' -count=1</automated>
   </verify>
   <done>The DB now has a durable schema for command publication intent and per-channel progress that later plans can implement without revisiting the contract.</done>
 </task>

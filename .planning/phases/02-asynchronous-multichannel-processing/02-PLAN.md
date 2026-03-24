@@ -40,8 +40,8 @@ Output: finish-path outbox orchestration, background publisher, and RabbitMQ con
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -69,7 +69,7 @@ Output: finish-path outbox orchestration, background publisher, and RabbitMQ con
   </behavior>
   <action>Introduce a dedicated processing service/repository that wraps the Phase 1 finish fence and, in the same transaction, creates one channel-run row plus one outbox row for each mandatory channel. Wire this service into `app.go` and the examinations handler path so the public finish endpoint still returns promptly after persistence. Keep PostgreSQL as the source of truth; do not publish AMQP messages directly from the HTTP request path.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels' -count=1</automated>
   </verify>
   <done>Finishing an examination durably records the mandatory processing work in PostgreSQL exactly once.</done>
 </task>
@@ -84,7 +84,7 @@ Output: finish-path outbox orchestration, background publisher, and RabbitMQ con
   </behavior>
   <action>Add `github.com/rabbitmq/amqp091-go`, then implement a background outbox relay that opens AMQP channels on startup, declares one durable queue per mandatory channel plus the command exchange, and publishes with publisher confirms. Expose config knobs for broker DSN, outbox polling interval, and max attempts. Because Compose pins `rabbitmq:3.13-management-alpine`, explicitly set quorum-queue arguments and `delivery-limit`/DLX behavior instead of assuming RabbitMQ 4.x defaults.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/processing -run 'TestOutboxRelayPublishesPendingMessages|TestRetryBudget|TestFatalVsTemporaryError' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/processing -run 'TestOutboxRelayPublishesPendingMessages|TestRetryBudget|TestFatalVsTemporaryError' -count=1</automated>
   </verify>
   <done>Core backend can publish versioned commands to per-channel RabbitMQ queues from the outbox relay with explicit, bounded broker semantics.</done>
 </task>

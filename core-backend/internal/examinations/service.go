@@ -2,8 +2,12 @@ package examinations
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
+
+	"diplom/internal/audit"
 )
 
 const (
@@ -60,11 +64,16 @@ type Repository interface {
 }
 
 type Service struct {
-	repo Repository
+	repo    Repository
+	auditor *audit.Service
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, auditors ...*audit.Service) *Service {
+	var auditor *audit.Service
+	if len(auditors) > 0 {
+		auditor = auditors[0]
+	}
+	return &Service{repo: repo, auditor: auditor}
 }
 
 func (s *Service) Create(ctx context.Context, input CreateInput) (Examination, error) {
@@ -74,7 +83,26 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (Examination, e
 	if input.QuestionnaireID == nil || *input.QuestionnaireID <= 0 {
 		return Examination{}, ErrInvalidInput
 	}
-	return s.repo.Create(ctx, input)
+	exam, err := s.repo.Create(ctx, input)
+	if err != nil {
+		return Examination{}, err
+	}
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeExaminationCreated,
+		Key:     eventKey("created", exam.ID),
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "examination",
+			ID:   exam.ID,
+		},
+		DomainRefs: audit.DomainRefs{
+			ExaminationID:   &exam.ID,
+			SpecialistID:    &exam.SpecialistID,
+			QuestionnaireID: exam.QuestionnaireID,
+		},
+		Payload: examinationPayload("", exam.Status),
+	})
+	return exam, nil
 }
 
 func (s *Service) List(ctx context.Context) ([]Examination, error) {
@@ -92,7 +120,26 @@ func (s *Service) Start(ctx context.Context, id int64) (Examination, error) {
 	if exam.Status != StatusCreated {
 		return Examination{}, ErrInvalidTransition
 	}
-	return s.repo.UpdateStatus(ctx, id, StatusCollectingAnswers)
+	updated, err := s.repo.UpdateStatus(ctx, id, StatusCollectingAnswers)
+	if err != nil {
+		return Examination{}, err
+	}
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeExaminationStarted,
+		Key:     eventKey("started", updated.ID),
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "examination",
+			ID:   updated.ID,
+		},
+		DomainRefs: audit.DomainRefs{
+			ExaminationID:   &updated.ID,
+			SpecialistID:    &updated.SpecialistID,
+			QuestionnaireID: updated.QuestionnaireID,
+		},
+		Payload: examinationPayload(exam.Status, updated.Status),
+	})
+	return updated, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id int64) (Examination, error) {
@@ -107,5 +154,43 @@ func (s *Service) ListBySpecialistID(ctx context.Context, specialistID int64) ([
 }
 
 func (s *Service) Finish(ctx context.Context, id int64) (Examination, error) {
-	return s.repo.Finish(ctx, id)
+	exam, err := s.repo.Finish(ctx, id)
+	if err != nil {
+		return Examination{}, err
+	}
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeExaminationFinished,
+		Key:     eventKey("finished", exam.ID),
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "examination",
+			ID:   exam.ID,
+		},
+		DomainRefs: audit.DomainRefs{
+			ExaminationID:   &exam.ID,
+			SpecialistID:    &exam.SpecialistID,
+			QuestionnaireID: exam.QuestionnaireID,
+		},
+		Payload: examinationPayload(StatusCollectingAnswers, exam.Status),
+	})
+	return exam, nil
+}
+
+func (s *Service) appendAudit(ctx context.Context, event audit.Event) {
+	if s.auditor == nil {
+		return
+	}
+	_ = s.auditor.AppendFromContext(ctx, event)
+}
+
+func eventKey(prefix string, examinationID int64) string {
+	return prefix + ":" + "examination:" + strconv.FormatInt(examinationID, 10)
+}
+
+func examinationPayload(from, to string) json.RawMessage {
+	data, _ := json.Marshal(map[string]any{
+		"status_from": from,
+		"status_to":   to,
+	})
+	return data
 }

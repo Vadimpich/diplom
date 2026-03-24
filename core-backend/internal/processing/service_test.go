@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/processing"
+	"diplom/internal/audit"
+	"diplom/internal/examinations"
+	"diplom/internal/processing"
 )
 
 func TestFinishCreatesOutboxForMandatoryChannels(t *testing.T) {
@@ -179,7 +180,7 @@ func (s *finishRepoStub) FinishLaunch(context.Context, int64) (examinations.Exam
 					{
 						AnswerID:      int64(idx + 1),
 						QuestionID:    int64(idx + 10),
-						AudioS3Bucket: "dimplom-audio",
+						AudioS3Bucket: "diplom-audio",
 						AudioS3Key:    "examinations/200/answers/1/audio.webm",
 						AnswerText:    "Ответ обследуемого",
 					},
@@ -202,4 +203,39 @@ func TestFinishPropagatesRepositoryError(t *testing.T) {
 	if _, err := service.Finish(context.Background(), 100); !errors.Is(err, expectedErr) {
 		t.Fatalf("expected error %v, got %v", expectedErr, err)
 	}
+}
+
+func TestProcessingLaunchWritesAuditEvent(t *testing.T) {
+	repo := &finishRepoStub{
+		finishResult: examinations.Examination{
+			ID:           100,
+			SpecialistID: 10,
+			Status:       examinations.StatusReadyForProcessing,
+		},
+	}
+	auditRepo := &processingAuditRepoStub{}
+	service := processing.NewService(repo, audit.NewService(auditRepo))
+
+	if _, err := service.Finish(context.Background(), 100); err != nil {
+		t.Fatalf("finish examination: %v", err)
+	}
+	if len(auditRepo.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeProcessingLaunch {
+		t.Fatalf("expected processing.launch event, got %q", auditRepo.events[0].Type)
+	}
+}
+
+type processingAuditRepoStub struct {
+	events []audit.Event
+}
+
+func (s *processingAuditRepoStub) Append(_ context.Context, event audit.Event) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
+func (s *processingAuditRepoStub) List(context.Context, audit.ListFilter) ([]audit.Event, error) {
+	return append([]audit.Event(nil), s.events...), nil
 }

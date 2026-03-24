@@ -26,7 +26,15 @@ const statusConfig: Record<
     variant: "warning",
   },
   aggregated: {
-    label: "Результат готов",
+    label: "Профиль собран",
+    variant: "success",
+  },
+  decision_pending: {
+    label: "Decision отправляется",
+    variant: "warning",
+  },
+  completed: {
+    label: "Decision готов",
     variant: "success",
   },
   failed: {

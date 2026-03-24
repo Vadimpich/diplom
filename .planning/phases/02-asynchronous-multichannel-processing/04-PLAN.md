@@ -43,8 +43,8 @@ Output: result consumer, channel-run state machine, examination terminal-error p
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -89,7 +89,7 @@ Persist and document examination-level `processing` / `failed` statuses, but kee
   </behavior>
   <action>Implement a shared result consumer in core backend that subscribes to the unified results queue, validates the documented envelope, and hands it to a `channelresults` service. That service must own PostgreSQL updates for channel-run status transitions, normalized result persistence, retry counters, and terminal examination failure projection. Keep workers dumb: they classify and publish, but core decides persisted state transitions.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/channelresults ./internal/processing -run 'TestIndependentChannelCompletion|TestRetryBudget|TestFatalVsTemporaryError|TestMandatoryChannelExhaustionFailsExamination' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/channelresults ./internal/processing -run 'TestIndependentChannelCompletion|TestRetryBudget|TestFatalVsTemporaryError|TestMandatoryChannelExhaustionFailsExamination' -count=1</automated>
   </verify>
   <done>Core backend persists channel success/failure independently and derives final examination error state from mandatory-channel exhaustion.</done>
 </task>
@@ -104,7 +104,7 @@ Persist and document examination-level `processing` / `failed` statuses, but kee
   </behavior>
   <action>Add `GET /examinations/{id}/processing-status` to the operator/admin backend surface. The handler should return a DTO built entirely from PostgreSQL projection: overall pipeline status, `is_terminal`, per-channel statuses, attempt metadata, timestamps, and last error details. Align runtime status handling with the Phase 2 contract decision: examination state may progress through `processing` and `failed`, but rich per-channel detail is exposed only through this dedicated endpoint rather than overloaded into generic list/history payloads.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestProcessingStatusEndpoint|TestProcessingStatusEndpointReturnsTerminalError' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/http -run 'TestProcessingStatusEndpoint|TestProcessingStatusEndpointReturnsTerminalError' -count=1</automated>
   </verify>
   <done>Frontend has one stable HTTP endpoint that exposes authoritative per-channel progress and final failure state.</done>
 </task>

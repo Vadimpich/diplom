@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/channelresults"
-	"dimplom/internal/processing"
+	"diplom/internal/audit"
+	"diplom/internal/channelresults"
+	"diplom/internal/processing"
 )
 
 func TestIndependentChannelCompletion(t *testing.T) {
@@ -159,6 +160,67 @@ func TestMandatoryChannelExhaustionFailsExamination(t *testing.T) {
 	}
 }
 
+func TestResultsConsumerContinuesTrace(t *testing.T) {
+	repo := newRepositoryStub()
+	service := channelresults.NewService(repo, nil)
+
+	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
+		MessageVersion: processing.MessageVersionV1,
+		MessageID:      "msg-text-trace-1",
+		CorrelationID:  "exam-100-text-v1",
+		RequestID:      "req-100",
+		TraceParent:    "00-8ec8c1b6409f4a6cb80cfcb4f74aa98c-5d7c1f97db7840b3-01",
+		TraceState:     "tenant=diplom",
+		ExaminationID:  100,
+		Channel:        processing.ChannelText,
+		Attempt:        1,
+		Status:         processing.ResultStatusSucceeded,
+		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
+		ModelVersion:   "text-stub-0.1.0",
+		Payload:        json.RawMessage(`{"summary":"ok"}`),
+	})
+	if err != nil {
+		t.Fatalf("apply successful result: %v", err)
+	}
+	if len(repo.savedResults) != 1 {
+		t.Fatalf("expected persisted normalized result, got %d", len(repo.savedResults))
+	}
+	if got := repo.savedResults[0].BrokerCorrelationID; got != "exam-100-text-v1" {
+		t.Fatalf("expected broker correlation continuity, got %q", got)
+	}
+	if repo.savedResults[0].TraceParent == nil || *repo.savedResults[0].TraceParent == "" {
+		t.Fatal("expected traceparent to survive result receipt")
+	}
+}
+
+func TestResultReceiptWritesAuditEvent(t *testing.T) {
+	repo := newRepositoryStub()
+	auditRepo := &channelAuditRepoStub{}
+	service := channelresults.NewService(repo, nil, audit.NewService(auditRepo))
+
+	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
+		MessageVersion: processing.MessageVersionV1,
+		MessageID:      "msg-text-1",
+		CorrelationID:  "exam-100-text-v1",
+		ExaminationID:  100,
+		Channel:        processing.ChannelText,
+		Attempt:        1,
+		Status:         processing.ResultStatusSucceeded,
+		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
+		ModelVersion:   "text-stub-0.1.0",
+		Payload:        json.RawMessage(`{"summary":"ok"}`),
+	})
+	if err != nil {
+		t.Fatalf("apply result: %v", err)
+	}
+	if len(auditRepo.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeResultReceived {
+		t.Fatalf("expected processing.result_received, got %q", auditRepo.events[0].Type)
+	}
+}
+
 type repositoryStub struct {
 	runs              map[string]channelresults.ChannelRun
 	examinationStatus string
@@ -227,4 +289,17 @@ func deref(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+type channelAuditRepoStub struct {
+	events []audit.Event
+}
+
+func (s *channelAuditRepoStub) Append(_ context.Context, event audit.Event) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
+func (s *channelAuditRepoStub) List(context.Context, audit.ListFilter) ([]audit.Event, error) {
+	return append([]audit.Event(nil), s.events...), nil
 }

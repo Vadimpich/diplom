@@ -46,6 +46,8 @@ export type ExaminationStatus =
   | "processing"
   | "aggregating"
   | "aggregated"
+  | "decision_pending"
+  | "completed"
   | "failed";
 
 export type ProcessingChannelName = "text" | "acoustic" | "paralinguistic";
@@ -140,7 +142,17 @@ export interface QuestionnairesResponse {
 
 export interface HealthResponse {
   status: "ok" | "degraded";
-  database: "up" | "down";
+  service: string;
+}
+
+export interface FrontendDependencyState {
+  core_backend: "up" | "down";
+}
+
+export interface FrontendReadinessResponse {
+  status: "ready" | "degraded";
+  service: "frontend";
+  dependencies: FrontendDependencyState;
 }
 
 export interface ApiErrorShape {
@@ -191,7 +203,7 @@ export interface ExaminationResult {
   aggregation_version: string;
   examination_id: number;
   specialist_id: number;
-  status: Extract<ExaminationStatus, "aggregated" | "aggregating">;
+  status: Extract<ExaminationStatus, "aggregated" | "aggregating" | "decision_pending" | "completed">;
   generated_at: string;
   summary: ResultSummary;
   metrics: ResultMetric[];
@@ -202,6 +214,23 @@ export interface ExaminationResult {
     refreshed_at: string;
     general: ResultBaselineDeviation;
     personal: ResultBaselineDeviation;
+  };
+  decision: {
+    state: "pending" | "succeeded" | "transport_exhausted" | "business_error";
+    recommendation: "unavailable" | "allowed" | "risk" | "denied";
+    message: string;
+    correlation_id: string;
+    attempt_count: number;
+    max_attempts: number;
+    last_attempt_at: string | null;
+    diagnostics: {
+      error_class?: string | null;
+      error_code?: string | null;
+      error_message?: string | null;
+      http_status?: number | null;
+      retryable: boolean;
+    };
+    raw_response_available: boolean;
   };
 }
 

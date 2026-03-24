@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/repository"
+	"diplom/internal/examinations"
+	"diplom/internal/repository"
 )
 
 var (

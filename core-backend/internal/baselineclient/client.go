@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"dimplom/internal/aggregation"
+	"diplom/internal/aggregation"
+	"diplom/internal/observability"
 )
 
 var ErrUnavailable = errors.New("baselineclient: unavailable")
@@ -41,6 +42,16 @@ func (c *Client) Calculate(ctx context.Context, request aggregation.BaselineRequ
 		return aggregation.BaselineResponse{}, err
 	}
 	httpRequest.Header.Set("Content-Type", "application/json")
+	trace := observability.TraceFromContext(ctx)
+	if trace.RequestID != "" {
+		httpRequest.Header.Set("X-Request-Id", trace.RequestID)
+	}
+	if trace.TraceParent != "" {
+		httpRequest.Header.Set("traceparent", trace.TraceParent)
+	}
+	if trace.TraceState != "" {
+		httpRequest.Header.Set("tracestate", trace.TraceState)
+	}
 
 	response, err := c.httpClient.Do(httpRequest)
 	if err != nil {

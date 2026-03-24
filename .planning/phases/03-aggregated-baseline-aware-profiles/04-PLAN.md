@@ -44,8 +44,8 @@ Output: baseline HTTP client, persisted deviations and metadata, and final aggre
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -88,7 +88,7 @@ aggregated terminal success after baseline snapshot persistence
   </behavior>
   <action>Create `internal/baselineclient` as a narrow HTTP adapter with explicit timeout handling and JSON schema validation against the contract from plan 01. Add config fields and env support for baseline base URL, timeout, general reference version, and algorithm version defaults. Wire the client into `internal/app/app.go` so later aggregation logic can call it without reaching into compose or env directly. Keep this client transport-only; baseline state must still be persisted by the aggregation repository, not by the client.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/baselineclient -run 'TestClientSendsBaselineRequest|TestClientHandlesTransportFailure' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/baselineclient -run 'TestClientSendsBaselineRequest|TestClientHandlesTransportFailure' -count=1</automated>
   </verify>
   <done>The core backend has a tested baseline HTTP client and runtime config needed to talk to `ml-services/ml-baseline` safely.</done>
 </task>
@@ -103,7 +103,7 @@ aggregated terminal success after baseline snapshot persistence
   </behavior>
   <action>Extend the aggregation flow from plan 02 so it loads the bounded specialist history and current baseline state, builds the baseline request, calls the Python service, and persists both the examination-level baseline snapshot and the updated specialist baseline state inside PostgreSQL. After that transaction completes, transition the examination to `aggregated` and make `/processing-status` treat `aggregated` as terminal success. Preserve idempotency with the existing unique profile fence and baseline-state versioning, and surface transport or validation failures as controlled technical errors instead of partial success.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/processing -run 'TestAggregationPersistsBaselineSnapshot|TestBaselineMetadataPersistedOnProfile|TestProcessingStatusShowsAggregatedAfterBaseline' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/aggregation ./internal/processing -run 'TestAggregationPersistsBaselineSnapshot|TestBaselineMetadataPersistedOnProfile|TestProcessingStatusShowsAggregatedAfterBaseline' -count=1</automated>
   </verify>
   <done>Core backend now stores baseline-aware aggregated results, updates specialist baseline state safely, and reports `aggregated` as the terminal success status.</done>
 </task>

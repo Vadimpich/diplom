@@ -1,0 +1,1 @@
+This preserves one codebase and one foundation while preventing the same-shell-different-menu anti-pattern called out in Phase 8 context.

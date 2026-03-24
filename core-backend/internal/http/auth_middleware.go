@@ -6,7 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"dimplom/internal/auth"
+	"diplom/internal/audit"
+	"diplom/internal/auth"
 )
 
 type contextKey string
@@ -36,6 +37,13 @@ func AuthMiddleware(tokens auth.TokenManager) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), claimsContextKey, claims)
+			meta := audit.MetadataFromContext(ctx)
+			meta.Actor = audit.Actor{
+				UserID:   &claims.UserID,
+				Login:    claims.Login,
+				RoleSlug: claims.RoleSlug,
+			}
+			ctx = audit.WithMetadata(ctx, meta)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -1,11 +1,13 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"dimplom/internal/auth"
+	"diplom/internal/auth"
+	"diplom/internal/results"
 )
 
 func TestProcessingStatusShowsAggregating(t *testing.T) {
@@ -50,6 +52,61 @@ func TestSpecialistResultHistoryEndpoint(t *testing.T) {
 	}
 }
 
+func TestExaminationResultIncludesDecisionBlock(t *testing.T) {
+	router := NewRouter(Dependencies{
+		AuthTokens: resultsTokenStub{},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/examinations/100/result", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected GET /examinations/{id}/result availability, got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	if !containsAll(body, `"decision"`, `"state":"pending"`, `"recommendation":"unavailable"`, `"correlation_id"`) {
+		t.Fatalf("expected result contract to expose normalized decision block, got %s", body)
+	}
+}
+
+func TestDecisionFailureDiagnostics(t *testing.T) {
+	router := NewRouter(Dependencies{
+		AuthTokens: resultsTokenStub{},
+		Results:    &results.Service{},
+	})
+	router = NewRouter(Dependencies{
+		AuthTokens: resultsTokenStub{},
+		Results:    results.NewService(resultsRepoStubForHTTP{result: results.ExaminationResultResponse{ExaminationID: 100, Status: "completed", Decision: results.DecisionResultView{State: "business_error", Recommendation: "unavailable", Message: "analysis_not_implemented_yet", CorrelationID: "exam-100-kesmi-1", AttemptCount: 1, MaxAttempts: 2, Diagnostics: results.DecisionDiagnosticsView{ErrorClass: stringPtr("business"), ErrorCode: stringPtr("unknown_model"), ErrorMessage: stringPtr("unknown model"), Retryable: false}, RawResponseAvailable: true}}}),
+	})
+	req := httptest.NewRequest(http.MethodGet, "/examinations/100/result", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	if !containsAll(body, `"diagnostics"`, `"error_class"`, `"raw_response_available"`) {
+		t.Fatalf("expected result contract to surface normalized diagnostics fields, got %s", body)
+	}
+}
+
+func TestCompletedResultIncludesPlaceholderDecision(t *testing.T) {
+	router := NewRouter(Dependencies{
+		AuthTokens: resultsTokenStub{},
+		Results:    results.NewService(resultsRepoStubForHTTP{result: results.ExaminationResultResponse{ExaminationID: 100, Status: "completed", Decision: results.DecisionResultView{State: "succeeded", Recommendation: "unavailable", Message: "analysis_not_implemented_yet", CorrelationID: "exam-100-kesmi-1", AttemptCount: 1, MaxAttempts: 2, RawResponseAvailable: true}}}),
+	})
+	req := httptest.NewRequest(http.MethodGet, "/examinations/100/result", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	if !containsAll(body, `"status":"completed"`, `"message":"analysis_not_implemented_yet"`) {
+		t.Fatalf("expected completed result to keep honest placeholder decision semantics, got %s", body)
+	}
+}
+
 func containsAll(body string, fragments ...string) bool {
 	for _, fragment := range fragments {
 		if !contains(body, fragment) {
@@ -88,4 +145,20 @@ func (resultsTokenStub) Parse(string) (auth.Claims, error) {
 		Login:    "operator",
 		RoleSlug: "operator",
 	}, nil
+}
+
+type resultsRepoStubForHTTP struct {
+	result results.ExaminationResultResponse
+}
+
+func (s resultsRepoStubForHTTP) GetExaminationResult(context.Context, int64) (results.ExaminationResultResponse, error) {
+	return s.result, nil
+}
+
+func (s resultsRepoStubForHTTP) GetSpecialistHistory(context.Context, int64) (results.SpecialistHistoryResponse, error) {
+	return results.SpecialistHistoryResponse{}, nil
+}
+
+func stringPtr(value string) *string {
+	return &value
 }

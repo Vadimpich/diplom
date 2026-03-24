@@ -38,8 +38,8 @@ Output: result/history services, HTTP handlers, and route tests for aggregated p
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -81,7 +81,7 @@ GET /specialists/{id}/result-history
   </behavior>
   <action>Create a dedicated `internal/results` package that reads the canonical profile and baseline snapshot persisted in earlier plans and maps them into the DTO locked in `docs/01_contract.md`. Add a dedicated HTTP handler and route for `GET /examinations/{id}/result`. Return only Phase 3 data: normalized metrics, channel contributions, explanation bullets, baseline deviations, algorithm metadata, and timestamps. Do not pull in Phase 4 recommendation or KESMI delivery state.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/results -run 'TestGetExaminationResultEndpoint' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/results -run 'TestGetExaminationResultEndpoint' -count=1</automated>
   </verify>
   <done>The backend exposes one stable examination result DTO backed by persisted aggregated data and rejects unavailable results cleanly.</done>
 </task>
@@ -96,7 +96,7 @@ GET /specialists/{id}/result-history
   </behavior>
   <action>Extend `internal/results` with the specialist-history projection described in `docs/01_contract.md`. Query only aggregated examination profiles for the specialist, order them by examination completion time, and return trend items that include key indicator values, general/personal deviations, explanation summary, and profile metadata. Wire the new route in `router.go` for operator/admin access. Keep the DTO intentionally result-facing and interpretable; do not expose raw channel payload blobs or invent client-side trend formulas.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/results -run 'TestSpecialistResultHistoryEndpoint' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/results -run 'TestSpecialistResultHistoryEndpoint' -count=1</automated>
   </verify>
   <done>The backend now provides specialist result-history dynamics that the frontend can render directly for `RSLT-03`.</done>
 </task>

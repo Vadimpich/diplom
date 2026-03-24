@@ -44,8 +44,8 @@ Output: documented Phase 3 contracts, migration/query skeletons, and failing tes
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -102,7 +102,7 @@ Phase 4 KESMI delivery must not be pulled into this phase
   </behavior>
   <action>Update `docs/01_contract.md` first. Add the canonical aggregated profile schema, baseline request/response envelopes, `GET /examinations/{id}/result`, and `GET /specialists/{id}/result-history`. Expand the Phase 3 examination status vocabulary to `created`, `collecting_answers`, `ready_for_processing`, `processing`, `aggregating`, `aggregated`, and `failed`, and update `GET /examinations/{id}/processing-status` so `terminal=true` means `aggregated` or `failed`, not merely “all channels succeeded.” Keep Phase 4 concerns out: do not add KESMI request/response contracts or final recommendation fields beyond neutral placeholders reserved for later phases. In the same task, add RED tests in Go and Python that pin these contracts without pretending the current stub payloads have final clinical semantics.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation tests/test_algorithms.py::test_outlier_freezes_baseline_update</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistResultHistoryEndpoint' -count=1 && cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation tests/test_algorithms.py::test_outlier_freezes_baseline_update</automated>
   </verify>
   <done>`docs/01_contract.md` becomes the single source of truth for Phase 3 result, history, status, and baseline-service contracts, and the new tests fail only because implementation is not present yet.</done>
 </task>
@@ -112,7 +112,7 @@ Phase 4 KESMI delivery must not be pulled into this phase
   <files>core-backend/migrations/000007_aggregated_profiles.up.sql, core-backend/migrations/000007_aggregated_profiles.down.sql, core-backend/db/queries/aggregation.sql, core-backend/internal/aggregation/contracts.go</files>
   <action>Create the Phase 3 migration for one authoritative aggregated profile per examination plus the supporting data needed for baseline and history. Include tables for the canonical profile row, per-metric snapshots, per-channel contributions, explanation lines, specialist baseline state, and examination-level baseline snapshots. Enforce `UNIQUE (examination_id)` on the aggregated profile table and store `schema_version`, `aggregation_version`, `baseline_algorithm_version`, refresh timestamps, and counted examinations as first-class fields. Add query skeletons for eligibility checks, profile persistence, baseline-state reads/writes, and result-history projections. Create `core-backend/internal/aggregation/contracts.go` to export the stable metric keys, profile structs, and baseline payload structs that later plans implement against.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestSpecialistResultHistoryEndpoint' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/aggregation ./internal/http -run 'TestAggregationStoresVersionedProfile|TestSpecialistResultHistoryEndpoint' -count=1</automated>
   </verify>
   <done>The repo has a durable schema and Go contract types for aggregated profiles, baseline snapshots, and result-history projections without revisiting the contract later.</done>
 </task>

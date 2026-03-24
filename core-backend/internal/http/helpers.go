@@ -9,13 +9,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"dimplom/internal/answers"
-	"dimplom/internal/auth"
-	"dimplom/internal/examinations"
-	"dimplom/internal/processing"
-	"dimplom/internal/questionnaires"
-	"dimplom/internal/repository"
-	"dimplom/internal/specialists"
+	"diplom/internal/answers"
+	"diplom/internal/auth"
+	"diplom/internal/examinations"
+	"diplom/internal/processing"
+	"diplom/internal/questionnaires"
+	"diplom/internal/repository"
+	"diplom/internal/specialists"
 )
 
 type errorResponse struct {

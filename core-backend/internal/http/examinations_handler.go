@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/processing"
+	"diplom/internal/examinations"
+	"diplom/internal/processing"
 )
 
 type ExaminationsHandler struct {

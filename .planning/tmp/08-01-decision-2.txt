@@ -1,0 +1,1 @@
+Shared skeleton, confirmation, and toast primitives are mounted once at app level and must be reused by later contour and CRUD phases.

@@ -10,7 +10,7 @@ Phase 2 should extend the existing Phase 1 finish fence, not replace it. The cur
 
 The highest-risk design mistake is a DB+broker dual write in the finish request. If the examination state commits but queue publishing fails, the system will report `ready_for_processing` while no worker ever receives work. Use a transactional outbox in PostgreSQL, drained by a background publisher that uses RabbitMQ publisher confirms. Create one durable queue per mandatory channel (`text`, `acoustic`, `paralinguistic`), persist one channel-run row per examination/channel, and consume channel results back into core through a dedicated result exchange/queue. ML workers must stay stateless with respect to core data: fetch audio from S3, compute, publish a versioned result or classified error, and never update PostgreSQL directly.
 
-There is one important version-specific constraint in the current repository: [docker-compose.yml](/home/katya/dimplom/docker-compose.yml) pins `rabbitmq:3.13-management-alpine`, while RabbitMQ 4.0+ changed quorum-queue defaults so `delivery-limit` now defaults to `20`. On RabbitMQ 3.13, quorum queues support `delivery-limit`, but there is no default. Phase 2 must therefore either upgrade Compose to RabbitMQ 4.x or explicitly declare/policy-set `delivery-limit` and DLX behavior in 3.13. Do not plan against 4.x defaults unless the stack is upgraded in this phase.
+There is one important version-specific constraint in the current repository: [docker-compose.yml](/home/vadim/diplom/docker-compose.yml) pins `rabbitmq:3.13-management-alpine`, while RabbitMQ 4.0+ changed quorum-queue defaults so `delivery-limit` now defaults to `20`. On RabbitMQ 3.13, quorum queues support `delivery-limit`, but there is no default. Phase 2 must therefore either upgrade Compose to RabbitMQ 4.x or explicitly declare/policy-set `delivery-limit` and DLX behavior in 3.13. Do not plan against 4.x defaults unless the stack is upgraded in this phase.
 
 **Primary recommendation:** Implement Phase 2 as `finish fence -> PostgreSQL outbox + channel_runs -> RabbitMQ per-channel quorum queues -> Python workers -> result queue -> core result consumer -> frontend polling from backend progress DTO`.
 
@@ -57,7 +57,7 @@ There is one important version-specific constraint in the current repository: [d
 
 **Installation:**
 ```bash
-cd /home/katya/dimplom/core-backend
+cd /home/vadim/diplom/core-backend
 go get github.com/rabbitmq/amqp091-go@v1.10.0
 
 # per Python worker service
@@ -66,8 +66,8 @@ pip install fastapi==0.135.1 pydantic==2.12.5 aio-pika==9.6.1 uvicorn==0.42.0
 
 **Version verification:** Before planning tasks, re-check moving versions:
 ```bash
-cd /home/katya/dimplom/core-backend && go list -m -json github.com/rabbitmq/amqp091-go@latest
-cd /home/katya/dimplom/frontend && npm view @tanstack/react-query version && npm view next version
+cd /home/vadim/diplom/core-backend && go list -m -json github.com/rabbitmq/amqp091-go@latest
+cd /home/vadim/diplom/frontend && npm view @tanstack/react-query version && npm view next version
 curl -s https://pypi.org/pypi/fastapi/json | jq -r '.info.version, .releases[.info.version][-1].upload_time_iso_8601'
 curl -s https://pypi.org/pypi/pydantic/json | jq -r '.info.version, .releases[.info.version][-1].upload_time_iso_8601'
 curl -s https://pypi.org/pypi/aio-pika/json | jq -r '.info.version, .releases[.info.version][-1].upload_time_iso_8601'
@@ -247,7 +247,7 @@ const query = useQuery({
 
 ### Pitfall 5: Contract Drift Between Go And Python
 **What goes wrong:** Core publishes one message shape, workers expect another, or result envelopes drift per channel.
-**Why it happens:** Contract changes are made in code without updating [docs/01_contract.md](/home/katya/dimplom/docs/01_contract.md).
+**Why it happens:** Contract changes are made in code without updating [docs/01_contract.md](/home/vadim/diplom/docs/01_contract.md).
 **How to avoid:** Define one versioned command envelope and one versioned result envelope in docs before implementation.
 **Warning signs:** Channel-specific parsers or undocumented optional fields start appearing.
 
@@ -364,22 +364,22 @@ app = FastAPI(lifespan=lifespan)
 |----------|-------|
 | Framework | Go `testing` + `httptest`; frontend static verification today, frontend behavioral test runner missing |
 | Config file | none |
-| Quick run command | `cd /home/katya/dimplom/core-backend && go test ./internal/examinations ./internal/http -count=1` |
-| Full suite command | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build` |
+| Quick run command | `cd /home/vadim/diplom/core-backend && go test ./internal/examinations ./internal/http -count=1` |
+| Full suite command | `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit && npm run build` |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| PIPE-01 | Finish creates versioned outbox tasks with S3 references for all mandatory channels | integration | `cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels' -count=1` | ❌ Wave 0 |
-| PIPE-02 | Each channel result is ingested independently and persisted without waiting for another channel runtime | integration | `cd /home/katya/dimplom/core-backend && go test ./internal/channelresults ./internal/processing -run 'TestIndependentChannelCompletion' -count=1` | ❌ Wave 0 |
-| PIPE-03 | Temporary and fatal failures consume bounded retry budget and persist per-channel error state | unit/integration | `cd /home/katya/dimplom/core-backend && go test ./internal/processing -run 'TestRetryBudget|TestFatalVsTemporaryError' -count=1` | ❌ Wave 0 |
-| PIPE-04 | Exhausted mandatory channel moves examination into final pipeline error state | integration | `cd /home/katya/dimplom/core-backend && go test ./internal/processing ./internal/examinations -run 'TestMandatoryChannelExhaustionFailsExamination' -count=1` | ❌ Wave 0 |
-| RSLT-01 | Processing screen renders backend per-channel progress correctly | manual-only until frontend test runner exists | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ Wave 0 |
-| QUAL-03 | Local container stack starts core, frontend, broker, storage, and worker services together | smoke | `cd /home/katya/dimplom && docker compose up -d --build && docker compose ps` | ⚠️ Partial: compose exists, worker services missing |
+| PIPE-01 | Finish creates versioned outbox tasks with S3 references for all mandatory channels | integration | `cd /home/vadim/diplom/core-backend && go test ./internal/processing ./internal/http -run 'TestFinishCreatesOutboxForMandatoryChannels' -count=1` | ❌ Wave 0 |
+| PIPE-02 | Each channel result is ingested independently and persisted without waiting for another channel runtime | integration | `cd /home/vadim/diplom/core-backend && go test ./internal/channelresults ./internal/processing -run 'TestIndependentChannelCompletion' -count=1` | ❌ Wave 0 |
+| PIPE-03 | Temporary and fatal failures consume bounded retry budget and persist per-channel error state | unit/integration | `cd /home/vadim/diplom/core-backend && go test ./internal/processing -run 'TestRetryBudget|TestFatalVsTemporaryError' -count=1` | ❌ Wave 0 |
+| PIPE-04 | Exhausted mandatory channel moves examination into final pipeline error state | integration | `cd /home/vadim/diplom/core-backend && go test ./internal/processing ./internal/examinations -run 'TestMandatoryChannelExhaustionFailsExamination' -count=1` | ❌ Wave 0 |
+| RSLT-01 | Processing screen renders backend per-channel progress correctly | manual-only until frontend test runner exists | `cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ Wave 0 |
+| QUAL-03 | Local container stack starts core, frontend, broker, storage, and worker services together | smoke | `cd /home/vadim/diplom && docker compose up -d --build && docker compose ps` | ⚠️ Partial: compose exists, worker services missing |
 
 ### Sampling Rate
-- **Per task commit:** `cd /home/katya/dimplom/core-backend && go test ./internal/... -count=1`
-- **Per wave merge:** `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit`
+- **Per task commit:** `cd /home/vadim/diplom/core-backend && go test ./internal/... -count=1`
+- **Per wave merge:** `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit`
 - **Phase gate:** Full suite green plus `docker compose up -d --build` with worker containers healthy before `/gsd:verify-work`
 
 ### Wave 0 Gaps
@@ -392,8 +392,8 @@ app = FastAPI(lifespan=lifespan)
 ## Sources
 
 ### Primary (HIGH confidence)
-- Project docs: [docs/00_project.md](/home/katya/dimplom/docs/00_project.md), [docs/01_contract.md](/home/katya/dimplom/docs/01_contract.md), [docs/02_implementation.md](/home/katya/dimplom/docs/02_implementation.md) - target architecture, contract rules, and current baseline
-- Project planning docs: [.planning/REQUIREMENTS.md](/home/katya/dimplom/.planning/REQUIREMENTS.md), [.planning/ROADMAP.md](/home/katya/dimplom/.planning/ROADMAP.md), [.planning/codebase/ARCHITECTURE.md](/home/katya/dimplom/.planning/codebase/ARCHITECTURE.md) - phase scope and current code structure
+- Project docs: [docs/00_project.md](/home/vadim/diplom/docs/00_project.md), [docs/01_contract.md](/home/vadim/diplom/docs/01_contract.md), [docs/02_implementation.md](/home/vadim/diplom/docs/02_implementation.md) - target architecture, contract rules, and current baseline
+- Project planning docs: [.planning/REQUIREMENTS.md](/home/vadim/diplom/.planning/REQUIREMENTS.md), [.planning/ROADMAP.md](/home/vadim/diplom/.planning/ROADMAP.md), [.planning/codebase/ARCHITECTURE.md](/home/vadim/diplom/.planning/codebase/ARCHITECTURE.md) - phase scope and current code structure
 - RabbitMQ Quorum Queues: https://www.rabbitmq.com/docs/quorum-queues - poison-message handling, `delivery-limit`, prefetch caveats
 - RabbitMQ Confirms: https://www.rabbitmq.com/docs/confirms - publisher confirms semantics and reliability expectations
 - RabbitMQ Dead Letter Exchanges: https://www.rabbitmq.com/docs/dlx - DLX configuration, cycles, safety caveats

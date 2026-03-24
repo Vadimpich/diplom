@@ -10,14 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/processing"
+	"diplom/internal/examinations"
+	"diplom/internal/processing"
 )
 
 var ErrProfileNotReady = errors.New("aggregation: profile not ready")
 
 type BaselineCalculator interface {
 	Calculate(context.Context, BaselineRequest) (BaselineResponse, error)
+}
+
+type DecisionStarter interface {
+	CreatePendingDecision(context.Context, AggregatedProfile) error
 }
 
 type Repository interface {
@@ -29,19 +33,20 @@ type Repository interface {
 }
 
 type Service struct {
-	repo                       Repository
-	baseline                   BaselineCalculator
-	generalReferenceVersion    string
-	baselineAlgorithmVersion   string
-	nowFunc                    func() time.Time
+	repo                     Repository
+	baseline                 BaselineCalculator
+	decision                 DecisionStarter
+	generalReferenceVersion  string
+	baselineAlgorithmVersion string
+	nowFunc                  func() time.Time
 }
 
 type Readiness struct {
-	ExaminationID      int64
-	SpecialistID       int64
-	Status             string
-	ChannelsSucceeded  int
-	AlreadyAggregated  bool
+	ExaminationID     int64
+	SpecialistID      int64
+	Status            string
+	ChannelsSucceeded int
+	AlreadyAggregated bool
 }
 
 type PersistedChannelResult struct {
@@ -65,12 +70,14 @@ type FinalizeInput struct {
 func NewService(
 	repo Repository,
 	baseline BaselineCalculator,
+	decision DecisionStarter,
 	generalReferenceVersion string,
 	baselineAlgorithmVersion string,
 ) *Service {
 	return &Service{
 		repo:                     repo,
 		baseline:                 baseline,
+		decision:                 decision,
 		generalReferenceVersion:  generalReferenceVersion,
 		baselineAlgorithmVersion: baselineAlgorithmVersion,
 		nowFunc:                  func() time.Time { return time.Now().UTC() },
@@ -127,10 +134,16 @@ func (s *Service) TryAggregate(ctx context.Context, examinationID int64) error {
 		return err
 	}
 
-	return s.repo.FinalizeAggregatedProfile(ctx, FinalizeInput{
+	if err := s.repo.FinalizeAggregatedProfile(ctx, FinalizeInput{
 		Profile:  profile,
 		Baseline: response,
-	})
+	}); err != nil {
+		return err
+	}
+	if s.decision != nil {
+		return s.decision.CreatePendingDecision(ctx, profile)
+	}
+	return nil
 }
 
 func (s *Service) buildProfile(readiness Readiness, results []PersistedChannelResult) (AggregatedProfile, error) {

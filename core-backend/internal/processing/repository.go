@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/repository"
+	"diplom/internal/examinations"
+	"diplom/internal/observability"
+	"diplom/internal/repository"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -285,8 +286,9 @@ VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10)
 ON CONFLICT (channel_run_id) DO NOTHING`
 
 	commands := make([]ProcessingCommandEnvelope, 0, len(runs))
+	trace := observability.TraceFromContext(ctx)
 	for _, run := range runs {
-		command := buildCommandEnvelope(bucket, requestedAt, exam, run, answerRefs)
+		command := buildCommandEnvelope(bucket, requestedAt, exam, run, answerRefs, trace)
 		payload, err := json.Marshal(command)
 		if err != nil {
 			return nil, fmt.Errorf("marshal command payload: %w", err)
@@ -318,6 +320,7 @@ func buildCommandEnvelope(
 	exam examinations.Examination,
 	run channelRunRecord,
 	answerRefs []answerReferenceRecord,
+	trace observability.TraceContext,
 ) ProcessingCommandEnvelope {
 	answers := make([]CommandAnswerReference, 0, len(answerRefs))
 	for _, ref := range answerRefs {
@@ -334,6 +337,9 @@ func buildCommandEnvelope(
 		MessageVersion: int(run.MessageVersion),
 		MessageID:      uuid.NewString(),
 		CorrelationID:  fmt.Sprintf("exam-%d-%s-v%d", exam.ID, run.Channel, run.MessageVersion),
+		RequestID:      trace.RequestID,
+		TraceParent:    trace.TraceParent,
+		TraceState:     trace.TraceState,
 		ExaminationID:  exam.ID,
 		SpecialistID:   exam.SpecialistID,
 		Channel:        run.Channel,

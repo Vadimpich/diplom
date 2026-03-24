@@ -45,8 +45,8 @@ Output: typed frontend integration, result/history UI, refreshed validation docs
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -90,7 +90,7 @@ result and specialist-history DTOs from the backend
   <files>frontend/lib/api/types.ts, frontend/lib/api/client.ts, frontend/components/operator/status-badge.tsx</files>
   <action>Extend the shared frontend API types with the Phase 3 result DTOs, specialist result-history DTOs, and the additive `aggregating` / `aggregated` status values from `docs/01_contract.md`. Add typed client methods for `GET /examinations/{id}/result` and `GET /specialists/{id}/result-history`. Update the shared status badge so all contract-visible examination statuses render exhaustively and route logic can distinguish `aggregating` from terminal `aggregated`. Keep backend snake_case field names intact and do not add frontend-only enum aliases.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit</automated>
+    <automated>cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit</automated>
   </verify>
   <done>The frontend boundary knows about the Phase 3 result/history DTOs and all current backend workflow statuses.</done>
 </task>
@@ -100,7 +100,7 @@ result and specialist-history DTOs from the backend
   <files>frontend/app/(app)/operator/examinations/[id]/results/page.tsx, frontend/app/(app)/operator/examinations/[id]/processing/page.tsx, frontend/app/(app)/operator/specialists/[id]/page.tsx, frontend/app/(app)/operator/history/page.tsx</files>
   <action>Replace the placeholder results page with a real TanStack Query view that renders the aggregated profile summary, baseline deviations, channel contributions, and explanation bullets from `GET /examinations/{id}/result`. Extend the specialist detail page and operator history surface to fetch `GET /specialists/{id}/result-history` and show dynamics of key indicators across aggregated examinations. Keep navigation contract-driven: `aggregating` examinations still lead to the processing screen, while `aggregated` examinations lead to the results screen. Update the existing processing page only as needed so it keeps rendering correctly for the additive `aggregating` status and does not prematurely treat it as terminal success. Do not compute baseline or trend math in the browser beyond simple presentation formatting.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit</automated>
+    <automated>cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit</automated>
   </verify>
   <done>The operator UI now shows the real Phase 3 result and history dynamics rather than shells, and both result-navigation and the existing processing screen remain compatible with backend statuses.</done>
 </task>
@@ -110,7 +110,7 @@ result and specialist-history DTOs from the backend
   <files>README.md, .planning/phases/03-aggregated-baseline-aware-profiles/03-VALIDATION.md, docs/02_implementation.md</files>
   <action>After the Phase 3 automated checks pass, update `README.md` with the local run steps and verification commands that include the baseline service and result endpoints. Refresh `03-VALIDATION.md` so the per-task and phase-level verification commands match the shipped files and route names. Append one concise Phase 3 implementation entry to `docs/02_implementation.md` describing the delivered aggregation, baseline, result, and trend capabilities. Keep `docs/02_implementation.md` append-only and do not rewrite prior history.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q && cd /home/katya/dimplom && rg -n 'aggregated|baseline|result-history|/examinations/\\{id\\}/result' README.md .planning/phases/03-aggregated-baseline-aware-profiles/03-VALIDATION.md docs/02_implementation.md</automated>
+    <automated>cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit && cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q && cd /home/vadim/diplom && rg -n 'aggregated|baseline|result-history|/examinations/\\{id\\}/result' README.md .planning/phases/03-aggregated-baseline-aware-profiles/03-VALIDATION.md docs/02_implementation.md</automated>
   </verify>
   <done>Phase 3 has current runbook and validation docs, and the implementation log includes one new append-only entry for the shipped result flow.</done>
 </task>

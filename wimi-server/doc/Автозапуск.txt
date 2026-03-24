@@ -1,0 +1,10 @@
+sudo gedit /usr/local/bin/WiMi/WiMi.run
+	изменить: /usr/local/bin/WiMi/WiMi -e
+
+sudo cp -r /usr/local/bin/WiMi/WiMi.run /usr/sbin/WiMi.run
+
+sudo gedit /usr/sbin/WiMi.run
+	оставить: /usr/local/bin/WiMi/WiMi.run
+
+sudo gedit /etc/rc.local
+	добавить: /usr/sbin/WiMi.run

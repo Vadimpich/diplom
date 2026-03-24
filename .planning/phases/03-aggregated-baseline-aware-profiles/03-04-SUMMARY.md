@@ -12,4 +12,4 @@ commits:
 - Core backend now calls `ml-services/ml-baseline`, persists examination baseline snapshots plus specialist baseline state, and finalizes workflow status as `aggregated`.
 - `processing-status` terminal semantics now align with Phase 3: terminal success means persisted baseline-enriched aggregation, not just channel completion.
 - Verification:
-  - `cd /home/katya/dimplom/core-backend && go test ./internal/baselineclient ./internal/aggregation ./internal/processing -count=1`
+  - `cd /home/vadim/diplom/core-backend && go test ./internal/baselineclient ./internal/aggregation ./internal/processing -count=1`

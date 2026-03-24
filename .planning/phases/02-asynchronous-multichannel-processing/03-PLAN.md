@@ -44,8 +44,8 @@ Output: three minimal Python worker services, Compose wiring, and documented run
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -66,7 +66,7 @@ Output: three minimal Python worker services, Compose wiring, and documented run
   <files>ml-services/ml-text/Dockerfile, ml-services/ml-text/requirements.txt, ml-services/ml-text/app/main.py, ml-services/ml-acoustic/Dockerfile, ml-services/ml-acoustic/requirements.txt, ml-services/ml-acoustic/app/main.py, ml-services/ml-paralinguistic/Dockerfile, ml-services/ml-paralinguistic/requirements.txt, ml-services/ml-paralinguistic/app/main.py</files>
   <action>Create `ml-services/ml-text`, `ml-services/ml-acoustic`, and `ml-services/ml-paralinguistic` services as lightweight FastAPI + `aio-pika` workers with health endpoints and robust RabbitMQ connections. Each service should consume only its own command queue, fetch the referenced audio object from MinIO/S3, emit a stub normalized payload with `model_version`, and classify failures as `temporary_error` or `fatal_error` in the unified result envelope. Keep them stateless and independent; they must not write to PostgreSQL or call other channel services.</action>
   <verify>
-    <automated>cd /home/katya/dimplom && docker compose up -d --build text-worker acoustic-worker paralinguistic-worker && docker compose ps</automated>
+    <automated>cd /home/vadim/diplom && docker compose up -d --build text-worker acoustic-worker paralinguistic-worker && docker compose ps</automated>
   </verify>
   <done>All three mandatory channels have runnable worker containers that consume independently and publish the same result envelope shape.</done>
 </task>
@@ -76,7 +76,7 @@ Output: three minimal Python worker services, Compose wiring, and documented run
   <files>docker-compose.yml, .env.example, docs/01_contract.md</files>
   <action>Extend the root Compose stack with the three worker services, explicit broker/S3 environment variables, and startup dependencies that match the existing self-hosted topology. Update `.env.example` with worker configuration and queue names. Keep `docs/01_contract.md` synchronized with the shipped AMQP topology by confirming or refining exchange names, per-channel queues, routing keys, unified result routing, and explicit RabbitMQ 3.13 retry/DLX assumptions as they land in Compose and worker code. Do not upgrade RabbitMQ in this phase unless the code explicitly requires it; stay on `rabbitmq:3.13-management-alpine` and document the explicit queue assumptions instead.</action>
   <verify>
-    <automated>cd /home/katya/dimplom && docker compose up -d --build && docker compose ps</automated>
+    <automated>cd /home/vadim/diplom && docker compose up -d --build && docker compose ps</automated>
   </verify>
   <done>The local stack starts frontend, core backend, PostgreSQL, RabbitMQ, MinIO, and three mandatory worker services from one Compose file, with `docs/01_contract.md` kept authoritative for shared queue and routing contracts.</done>
 </task>

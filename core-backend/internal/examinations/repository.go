@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	sqlcdb "dimplom/db/sqlc"
-	"dimplom/internal/repository"
+	sqlcdb "diplom/db/sqlc"
+	"diplom/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"

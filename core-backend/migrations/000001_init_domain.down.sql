@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS answers;
+DROP TABLE IF EXISTS examinations;
+DROP TABLE IF EXISTS specialists;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+

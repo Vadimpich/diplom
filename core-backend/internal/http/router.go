@@ -1,38 +1,46 @@
 package http
 
 import (
-	"log"
+	"context"
+	"log/slog"
 	nethttp "net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"dimplom/internal/answers"
-	"dimplom/internal/auth"
-	"dimplom/internal/examinations"
-	"dimplom/internal/postgres"
-	"dimplom/internal/processing"
-	"dimplom/internal/questionnaires"
-	"dimplom/internal/results"
-	"dimplom/internal/specialists"
+	"diplom/internal/answers"
+	"diplom/internal/auth"
+	"diplom/internal/examinations"
+	"diplom/internal/observability"
+	"diplom/internal/postgres"
+	"diplom/internal/processing"
+	"diplom/internal/questionnaires"
+	"diplom/internal/results"
+	"diplom/internal/specialists"
 )
 
 type Dependencies struct {
-	DB             *postgres.Client
-	AuthService    *auth.Service
-	AuthTokens     auth.TokenManager
-	Specialists    *specialists.Service
-	Examinations   *examinations.Service
-	Processing     *processing.Service
-	Results        *results.Service
-	Questionnaires *questionnaires.Service
-	Answers        *answers.Service
-	AllowedOrigins []string
-	MaxUploadSize  int64
+	DB              *postgres.Client
+	AuthService     *auth.Service
+	AuthTokens      auth.TokenManager
+	Specialists     *specialists.Service
+	Examinations    *examinations.Service
+	Processing      *processing.Service
+	Results         *results.Service
+	Questionnaires  *questionnaires.Service
+	Answers         *answers.Service
+	AllowedOrigins  []string
+	MaxUploadSize   int64
+	Logger          *slog.Logger
+	ReadinessChecks map[string]func(context.Context) error
+	Metrics         *observability.MetricsRegistry
 }
 
 func NewRouter(deps Dependencies) nethttp.Handler {
+	if deps.Metrics == nil {
+		deps.Metrics = observability.NewMetricsRegistry()
+	}
 	router := chi.NewRouter()
 
 	router.Use(CORSMiddleware(CORSConfig{
@@ -42,10 +50,12 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	router.Use(middleware.RealIP)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(15 * time.Second))
-	router.Use(requestLogger)
+	router.Use(observability.HTTPMiddlewareWithMetrics(deps.Logger, deps.Metrics))
 
 	handler := Handler{
-		db: deps.DB,
+		db:              deps.DB,
+		readinessChecks: deps.ReadinessChecks,
+		metrics:         deps.Metrics,
 	}
 	authHandler := AuthHandler{service: deps.AuthService}
 	specialistsHandler := SpecialistsHandler{service: deps.Specialists}
@@ -65,6 +75,8 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	}
 
 	router.Get("/health", handler.Health)
+	router.Get("/ready", handler.Ready)
+	router.Get("/metrics", handler.Metrics)
 	router.Post("/auth/login", authHandler.Login)
 	router.Post("/auth/refresh", authHandler.Refresh)
 	router.Post("/auth/logout", authHandler.Logout)
@@ -107,12 +119,4 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	})
 
 	return router
-}
-
-func requestLogger(next nethttp.Handler) nethttp.Handler {
-	return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("http request method=%s path=%s duration=%s", r.Method, r.URL.Path, time.Since(start))
-	})
 }

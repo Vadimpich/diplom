@@ -20,12 +20,15 @@ export default function ExaminationResultsPage() {
   });
 
   const result = resultQuery.data;
+  const decision = result?.decision;
+  const notImplemented =
+    decision?.recommendation === "unavailable" && decision?.message === "analysis_not_implemented_yet";
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={`Результаты обследования #${examinationId}`}
-        description="Канонический aggregated profile и baseline snapshot из `GET /examinations/{id}/result`."
+        description="Phase 4 result DTO из `GET /examinations/{id}/result` для reopened состояний `aggregated`, `decision_pending` и `completed` с decision state и diagnostics."
         action={
           <Button asChild variant="outline">
             <Link href="/operator/history">К истории</Link>
@@ -33,8 +36,58 @@ export default function ExaminationResultsPage() {
         }
       />
       {resultQuery.isError ? <Alert variant="danger">{(resultQuery.error as ApiError).message}</Alert> : null}
-      {result ? (
+      {result && decision ? (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Decision state</CardTitle>
+              <CardDescription>
+                {notImplemented ? "Не реализовано" : decision.message}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-border/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Статус</p>
+                <p className="mt-2 text-lg font-semibold">{result.status}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{decision.state}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Recommendation</p>
+                <p className="mt-2 text-lg font-semibold">Не реализовано</p>
+                <p className="mt-1 text-sm text-muted-foreground">{decision.recommendation}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">correlation_id</p>
+                <p className="mt-2 break-all text-sm font-medium">{decision.correlation_id || "n/a"}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">attempt_count</p>
+                <p className="mt-2 text-lg font-semibold">
+                  {decision.attempt_count}/{decision.max_attempts}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  raw_response_available: {String(decision.raw_response_available)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 p-4 md:col-span-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Последняя попытка</p>
+                <p className="mt-2 text-sm font-medium">
+                  {decision.last_attempt_at ? formatDateTime(decision.last_attempt_at) : "Нет данных"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 p-4 md:col-span-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Diagnostics</p>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>error_class: {decision.diagnostics.error_class ?? "n/a"}</p>
+                  <p>error_code: {decision.diagnostics.error_code ?? "n/a"}</p>
+                  <p>error_message: {decision.diagnostics.error_message ?? "n/a"}</p>
+                  <p>http_status: {decision.diagnostics.http_status ?? "n/a"}</p>
+                  <p>retryable: {String(decision.diagnostics.retryable)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <Card>
               <CardHeader>
@@ -130,10 +183,12 @@ export default function ExaminationResultsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Загрузка результата</CardTitle>
-            <CardDescription>Ожидаем ответ backend.</CardDescription>
+            <CardDescription>Экран обслуживает состояния `aggregated`, `decision_pending` и `completed`; ожидаем актуальный ответ backend.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert variant="warning">Если обследование ещё агрегируется, вернитесь на processing screen и дождитесь статуса `aggregated`.</Alert>
+            <Alert variant="warning">
+              Если обследование ещё в `decision_pending`, доставка решения во внешний decision layer ещё продолжается. Откройте страницу позже или вернитесь в историю.
+            </Alert>
           </CardContent>
         </Card>
       )}

@@ -37,8 +37,8 @@ Output: green stack smoke, updated runbook/docs, and a concise implementation-lo
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -59,7 +59,7 @@ Output: green stack smoke, updated runbook/docs, and a concise implementation-lo
   <files>docker-compose.yml, .env.example, README.md, .planning/phases/02-asynchronous-multichannel-processing/02-VALIDATION.md</files>
   <action>Run and, only if necessary, minimally adjust the runtime docs/config so `docker compose up -d --build` brings up the full async stack cleanly. Update `README.md`, `.env.example`, and `02-VALIDATION.md` to reflect the actual queue, worker, and smoke-test commands produced by Plans 02-05. Keep this plan focused on reproducibility and validation hygiene rather than new feature work.</action>
   <verify>
-    <automated>cd /home/katya/dimplom && docker compose up -d --build && docker compose ps && cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build</automated>
+    <automated>cd /home/vadim/diplom && docker compose up -d --build && docker compose ps && cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit && npm run build</automated>
   </verify>
   <done>A fresh local environment can start the complete Phase 2 stack and pass the documented validation commands.</done>
 </task>
@@ -69,7 +69,7 @@ Output: green stack smoke, updated runbook/docs, and a concise implementation-lo
   <files>docs/02_implementation.md</files>
   <action>Append a short dated entry to `docs/02_implementation.md` summarizing the shipped async pipeline: transactional outbox, channel queues, stub worker services, result ingestion, terminal failure handling, and operator progress polling. Do not rewrite prior history; add only a concise Phase 2 record that matches the implemented code and contract docs.</action>
   <verify>
-    <automated>cd /home/katya/dimplom && rg -n "transactional outbox|channel queues|processing-status|stub worker" docs/02_implementation.md</automated>
+    <automated>cd /home/vadim/diplom && rg -n "transactional outbox|channel queues|processing-status|stub worker" docs/02_implementation.md</automated>
   </verify>
   <done>The implementation log contains an append-only Phase 2 entry describing the shipped async pipeline.</done>
 </task>

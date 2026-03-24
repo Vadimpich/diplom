@@ -1,0 +1,5 @@
+.next
+.next.bak
+node_modules
+npm-debug.log
+pnpm-lock.yaml

@@ -8,6 +8,8 @@ import (
 	"log"
 	"time"
 
+	"diplom/internal/audit"
+	"diplom/internal/observability"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -113,6 +115,15 @@ func (c *ResultsConsumer) handleDelivery(ctx context.Context, delivery amqp.Deli
 		_ = delivery.Ack(false)
 		return err
 	}
+	trace := observability.BuildTraceContext(envelope.RequestID, envelope.TraceParent, envelope.TraceState)
+	ctx = observability.WithTraceContext(ctx, trace)
+	meta := audit.MetadataFromContext(ctx)
+	meta.RequestID = trace.RequestID
+	meta.TraceID = trace.TraceID
+	meta.TraceParent = trace.TraceParent
+	meta.TraceState = trace.TraceState
+	meta.CorrelationID = envelope.CorrelationID
+	ctx = audit.WithMetadata(ctx, meta)
 	if err := c.handler.HandleResult(ctx, envelope); err != nil {
 		_ = delivery.Nack(false, true)
 		return err

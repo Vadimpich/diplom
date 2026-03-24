@@ -78,14 +78,14 @@ The main compatibility risk is status vocabulary. Phase 2 currently treats “al
 
 **Installation:**
 ```bash
-cd /home/katya/dimplom/ml-services/ml-baseline
+cd /home/vadim/diplom/ml-services/ml-baseline
 pip install fastapi==0.135.1 pydantic==2.12.5 numpy==2.4.3 scipy==1.17.1 uvicorn==0.34.0
 ```
 
 **Version verification:**
 ```bash
-cd /home/katya/dimplom/core-backend && go list -m -json github.com/rabbitmq/amqp091-go@latest
-cd /home/katya/dimplom/frontend && npm view @tanstack/react-query version time.modified && npm view next version time.modified
+cd /home/vadim/diplom/core-backend && go list -m -json github.com/rabbitmq/amqp091-go@latest
+cd /home/vadim/diplom/frontend && npm view @tanstack/react-query version time.modified && npm view next version time.modified
 curl -s https://pypi.org/pypi/fastapi/json | jq -r '.info.version, .releases[.info.version][-1].upload_time_iso_8601'
 curl -s https://pypi.org/pypi/pydantic/json | jq -r '.info.version, .releases[.info.version][-1].upload_time_iso_8601'
 curl -s https://pypi.org/pypi/numpy/json | jq -r '.info.version, .releases[.info.version][-1].upload_time_iso_8601'
@@ -118,7 +118,7 @@ frontend/
 **When to use:** Always. Aggregation is workflow orchestration plus stable contract assembly, not ML inference.
 **Example:**
 ```go
-// Source: project pattern derived from /home/katya/dimplom/core-backend/internal/channelresults/service.go
+// Source: project pattern derived from /home/vadim/diplom/core-backend/internal/channelresults/service.go
 func (s *Service) OnChannelResultApplied(ctx context.Context, examinationID int64) error {
 	ready, err := s.repo.IsAggregationReady(ctx, examinationID)
 	if err != nil || !ready {
@@ -388,42 +388,42 @@ func explain(profile AggregatedProfile) []string {
 |----------|-------|
 | Framework | Go stdlib `testing` + `net/http/httptest`; frontend `eslint` + `next build` + `tsc`; Python baseline service `pytest` |
 | Config file | `none` for Go/frontend; `none — see Wave 0` for Python baseline |
-| Quick run command | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/results ./internal/http -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistTrendHistory' -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` |
-| Full suite command | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q` |
+| Quick run command | `cd /home/vadim/diplom/core-backend && go test ./internal/aggregation ./internal/results ./internal/http -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestProcessingStatusShowsAggregating|TestSpecialistTrendHistory' -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit` |
+| Full suite command | `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit && cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q` |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| AGGR-01 | Aggregation does not start until all mandatory channels are `succeeded` | unit/service | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestAggregationReadyOnlyAfterAllChannelsSucceeded -count=1` | ❌ Wave 0 |
-| AGGR-02 | One versioned canonical profile is persisted per examination | unit/repository | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestAggregationStoresVersionedProfile -count=1` | ❌ Wave 0 |
-| AGGR-03 | Stored profile includes per-channel contributions and deterministic explanations | unit/service | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestAggregationIncludesContributionsAndExplanations -count=1` | ❌ Wave 0 |
-| BASE-01 | Baseline response includes general and personal deviation for each canonical metric | unit/Python | `cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation` | ❌ Wave 0 |
-| BASE-02 | Baseline metadata persists refresh time, exam count, and algorithm version | integration | `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run TestBaselineMetadataPersistedOnProfile -count=1` | ❌ Wave 0 |
-| BASE-03 | Outlier exam does not automatically mutate the personal baseline | unit/Python | `cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update` | ❌ Wave 0 |
-| RSLT-03 | Specialist history returns dynamics of key indicators across examinations | HTTP + frontend | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run TestSpecialistTrendHistoryEndpoint -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit` | ❌ Wave 0 |
+| AGGR-01 | Aggregation does not start until all mandatory channels are `succeeded` | unit/service | `cd /home/vadim/diplom/core-backend && go test ./internal/aggregation -run TestAggregationReadyOnlyAfterAllChannelsSucceeded -count=1` | ❌ Wave 0 |
+| AGGR-02 | One versioned canonical profile is persisted per examination | unit/repository | `cd /home/vadim/diplom/core-backend && go test ./internal/aggregation -run TestAggregationStoresVersionedProfile -count=1` | ❌ Wave 0 |
+| AGGR-03 | Stored profile includes per-channel contributions and deterministic explanations | unit/service | `cd /home/vadim/diplom/core-backend && go test ./internal/aggregation -run TestAggregationIncludesContributionsAndExplanations -count=1` | ❌ Wave 0 |
+| BASE-01 | Baseline response includes general and personal deviation for each canonical metric | unit/Python | `cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q tests/test_service.py::test_returns_general_and_personal_deviation` | ❌ Wave 0 |
+| BASE-02 | Baseline metadata persists refresh time, exam count, and algorithm version | integration | `cd /home/vadim/diplom/core-backend && go test ./internal/aggregation -run TestBaselineMetadataPersistedOnProfile -count=1` | ❌ Wave 0 |
+| BASE-03 | Outlier exam does not automatically mutate the personal baseline | unit/Python | `cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q tests/test_algorithms.py::test_outlier_freezes_baseline_update` | ❌ Wave 0 |
+| RSLT-03 | Specialist history returns dynamics of key indicators across examinations | HTTP + frontend | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run TestSpecialistTrendHistoryEndpoint -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit` | ❌ Wave 0 |
 
 ### Sampling Rate
-- **Per task commit:** `cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/http -count=1`
-- **Per wave merge:** `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit`
+- **Per task commit:** `cd /home/vadim/diplom/core-backend && go test ./internal/aggregation ./internal/http -count=1`
+- **Per wave merge:** `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit`
 - **Phase gate:** Full suite green before `/gsd:verify-work`
 
 ### Wave 0 Gaps
-- [ ] `/home/katya/dimplom/core-backend/internal/aggregation/service_test.go` — covers `AGGR-01`, `AGGR-02`, `AGGR-03`
-- [ ] `/home/katya/dimplom/core-backend/internal/http/results_handler_test.go` — covers `RSLT-03`
-- [ ] `/home/katya/dimplom/ml-services/ml-baseline/tests/test_algorithms.py` — covers `BASE-01`, `BASE-03`
-- [ ] `/home/katya/dimplom/ml-services/ml-baseline/tests/test_service.py` — covers baseline contract shape
-- [ ] Framework install: `cd /home/katya/dimplom/ml-services/ml-baseline && pip install pytest`
+- [ ] `/home/vadim/diplom/core-backend/internal/aggregation/service_test.go` — covers `AGGR-01`, `AGGR-02`, `AGGR-03`
+- [ ] `/home/vadim/diplom/core-backend/internal/http/results_handler_test.go` — covers `RSLT-03`
+- [ ] `/home/vadim/diplom/ml-services/ml-baseline/tests/test_algorithms.py` — covers `BASE-01`, `BASE-03`
+- [ ] `/home/vadim/diplom/ml-services/ml-baseline/tests/test_service.py` — covers baseline contract shape
+- [ ] Framework install: `cd /home/vadim/diplom/ml-services/ml-baseline && pip install pytest`
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `/home/katya/dimplom/docs/00_project.md` - target architecture, explicit Aggregator and Baseline Service split
-- `/home/katya/dimplom/docs/01_contract.md` - current Phase 2 HTTP/AMQP contract, status vocabulary, PostgreSQL persistence model
-- `/home/katya/dimplom/docs/02_implementation.md` - shipped Phase 2 implementation facts
-- `/home/katya/dimplom/.planning/REQUIREMENTS.md` - exact requirement text for `AGGR-*`, `BASE-*`, `RSLT-03`
-- `/home/katya/dimplom/.planning/ROADMAP.md` - Phase 3 goal and success criteria
-- `/home/katya/dimplom/core-backend/internal/channelresults/service.go` - current result-ingestion ownership in core
-- `/home/katya/dimplom/core-backend/internal/processing/repository.go` - current finish/status workflow and PostgreSQL truth pattern
+- `/home/vadim/diplom/docs/00_project.md` - target architecture, explicit Aggregator and Baseline Service split
+- `/home/vadim/diplom/docs/01_contract.md` - current Phase 2 HTTP/AMQP contract, status vocabulary, PostgreSQL persistence model
+- `/home/vadim/diplom/docs/02_implementation.md` - shipped Phase 2 implementation facts
+- `/home/vadim/diplom/.planning/REQUIREMENTS.md` - exact requirement text for `AGGR-*`, `BASE-*`, `RSLT-03`
+- `/home/vadim/diplom/.planning/ROADMAP.md` - Phase 3 goal and success criteria
+- `/home/vadim/diplom/core-backend/internal/channelresults/service.go` - current result-ingestion ownership in core
+- `/home/vadim/diplom/core-backend/internal/processing/repository.go` - current finish/status workflow and PostgreSQL truth pattern
 - `https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.median_abs_deviation.html` - robust scale helper
 - `https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mstats.winsorize.html` - winsorization helper
 - `https://numpy.org/doc/stable/reference/generated/numpy.percentile.html` - percentile banding helper

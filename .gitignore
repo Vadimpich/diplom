@@ -1,2 +1,24 @@
 __pycache__/
 .pytest_cache/
+.DS_Store
+
+# Editor and local tooling metadata
+.idea/
+.codex/
+
+# Python caches anywhere in the repo
+**/__pycache__/
+**/.pytest_cache/
+
+# Frontend generated artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# Common local env files
+.env
+.env.local
+.env.*.local
+
+# Local virtual environments
+.venv/

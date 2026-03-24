@@ -35,6 +35,9 @@ type ProcessingCommandEnvelope struct {
 	MessageVersion int                      `json:"message_version"`
 	MessageID      string                   `json:"message_id"`
 	CorrelationID  string                   `json:"correlation_id"`
+	RequestID      string                   `json:"request_id,omitempty"`
+	TraceParent    string                   `json:"traceparent,omitempty"`
+	TraceState     string                   `json:"tracestate,omitempty"`
 	ExaminationID  int64                    `json:"examination_id"`
 	SpecialistID   int64                    `json:"specialist_id"`
 	Channel        string                   `json:"channel"`
@@ -48,6 +51,9 @@ type ChannelResultEnvelope struct {
 	MessageVersion int             `json:"message_version"`
 	MessageID      string          `json:"message_id"`
 	CorrelationID  string          `json:"correlation_id"`
+	RequestID      string          `json:"request_id,omitempty"`
+	TraceParent    string          `json:"traceparent,omitempty"`
+	TraceState     string          `json:"tracestate,omitempty"`
 	ExaminationID  int64           `json:"examination_id"`
 	Channel        string          `json:"channel"`
 	Attempt        int32           `json:"attempt"`

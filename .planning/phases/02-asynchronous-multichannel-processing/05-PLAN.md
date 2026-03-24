@@ -38,8 +38,8 @@ Output: typed API client support and a polling processing page that renders back
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -75,7 +75,7 @@ getExaminationProcessingStatus(id: number)
   <files>docs/01_contract.md, frontend/lib/api/types.ts, frontend/lib/api/client.ts</files>
   <action>Extend `frontend/lib/api/types.ts` with the dedicated processing-status DTO from `docs/01_contract.md`, including overall pipeline fields and the per-channel entries. In the same task, align the generic `Examination.status` union with the Phase 2 contract decision so `processing` and `failed` are valid typed values for existing list/detail consumers. Add one typed client method in `frontend/lib/api/client.ts` for `GET /examinations/{id}/processing-status`. Keep snake_case fields aligned with backend JSON and avoid introducing frontend-only enum aliases that could drift from the contract.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit</automated>
+    <automated>cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit</automated>
   </verify>
   <done>Frontend can request the processing-status endpoint through the shared typed API boundary, and existing typed examination consumers accept `processing` / `failed` without contract drift.</done>
 </task>
@@ -85,7 +85,7 @@ getExaminationProcessingStatus(id: number)
   <files>frontend/app/(app)/operator/examinations/[id]/processing/page.tsx, frontend/app/(app)/operator/history/page.tsx, frontend/components/operator/status-badge.tsx</files>
   <action>Replace the placeholder processing page with TanStack Query polling against the new progress endpoint. Render overall pipeline status plus one card/row each for `text`, `acoustic`, and `paralinguistic`, including attempt counters and last error text when present. Poll every few seconds until `is_terminal` is true, then stop. Reuse and extend the existing badge/history rendering so any generic examination payloads carrying `processing` or `failed` still render correctly in operator history and related shared status UI. Do not derive optimistic progress in the browser.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit && npm run build</automated>
+    <automated>cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit && npm run build</automated>
   </verify>
   <done>The operator processing page shows real per-channel progress from backend polling and stops polling on terminal completion or error, while shared status UI remains compatible with Phase 2 examination statuses.</done>
 </task>

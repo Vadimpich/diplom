@@ -22,7 +22,7 @@ func TestOutboxRelayPublishesPendingMessages(t *testing.T) {
 		Answers: []CommandAnswerReference{{
 			AnswerID:      1,
 			QuestionID:    10,
-			AudioS3Bucket: "dimplom-audio",
+			AudioS3Bucket: "diplom-audio",
 			AudioS3Key:    "examinations/100/answers/1/audio.webm",
 			AnswerText:    "Ответ",
 		}},
@@ -187,6 +187,63 @@ func TestFatalVsTemporaryError(t *testing.T) {
 	}
 	if repo.failed[0].Status != outboxStatusFailed {
 		t.Fatalf("expected fatal error to fail row immediately, got %s", repo.failed[0].Status)
+	}
+}
+
+func TestPublisherPreservesTraceContext(t *testing.T) {
+	command := ProcessingCommandEnvelope{
+		MessageVersion: MessageVersionV1,
+		MessageID:      "msg-text-trace-1",
+		CorrelationID:  "exam-100-text-v1",
+		RequestID:      "req-100",
+		TraceParent:    "00-8ec8c1b6409f4a6cb80cfcb4f74aa98c-5d7c1f97db7840b3-01",
+		TraceState:     "tenant=diplom",
+		ExaminationID:  100,
+		SpecialistID:   10,
+		Channel:        ChannelText,
+		Attempt:        1,
+		MaxAttempts:    3,
+		RequestedAt:    time.Unix(1_742_550_000, 0).UTC(),
+	}
+	payload, err := json.Marshal(command)
+	if err != nil {
+		t.Fatalf("marshal command: %v", err)
+	}
+
+	repo := &relayRepositoryStub{
+		pending: []OutboxMessage{{
+			ID:                4,
+			ExaminationID:     100,
+			ChannelRunID:      203,
+			Channel:           ChannelText,
+			ExchangeName:      commandsExchange,
+			RoutingKey:        "processing.command.text",
+			AttemptCount:      0,
+			MaxAttempts:       3,
+			MessageVersion:    MessageVersionV1,
+			Payload:           payload,
+			BrokerCorrelation: command.CorrelationID,
+		}},
+	}
+	session := &sessionStub{confirm: true}
+	relay := NewRelay(repo, RelayConfig{PollInterval: time.Second, MaxAttempts: 3})
+
+	if err := relay.PublishPending(context.Background(), session); err != nil {
+		t.Fatalf("publish pending: %v", err)
+	}
+	if len(session.published) != 1 {
+		t.Fatalf("expected one publish, got %d", len(session.published))
+	}
+
+	published := ProcessingCommandEnvelope{}
+	if err := json.Unmarshal(session.published[0].body, &published); err != nil {
+		t.Fatalf("unmarshal published payload: %v", err)
+	}
+	if published.RequestID != command.RequestID {
+		t.Fatalf("expected request_id propagation, got %q", published.RequestID)
+	}
+	if published.TraceParent != command.TraceParent || published.TraceState != command.TraceState {
+		t.Fatalf("expected trace context propagation, got traceparent=%q tracestate=%q", published.TraceParent, published.TraceState)
 	}
 }
 

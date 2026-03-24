@@ -4,50 +4,305 @@
 
 ### Examination status vocabulary
 
-Единый статусный словарь обследования на Phase 3:
+Единый статусный словарь обследования на Phase 4:
 
 - `created` — обследование создано, но оператор ещё не начал сбор ответов;
 - `collecting_answers` — идёт запись и загрузка ответов;
 - `ready_for_processing` — ответы собраны и обследование готово к асинхронной обработке;
 - `processing` — core backend ожидает результаты обязательных каналов `text`, `acoustic`, `paralinguistic`;
 - `aggregating` — все обязательные каналы успешно завершились, core backend формирует канонический агрегированный профиль и обогащает его baseline-данными;
-- `aggregated` — агрегированный профиль и baseline snapshot успешно сохранены, это terminal success для Phase 3;
+- `aggregated` — агрегированный профиль и baseline snapshot успешно сохранены, но доставка решения во внешний decision layer ещё не завершена;
+- `decision_pending` — decision snapshot уже зафиксирован в PostgreSQL и ожидает первой или повторной доставки во внешний decision engine;
+- `completed` — decision delivery завершён terminal outcome, а оператор видит нормализованный `decision_result`, даже если recommendation пока недоступна;
 - `failed` — хотя бы один обязательный канал или post-processing этап завершился terminal failure.
 
 Правила:
 - PostgreSQL остаётся source of truth для coarse workflow status;
-- `terminal=true` в `GET /examinations/{id}/processing-status` означает только `aggregated` или `failed`;
+- `terminal=true` в `GET /examinations/{id}/processing-status` означает только `completed` или `failed`;
 - факт успешного завершения всех каналов сам по себе больше не означает terminal success;
-- Phase 4 статусы и поля доставки в КЭСМИ в этот контракт не включаются.
+- Phase 4 decision delivery не раскрывает raw WiMi payload наружу; operator-facing API получает только нормализованные backend-owned DTO.
 
 ### GET /health
 
 Назначение:
-- технический health-check core backend;
-- проверка доступности HTTP-сервиса и PostgreSQL.
+- cheap liveness-check core backend;
+- проверка только того, что HTTP-процесс жив и способен отвечать.
 
 Ответ `200 OK`:
 
 ```json
 {
   "status": "ok",
-  "database": "up"
-}
-```
-
-Ответ `503 Service Unavailable`:
-
-```json
-{
-  "status": "degraded",
-  "database": "down"
+  "service": "core-backend"
 }
 ```
 
 Технические детали:
 - `Content-Type: application/json`;
 - endpoint без аутентификации;
-- проверяется только PostgreSQL, без RabbitMQ, MinIO и ML.
+- endpoint не должен делать dependency fan-in;
+- проверка PostgreSQL, RabbitMQ, MinIO, baseline и WiMi вынесена в `GET /ready`;
+- Prometheus exposition вынесена в `GET /metrics`.
+
+## Operational Trustworthiness Contract
+
+### audit_event
+
+Назначение:
+- append-only audit trail для критичных действий и source-of-truth переходов;
+- единая схема для auth, admin mutations, workflow переходов и decision delivery.
+
+Контракт:
+
+```json
+{
+  "id": 901,
+  "event_type": "processing.launch",
+  "event_key": "processing-launch:examination:101",
+  "outcome": "succeeded",
+  "happened_at": "2026-03-23T18:10:12Z",
+  "request_id": "req-4b09d7d9b1b8",
+  "trace_id": "8ec8c1b6409f4a6cb80cfcb4f74aa98c",
+  "traceparent": "00-8ec8c1b6409f4a6cb80cfcb4f74aa98c-5d7c1f97db7840b3-01",
+  "correlation_id": "exam-101-text-v1",
+  "actor": {
+    "user_id": 1,
+    "login": "operator",
+    "role_slug": "operator",
+    "ip": "127.0.0.1",
+    "user_agent": "Mozilla/5.0"
+  },
+  "resource": {
+    "kind": "examination",
+    "id": 101
+  },
+  "domain_refs": {
+    "specialist_id": 55,
+    "questionnaire_id": 7,
+    "channel": "text",
+    "decision_snapshot_id": 44
+  },
+  "payload": {
+    "status_from": "ready_for_processing",
+    "status_to": "processing"
+  }
+}
+```
+
+Поля:
+- `event_type`: стабильный namespaced тип события;
+- `event_key`: optional stable deduplication key для идемпотентных transition fences;
+- `outcome`: одно из `succeeded`, `failed`, `rejected`;
+- `request_id`: request-local идентификатор HTTP boundary;
+- `trace_id`: canonical distributed trace identifier;
+- `traceparent`: transport-safe W3C trace context, если событие пришло из traced path;
+- `correlation_id`: business/debug correlation, уже используемый в processing и decision flow;
+- `actor`: nullable для system-originated событий;
+- `resource.kind`: одно из `auth_session`, `user`, `questionnaire`, `examination`, `channel_result`, `decision_snapshot`;
+- `domain_refs`: domain-specific координаты без raw payload leakage;
+- `payload`: low-sensitivity JSON для transition facts и diagnostics, без аудио, access tokens и stack trace.
+
+Обязательные `event_type` для Phase 5:
+- `auth.login`
+- `auth.login_failed`
+- `admin.user_created`
+- `admin.user_updated`
+- `admin.questionnaire_created`
+- `admin.questionnaire_updated`
+- `examination.created`
+- `examination.started`
+- `examination.finished`
+- `processing.launch`
+- `processing.result_received`
+- `aggregation.completed`
+- `decision.completed`
+- `decision.failed`
+
+Правила:
+- audit storage append-only; update/delete audit rows запрещены;
+- событие должно писаться из source-of-truth backend boundary, а не из frontend, worker-а или raw log sink;
+- для fenced idempotent transitions допустим ровно один semantic audit event на один `event_key`;
+- failed login обязан попадать в audit trail даже без успешной доменной транзакции;
+- raw credentials, refresh tokens, raw WiMi payload и raw channel payload в `payload` запрещены.
+
+### Runtime health, readiness, metrics
+
+Общие правила:
+- `GET /health` отвечает только за cheap liveness конкретного процесса;
+- `GET /ready` проверяет зависимости, без которых сервис не может безопасно принимать traffic/work;
+- `GET /metrics` отдаёт Prometheus exposition format;
+- health/readiness endpoints не требуют аутентификации;
+- label values в метриках должны быть низкокардинальными: status, route template, channel, dependency, outcome, service.
+- examination IDs, specialist IDs, user IDs, `correlation_id`, `request_id`, `trace_id` и free-form error text в labels запрещены.
+
+#### core-backend
+
+`GET /health`
+
+```json
+{
+  "status": "ok",
+  "service": "core-backend"
+}
+```
+
+Правила:
+- endpoint не делает dependency fan-in;
+- допускается только in-process sanity check.
+
+`GET /ready`
+
+```json
+{
+  "status": "ready",
+  "service": "core-backend",
+  "dependencies": {
+    "postgres": "up",
+    "rabbitmq": "up",
+    "minio": "up",
+    "baseline": "up",
+    "kesmi": "up"
+  }
+}
+```
+
+Правила:
+- `503 Service Unavailable`, если хотя бы одна dependency из shipped workflow недоступна;
+- readiness учитывает `postgres`, `rabbitmq`, `minio`, `ml-baseline`, `wimi`;
+- `/health` и `/ready` не должны менять состояние системы.
+
+`GET /metrics`
+
+Пример обязательных metric families:
+- `diplom_http_requests_total{route,method,status_class}`
+- `diplom_http_request_duration_seconds_bucket{route,method}`
+- `diplom_processing_messages_total{channel,status}`
+- `diplom_decision_attempts_total{outcome}`
+- `diplom_dependency_up{dependency}`
+
+#### frontend
+
+`GET /api/health`
+
+```json
+{
+  "status": "ok",
+  "service": "frontend"
+}
+```
+
+`GET /api/ready`
+
+```json
+{
+  "status": "ready",
+  "service": "frontend",
+  "dependencies": {
+    "core_backend": "up"
+  }
+}
+```
+
+`GET /api/metrics`
+
+Пример metric families:
+- `diplom_frontend_requests_total{route,method,status_class}`
+- `diplom_frontend_request_duration_seconds_bucket{route,method}`
+- `diplom_frontend_dependency_up{dependency}`
+
+Правила:
+- frontend readiness зависит только от достижимости `core-backend`, а не от PostgreSQL/RabbitMQ напрямую.
+
+#### text-worker / acoustic-worker / paralinguistic-worker
+
+`GET /health`
+
+```json
+{
+  "status": "ok",
+  "service": "text-worker",
+  "channel": "text"
+}
+```
+
+`GET /ready`
+
+```json
+{
+  "status": "ready",
+  "service": "text-worker",
+  "channel": "text",
+  "dependencies": {
+    "rabbitmq": "up",
+    "minio": "up"
+  }
+}
+```
+
+`GET /metrics`
+
+Пример metric families:
+- `diplom_worker_messages_total{channel,status}`
+- `diplom_worker_message_duration_seconds_bucket{channel,status}`
+- `diplom_worker_dependency_up{channel,dependency}`
+
+Правила:
+- worker readiness degraded, если consumer не готов, RabbitMQ недоступен или MinIO недоступен;
+- `/health` может оставаться `200` во время reconnect loop, если процесс жив;
+- worker logs обязаны включать `channel`, `correlation_id`, `request_id` и `trace_id`, когда они доступны.
+
+#### ml-baseline
+
+`GET /health`
+
+```json
+{
+  "status": "ok",
+  "service": "ml-baseline"
+}
+```
+
+`GET /ready`
+
+```json
+{
+  "status": "ready",
+  "service": "ml-baseline"
+}
+```
+
+`GET /metrics`
+
+Пример metric families:
+- `diplom_baseline_requests_total{route,method,status_class}`
+- `diplom_baseline_request_duration_seconds_bucket{route,method}`
+
+Правила:
+- `ml-baseline` не invent-ит PostgreSQL или RabbitMQ dependency checks;
+- readiness зависит только от собственного process/runtime health и возможности обрабатывать HTTP requests.
+
+### Correlation and trace propagation
+
+Общие правила:
+- `correlation_id` сохраняется как business/debug identifier и не заменяется trace IDs;
+- canonical distributed trace transport: W3C `traceparent`, optional `tracestate`;
+- каждый inbound HTTP request в `core-backend` получает `request_id` и trace context;
+- если клиент не прислал `traceparent`, `core-backend` генерирует новый trace;
+- audit events, structured logs и outbound calls используют один и тот же `request_id`/`trace_id` pair для текущего request path.
+
+HTTP:
+- inbound: `traceparent`, `tracestate`, `X-Request-Id` принимаются и нормализуются;
+- outbound from `core-backend`: `traceparent`, optional `tracestate`, `X-Request-Id`, `X-Correlation-Id` отправляются в `ml-baseline` и WiMi.
+
+RabbitMQ processing envelopes:
+- `ProcessingCommandEnvelope` и `ChannelResultEnvelope` расширяются полями `request_id`, `traceparent`, optional `tracestate`;
+- RabbitMQ message properties должны дублировать `message_id`/`correlation_id` и carry trace context, чтобы worker мог восстановить trace even if payload logger is incomplete;
+- workers обязаны сохранять пришедший `correlation_id`, продолжать `traceparent` и возвращать те же correlation fields в result envelope.
+
+KESMI / WiMi boundary:
+- `core-backend` остаётся единственным caller WiMi;
+- outbound WiMi request обязан нести `traceparent` и `X-Correlation-Id`;
+- raw WiMi response не становится trace carrier для внешнего frontend API.
 
 ## Auth API
 
@@ -182,7 +437,7 @@ Endpoints:
 - `GET /api/auth/session` -> возвращает текущего пользователя, при необходимости обновляя access token через refresh cookie.
 
 Технические правила:
-- `dimplom_refresh_token` хранится только как `HttpOnly` cookie и не должен читаться браузерным JavaScript;
+- `diplom_refresh_token` хранится только как `HttpOnly` cookie и не должен читаться браузерным JavaScript;
 - BFF может выставлять вспомогательные cookies для переходного UI-слоя, но transport refresh-session остаётся централизованным в `/api/auth/*`;
 - frontend-клиент не должен писать auth cookies через `document.cookie`.
 - protected layouts и route guards должны опираться на `/api/auth/session` как на авторитетный источник session/role state; role-cookie допустим только как UX hint для первичного redirect.
@@ -304,7 +559,7 @@ Endpoints:
 Назначение:
 - вернуть один канонический агрегированный профиль обследования;
 - предоставить frontend и следующим фазам стабильный контракт, не зависящий от raw channel payload;
-- быть единственным HTTP-источником итогового результата на Phase 3.
+- быть единственным HTTP-источником итогового результата на Phase 4, включая decision projection.
 
 Аутентификация:
 - `Authorization: Bearer <jwt>`.
@@ -320,7 +575,7 @@ Endpoints:
   "aggregation_version": "agg-v1",
   "examination_id": 101,
   "specialist_id": 55,
-  "status": "aggregated",
+  "status": "completed",
   "generated_at": "2026-03-22T10:02:10Z",
   "summary": {
     "overall_score": 0.58,
@@ -369,6 +624,23 @@ Endpoints:
       "baseline_exam_count": 4,
       "update_eligible": false
     }
+  },
+  "decision": {
+    "state": "succeeded",
+    "recommendation": "unavailable",
+    "message": "analysis_not_implemented_yet",
+    "correlation_id": "exam-101-kesmi-1",
+    "attempt_count": 1,
+    "max_attempts": 2,
+    "last_attempt_at": "2026-03-22T10:02:11Z",
+    "diagnostics": {
+      "error_class": null,
+      "error_code": null,
+      "error_message": null,
+      "http_status": 200,
+      "retryable": false
+    },
+    "raw_response_available": true
   }
 }
 ```
@@ -378,7 +650,12 @@ Endpoints:
 - контракт versioned через `schema_version`, а реализация агрегации versioned через `aggregation_version`;
 - названия метрик должны быть нейтральными и proxy-oriented до появления финальной ML-семантики;
 - поле `neutral_recommendation_placeholder` резервирует место под future decision delivery, но не содержит KЭСМИ контракта и не заменяет финальную рекомендацию;
-- raw payload stub-воркеров не является частью бизнес-контракта и наружу не отдаётся.
+- `status` для этого endpoint допускает `aggregated`, `decision_pending`, `completed`;
+- поле `decision` принадлежит backend domain и не совпадает с raw WiMi contract;
+- recommendation до появления финальной модели фиксируется как `unavailable`, а `message` фиксируется как `analysis_not_implemented_yet`;
+- при terminal transport-провале backend возвращает `decision.state="transport_exhausted"`;
+- при terminal business-провале backend возвращает `decision.state="business_error"`;
+- raw payload stub-воркеров и raw WiMi payload не являются частью business-контракта и наружу не отдаётся, кроме признака `raw_response_available`.
 
 Ошибки:
 - `401 Unauthorized` если токен отсутствует или невалиден;
@@ -443,6 +720,115 @@ Endpoints:
 - `404 Not Found` если специалист не существует.
 
 ## Baseline Service Contract
+
+## Decision Delivery Contract
+
+### decision_input
+
+Назначение:
+- зафиксировать backend-owned payload, который строится из канонического aggregated profile перед доставкой в WiMi;
+- отделить внутренний доменный контракт проекта от raw `POST /ModelCalc` payload.
+
+Контракт:
+
+```json
+{
+  "schema_version": 1,
+  "payload_version": "decision-input-v1",
+  "aggregation_version": "agg-v1",
+  "examination_id": 101,
+  "specialist_id": 55,
+  "generated_at": "2026-03-22T10:02:10Z",
+  "summary": {
+    "overall_score": 0.58,
+    "overall_band": "elevated",
+    "primary_metric_key": "overall_proxy_index"
+  },
+  "metrics": [
+    {
+      "key": "overall_proxy_index",
+      "label": "Сводный прокси-индекс",
+      "value": 0.58,
+      "scale": "0..1",
+      "direction": "higher_means_more_deviation"
+    }
+  ],
+  "channel_contributions": [
+    {
+      "channel": "text",
+      "metric_key": "overall_proxy_index",
+      "weight": 0.33,
+      "contribution": 0.17,
+      "evidence_keys": [
+        "text_proxy_signal"
+      ]
+    }
+  ],
+  "baseline_snapshot": {
+    "algorithm_version": "baseline-v1",
+    "general": {
+      "delta": 0.21,
+      "band": "mild"
+    },
+    "personal": {
+      "delta": 0.37,
+      "band": "moderate",
+      "baseline_exam_count": 4,
+      "update_eligible": false
+    }
+  },
+  "service_metadata": {
+    "target_system": "kesmi",
+    "delivery_mode": "placeholder",
+    "message": "analysis_not_implemented_yet"
+  }
+}
+```
+
+Правила:
+- `decision_input` строится только из backend-owned aggregated profile и baseline snapshot;
+- payload versioned через `payload_version`;
+- список полей в `decision_input` стабилизируется раньше, чем появятся реальные WiMi model parameters;
+- последующий mapping `decision_input -> incommingParameters` живёт в integration layer и не меняет operator-facing contract.
+
+### decision_result
+
+Назначение:
+- нормализовать итог decision delivery для frontend и operator workflow;
+- скрыть raw WiMi response и оставить только backend-owned terminal semantics.
+
+Контракт:
+
+```json
+{
+  "state": "pending",
+  "recommendation": "unavailable",
+  "message": "analysis_not_implemented_yet",
+  "correlation_id": "exam-101-kesmi-1",
+  "attempt_count": 1,
+  "max_attempts": 2,
+  "last_attempt_at": "2026-03-22T10:02:11Z",
+  "diagnostics": {
+    "error_class": "transport",
+    "error_code": "pool_busy",
+    "error_message": "model pool is busy",
+    "http_status": 503,
+    "retryable": true
+  },
+  "raw_response_available": false
+}
+```
+
+Допустимые значения:
+- `state`: `pending`, `succeeded`, `transport_exhausted`, `business_error`;
+- `recommendation`: `unavailable`, `allowed`, `risk`, `denied`.
+
+Правила:
+- `pending` отражает `decision_pending` в coarse workflow и не является terminal operator outcome;
+- `succeeded`, `transport_exhausted` и `business_error` проецируются только при `examinations.status='completed'`;
+- `diagnostics` допускает transport и business metadata, но не делает raw external payload частью API;
+- `correlation_id` должен сохраняться на каждом attempt и возвращаться оператору для трассировки;
+- `raw_response_available=true` означает, что backend сохранил raw response в internal persistence, но не раскрывает его через public API.
 
 Phase 3 baseline остаётся отдельным Python compute-only service boundary.
 
@@ -1065,7 +1451,7 @@ Worker runtime env:
     {
       "answer_id": 500,
       "question_id": 9001,
-      "audio_s3_bucket": "dimplom-audio",
+      "audio_s3_bucket": "diplom-audio",
       "audio_s3_key": "examinations/100/answers/500/audio.webm",
       "answer_text": "Ответ обследуемого"
     }
@@ -1499,12 +1885,16 @@ Migrations bootstrap:
 - `collecting_answers`
 - `ready_for_processing`
 - `processing`
+- `aggregating`
+- `aggregated`
+- `decision_pending`
+- `completed`
 - `failed`
 
 Правила модели статусов:
-- `processing` и `failed` используются как coarse-grained examination runtime states в основном объекте `Examination`;
+- `processing`, `aggregating`, `aggregated`, `decision_pending`, `completed` и `failed` используются как coarse-grained examination runtime states в основном объекте `Examination`;
 - детальный прогресс по каналам, попыткам и ошибкам публикуется только через `GET /examinations/{id}/processing-status`;
-- статусы `waiting_results`, `aggregating`, `decision_pending`, `completed` остаются вне контракта текущего этапа.
+- `completed` означает terminal projection decision delivery, а детализация результата должна читаться через `GET /examinations/{id}/result`.
 
 ## Frontend runtime configuration
 
@@ -1518,3 +1908,20 @@ Migrations bootstrap:
 
 - Внешний порт публикации frontend в локальном Docker Compose.
 - Значение по умолчанию: `3000`.
+
+## KESMI Runtime Contract
+
+Phase 4 runtime использует обязательный internal-only compose service `wimi`.
+
+Обязательные env-переменные backend:
+
+- `KESMI_BASE_URL=http://wimi:8081`
+- `KESMI_MODEL_ID=stub-decision-model`
+- `KESMI_TIMEOUT_MS=1000ms`
+- `KESMI_MAX_RETRIES=2`
+- `KESMI_RETRY_BACKOFF_MS=500ms`
+
+Правила:
+- WiMi не должен публиковаться наружу через host-port и не требует `WIMI_HOST_PORT`;
+- только `core-backend` обращается к WiMi;
+- smoke-проверка runtime выполняется изнутри compose-сети через `docker compose exec core-backend ... http://wimi:8081/Models`.

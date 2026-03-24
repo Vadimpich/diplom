@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/repository"
+	"diplom/internal/examinations"
+	"diplom/internal/repository"
 )
 
 func TestCreateAnswerPersistsQuestionLink(t *testing.T) {

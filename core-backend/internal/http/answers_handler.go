@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"dimplom/internal/answers"
+	"diplom/internal/answers"
 )
 
 type AnswersHandler struct {

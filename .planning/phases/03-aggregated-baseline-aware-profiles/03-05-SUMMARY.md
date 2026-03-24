@@ -12,4 +12,4 @@ commits:
 - Result/history DTOs now read persisted aggregated snapshots instead of recomputing from raw worker payloads.
 - Router wiring exposes the new endpoints to `operator` and `admin` roles.
 - Verification:
-  - `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/results -run 'TestSpecialistResultHistoryEndpoint' -count=1`
+  - `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/results -run 'TestSpecialistResultHistoryEndpoint' -count=1`

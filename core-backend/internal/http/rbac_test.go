@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"dimplom/internal/auth"
+	"diplom/internal/auth"
 )
 
 func TestRequireRoles(t *testing.T) {

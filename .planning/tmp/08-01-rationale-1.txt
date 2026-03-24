@@ -1,0 +1,1 @@
+Research and approved UI-SPEC limited Phase 8 to shell/primitives/redirect scope, so foundation work must stay token-first on the existing stack.

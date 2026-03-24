@@ -1,0 +1,1 @@
+This prevents page-local feedback drift and makes Phase 8 foundation materially reusable for Phases 9-11.

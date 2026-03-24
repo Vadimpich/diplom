@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/examinations"
-	"dimplom/internal/processing"
+	"diplom/internal/examinations"
+	"diplom/internal/processing"
 )
 
 func TestAggregationReadyOnlyAfterAllChannelsSucceeded(t *testing.T) {
@@ -19,7 +19,7 @@ func TestAggregationReadyOnlyAfterAllChannelsSucceeded(t *testing.T) {
 			ChannelsSucceeded: 2,
 		},
 	}
-	service := NewService(repo, nil, "general-v1", BaselineAlgorithmVersion)
+	service := NewService(repo, nil, nil, "general-v1", BaselineAlgorithmVersion)
 
 	if err := service.TryAggregate(context.Background(), 101); err != nil {
 		t.Fatalf("try aggregate: %v", err)
@@ -31,7 +31,7 @@ func TestAggregationReadyOnlyAfterAllChannelsSucceeded(t *testing.T) {
 
 func TestAggregationStoresVersionedProfile(t *testing.T) {
 	repo := newReadyRepositoryStub()
-	service := NewService(repo, nil, "general-v1", BaselineAlgorithmVersion)
+	service := NewService(repo, nil, nil, "general-v1", BaselineAlgorithmVersion)
 
 	if err := service.TryAggregate(context.Background(), 101); err != nil {
 		t.Fatalf("try aggregate: %v", err)
@@ -55,7 +55,7 @@ func TestAggregationStoresVersionedProfile(t *testing.T) {
 
 func TestAggregationIncludesContributionsAndExplanations(t *testing.T) {
 	repo := newReadyRepositoryStub()
-	service := NewService(repo, nil, "general-v1", BaselineAlgorithmVersion)
+	service := NewService(repo, nil, nil, "general-v1", BaselineAlgorithmVersion)
 
 	if err := service.TryAggregate(context.Background(), 101); err != nil {
 		t.Fatalf("try aggregate: %v", err)
@@ -75,11 +75,60 @@ func TestAggregationIncludesContributionsAndExplanations(t *testing.T) {
 	}
 }
 
+func TestAggregationStartsDecisionDeliveryAfterFinalize(t *testing.T) {
+	repo := newReadyRepositoryStub()
+	baseline := baselineStub{
+		response: BaselineResponse{
+			SchemaVersion:     SchemaVersionV1,
+			AlgorithmVersion:  BaselineAlgorithmVersion,
+			RefreshedAt:       time.Unix(1_742_550_011, 0).UTC(),
+			GeneralDeviation:  BaselineScore{Score: 0.21, Band: "mild"},
+			PersonalDeviation: BaselineScore{Score: 0.37, Band: "moderate"},
+			UpdateEligibility: BaselineUpdateEligibility{
+				Eligible:                     false,
+				Reason:                       "frozen",
+				BaselineExamCountAfterUpdate: 4,
+			},
+		},
+	}
+	decision := &decisionStarterStub{}
+	service := NewService(repo, baseline, decision, "general-v1", BaselineAlgorithmVersion)
+
+	if err := service.TryAggregate(context.Background(), 101); err != nil {
+		t.Fatalf("try aggregate: %v", err)
+	}
+	if !decision.called {
+		t.Fatal("expected aggregation finalization to start decision delivery")
+	}
+	if decision.profile.ExaminationID != 101 {
+		t.Fatalf("expected decision starter to receive examination_id=101, got %d", decision.profile.ExaminationID)
+	}
+}
+
 type repositoryStub struct {
 	readiness Readiness
 	results   []PersistedChannelResult
 	saved     bool
 	persisted PersistInput
+}
+
+type baselineStub struct {
+	response BaselineResponse
+}
+
+func (b baselineStub) Calculate(context.Context, BaselineRequest) (BaselineResponse, error) {
+	return b.response, nil
+}
+
+type decisionStarterStub struct {
+	called  bool
+	profile AggregatedProfile
+}
+
+func (d *decisionStarterStub) CreatePendingDecision(_ context.Context, profile AggregatedProfile) error {
+	d.called = true
+	d.profile = profile
+	return nil
 }
 
 func newReadyRepositoryStub() *repositoryStub {

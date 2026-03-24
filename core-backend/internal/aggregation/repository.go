@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"dimplom/internal/processing"
-	"dimplom/internal/repository"
+	"diplom/internal/processing"
+	"diplom/internal/repository"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

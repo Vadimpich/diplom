@@ -10,6 +10,6 @@ completed: 2026-03-22
 - Operator result/history pages stopped being placeholders and now render canonical aggregated metrics, baseline deviation, explanations, and trend dynamics.
 - Runbook, validation, roadmap, requirements, and state artifacts were refreshed to reflect a completed Phase 3 and a ready-to-plan Phase 4.
 - Verification:
-  - `cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit`
-  - `cd /home/katya/dimplom/core-backend && go test ./... -count=1`
-  - `source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q`
+  - `cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit`
+  - `cd /home/vadim/diplom/core-backend && go test ./... -count=1`
+  - `source /tmp/diplom-ml-baseline-venv/bin/activate && cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q`

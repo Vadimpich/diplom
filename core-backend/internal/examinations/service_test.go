@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"diplom/internal/audit"
 )
 
 func TestCreateExaminationSnapshotsQuestions(t *testing.T) {
@@ -58,10 +60,36 @@ func TestCreateExaminationRejectsInvalidQuestionnaire(t *testing.T) {
 	}
 }
 
+func TestExaminationFinishWritesSingleAuditEvent(t *testing.T) {
+	questionnaireID := int64(12)
+	repo := &examRepoStub{
+		finishResult: Examination{
+			ID:              99,
+			SpecialistID:    3,
+			CreatedByUserID: 7,
+			QuestionnaireID: &questionnaireID,
+			Status:          StatusReadyForProcessing,
+		},
+	}
+	auditRepo := &examAuditRepoStub{}
+	service := NewService(repo, audit.NewService(auditRepo))
+
+	if _, err := service.Finish(context.Background(), 99); err != nil {
+		t.Fatalf("finish examination: %v", err)
+	}
+	if len(auditRepo.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeExaminationFinished {
+		t.Fatalf("expected examination.finished event, got %q", auditRepo.events[0].Type)
+	}
+}
+
 type examRepoStub struct {
 	createInput  *CreateInput
 	createResult Examination
 	createErr    error
+	finishResult Examination
 }
 
 func (s *examRepoStub) Create(_ context.Context, input CreateInput) (Examination, error) {
@@ -90,5 +118,18 @@ func (s *examRepoStub) UpdateStatus(context.Context, int64, string) (Examination
 }
 
 func (s *examRepoStub) Finish(context.Context, int64) (Examination, error) {
-	return Examination{}, nil
+	return s.finishResult, nil
+}
+
+type examAuditRepoStub struct {
+	events []audit.Event
+}
+
+func (s *examAuditRepoStub) Append(_ context.Context, event audit.Event) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
+func (s *examAuditRepoStub) List(context.Context, audit.ListFilter) ([]audit.Event, error) {
+	return append([]audit.Event(nil), s.events...), nil
 }

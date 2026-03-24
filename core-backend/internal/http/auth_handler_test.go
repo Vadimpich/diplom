@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/auth"
-	"dimplom/internal/repository"
+	"diplom/internal/auth"
+	"diplom/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 

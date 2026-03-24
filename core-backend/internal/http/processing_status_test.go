@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/auth"
-	"dimplom/internal/examinations"
-	"dimplom/internal/processing"
+	"diplom/internal/auth"
+	"diplom/internal/examinations"
+	"diplom/internal/processing"
 )
 
 func TestProcessingStatusEndpoint(t *testing.T) {

@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"diplom/internal/audit"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -167,14 +169,20 @@ type RevokeRefreshSessionParams struct {
 type Service struct {
 	repo       Repository
 	tokens     TokenManager
+	auditor    *audit.Service
 	now        func() time.Time
 	refreshTTL time.Duration
 }
 
-func NewService(repo Repository, tokens TokenManager) *Service {
+func NewService(repo Repository, tokens TokenManager, auditors ...*audit.Service) *Service {
+	var auditor *audit.Service
+	if len(auditors) > 0 {
+		auditor = auditors[0]
+	}
 	return &Service{
 		repo:       repo,
 		tokens:     tokens,
+		auditor:    auditor,
 		now:        time.Now,
 		refreshTTL: defaultRefreshSessionTTL,
 	}
@@ -183,14 +191,59 @@ func NewService(repo Repository, tokens TokenManager) *Service {
 func (s *Service) Login(ctx context.Context, input LoginInput) (LoginResult, error) {
 	user, err := s.repo.GetUserByLogin(ctx, input.Login)
 	if err != nil {
+		s.appendAudit(ctx, audit.Event{
+			Type:    audit.EventTypeAuthLoginFailed,
+			Outcome: audit.OutcomeFailed,
+			Resource: audit.ResourceRef{
+				Kind: "auth_session",
+			},
+			Actor: audit.Actor{
+				Login:     input.Login,
+				IP:        strings.TrimSpace(input.IP),
+				UserAgent: strings.TrimSpace(input.UserAgent),
+			},
+			Payload: mustJSON(map[string]any{"reason": "invalid_credentials"}),
+		})
 		return LoginResult{}, ErrInvalidCredentials
 	}
 
 	if !user.IsActive {
+		s.appendAudit(ctx, audit.Event{
+			Type:    audit.EventTypeAuthLoginFailed,
+			Outcome: audit.OutcomeRejected,
+			Resource: audit.ResourceRef{
+				Kind: "auth_session",
+				ID:   user.ID,
+			},
+			Actor: audit.Actor{
+				UserID:    int64Ptr(user.ID),
+				Login:     user.Login,
+				RoleSlug:  user.Role.Slug,
+				IP:        strings.TrimSpace(input.IP),
+				UserAgent: strings.TrimSpace(input.UserAgent),
+			},
+			Payload: mustJSON(map[string]any{"reason": "inactive_user"}),
+		})
 		return LoginResult{}, ErrInactiveUser
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		s.appendAudit(ctx, audit.Event{
+			Type:    audit.EventTypeAuthLoginFailed,
+			Outcome: audit.OutcomeFailed,
+			Resource: audit.ResourceRef{
+				Kind: "auth_session",
+				ID:   user.ID,
+			},
+			Actor: audit.Actor{
+				UserID:    int64Ptr(user.ID),
+				Login:     user.Login,
+				RoleSlug:  user.Role.Slug,
+				IP:        strings.TrimSpace(input.IP),
+				UserAgent: strings.TrimSpace(input.UserAgent),
+			},
+			Payload: mustJSON(map[string]any{"reason": "invalid_credentials"}),
+		})
 		return LoginResult{}, ErrInvalidCredentials
 	}
 
@@ -217,6 +270,23 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (LoginResult, err
 	}); err != nil {
 		return LoginResult{}, fmt.Errorf("create refresh session: %w", err)
 	}
+
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeAuthLogin,
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "auth_session",
+			ID:   user.ID,
+		},
+		Actor: audit.Actor{
+			UserID:    int64Ptr(user.ID),
+			Login:     user.Login,
+			RoleSlug:  user.Role.Slug,
+			IP:        strings.TrimSpace(input.IP),
+			UserAgent: strings.TrimSpace(input.UserAgent),
+		},
+		Payload: mustJSON(map[string]any{"expires_in": expiresIn}),
+	})
 
 	return LoginResult{
 		AccessToken:  token,
@@ -351,6 +421,21 @@ func (s *Service) CreateUser(ctx context.Context, input CreateUserInput) (User, 
 		return User{}, err
 	}
 
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeAdminUserCreated,
+		Key:     fmt.Sprintf("admin-user-created:%d", user.ID),
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "user",
+			ID:   user.ID,
+		},
+		Payload: mustJSON(map[string]any{
+			"login":     user.Login,
+			"role_slug": user.Role.Slug,
+			"is_active": user.IsActive,
+		}),
+	})
+
 	return toUser(user), nil
 }
 
@@ -373,6 +458,21 @@ func (s *Service) GetUserByID(ctx context.Context, id int64) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
+
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeAdminUserUpdated,
+		Key:     fmt.Sprintf("admin-user-updated:%d:%s:%t", user.ID, user.Login, user.IsActive),
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "user",
+			ID:   user.ID,
+		},
+		Payload: mustJSON(map[string]any{
+			"login":     user.Login,
+			"role_slug": user.Role.Slug,
+			"is_active": user.IsActive,
+		}),
+	})
 
 	return toUser(user), nil
 }
@@ -443,4 +543,20 @@ func toUser(user StoredUser) User {
 		Created:  user.Created,
 		Updated:  user.Updated,
 	}
+}
+
+func (s *Service) appendAudit(ctx context.Context, event audit.Event) {
+	if s.auditor == nil {
+		return
+	}
+	_ = s.auditor.AppendFromContext(ctx, event)
+}
+
+func mustJSON(payload map[string]any) json.RawMessage {
+	data, _ := json.Marshal(payload)
+	return data
+}
+
+func int64Ptr(value int64) *int64 {
+	return &value
 }

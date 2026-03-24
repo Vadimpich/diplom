@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"dimplom/internal/processing"
-	"dimplom/internal/repository"
+	"diplom/internal/audit"
+	"diplom/internal/processing"
+	"diplom/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -48,6 +49,9 @@ type StoredResult struct {
 	ErrorMessage        *string
 	BrokerMessageID     string
 	BrokerCorrelationID string
+	RequestID           string
+	TraceParent         *string
+	TraceState          *string
 	CompletedAt         time.Time
 }
 
@@ -65,10 +69,15 @@ type AggregationTrigger interface {
 type Service struct {
 	repo    Repository
 	trigger AggregationTrigger
+	auditor *audit.Service
 }
 
-func NewService(repo Repository, trigger AggregationTrigger) *Service {
-	return &Service{repo: repo, trigger: trigger}
+func NewService(repo Repository, trigger AggregationTrigger, auditors ...*audit.Service) *Service {
+	var auditor *audit.Service
+	if len(auditors) > 0 {
+		auditor = auditors[0]
+	}
+	return &Service{repo: repo, trigger: trigger, auditor: auditor}
 }
 
 type Handler struct {
@@ -76,8 +85,8 @@ type Handler struct {
 	service *Service
 }
 
-func NewHandler(repo *SQLRepository, trigger AggregationTrigger) *Handler {
-	service := NewService(repo, trigger)
+func NewHandler(repo *SQLRepository, trigger AggregationTrigger, auditors ...*audit.Service) *Handler {
+	service := NewService(repo, trigger, auditors...)
 	return &Handler{
 		repo:    repo,
 		service: service,
@@ -103,6 +112,9 @@ func (s *Service) ApplyResult(ctx context.Context, envelope processing.ChannelRe
 		ErrorMessage:        envelope.ErrorMessage,
 		BrokerMessageID:     envelope.MessageID,
 		BrokerCorrelationID: envelope.CorrelationID,
+		RequestID:           envelope.RequestID,
+		TraceParent:         optionalString(envelope.TraceParent),
+		TraceState:          optionalString(envelope.TraceState),
 		CompletedAt:         envelope.CompletedAt.UTC(),
 	}
 	if err := s.repo.SaveResult(ctx, stored); err != nil {
@@ -144,6 +156,7 @@ func (s *Service) ApplyResult(ctx context.Context, envelope processing.ChannelRe
 			return err
 		}
 	}
+	s.appendAudit(ctx, stored, run, envelope.Status)
 	return nil
 }
 
@@ -313,4 +326,45 @@ func (r *SQLRepository) HandleResult(ctx context.Context, service *Service, enve
 		return service.trigger.TryAggregate(ctx, envelope.ExaminationID)
 	}
 	return nil
+}
+
+func (s *Service) appendAudit(ctx context.Context, stored StoredResult, run ChannelRun, outcome string) {
+	if s.auditor == nil {
+		return
+	}
+	eventOutcome := audit.OutcomeSucceeded
+	if outcome != processing.ResultStatusSucceeded {
+		eventOutcome = audit.OutcomeFailed
+	}
+	_ = s.auditor.AppendFromContext(ctx, audit.Event{
+		Type:          audit.EventTypeResultReceived,
+		Key:           fmt.Sprintf("result-received:%d:%s:%d", stored.ExaminationID, stored.Channel, stored.Attempt),
+		Outcome:       eventOutcome,
+		CorrelationID: stored.BrokerCorrelationID,
+		Resource: audit.ResourceRef{
+			Kind: "channel_result",
+			ID:   run.ChannelRunID,
+		},
+		DomainRefs: audit.DomainRefs{
+			ExaminationID: &stored.ExaminationID,
+			Channel:       &stored.Channel,
+		},
+		Payload: mustAuditJSON(map[string]any{
+			"status":        stored.Status,
+			"attempt":       stored.Attempt,
+			"model_version": stored.ModelVersion,
+		}),
+	})
+}
+
+func mustAuditJSON(payload map[string]any) json.RawMessage {
+	data, _ := json.Marshal(payload)
+	return data
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }

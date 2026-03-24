@@ -86,12 +86,12 @@ The intake path also stops short of the product requirement. `POST /answers` sto
 ```bash
 # No new runtime dependency is strictly required for the backend design.
 # Version verification commands used during research:
-cd /home/katya/dimplom/core-backend
+cd /home/vadim/diplom/core-backend
 go list -m -json github.com/go-chi/chi/v5@latest
 go list -m -json github.com/golang-jwt/jwt/v5@latest
 go list -m -json github.com/jackc/pgx/v5@latest
 
-cd /home/katya/dimplom/frontend
+cd /home/vadim/diplom/frontend
 npm view next version
 ```
 
@@ -388,41 +388,41 @@ if actualCount != requiredCount {
 |----------|-------|
 | Framework | Go stdlib `testing` + `net/http/httptest` |
 | Config file | none |
-| Quick run command | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/auth ./internal/examinations ./internal/answers -count=1` |
-| Full suite command | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` |
+| Quick run command | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/auth ./internal/examinations ./internal/answers -count=1` |
+| Full suite command | `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| ACCS-01 | Valid login returns access token and authenticated user payload | HTTP + service | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/auth -run 'TestLogin|TestMe' -count=1` | ❌ Wave 0 |
-| ACCS-02 | Refresh rotates refresh session and returns new access token | service + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/auth -run TestRefreshRotation -count=1` | ❌ Wave 0 |
-| ACCS-03 | Logout revokes refresh session and blocks reuse | service + HTTP | `cd /home/katya/dimplom/core-backend && go test ./internal/auth ./internal/http -run TestLogoutRevokesSession -count=1` | ❌ Wave 0 |
-| ACCS-04 | Admin/operator endpoints reject wrong role | middleware + HTTP | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run TestRequireRoles -count=1` | ❌ Wave 0 |
-| EXAM-01 | Examination creation snapshots assigned questions | service + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/examinations -run TestCreateExaminationSnapshotsQuestions -count=1` | ❌ Wave 0 |
-| EXAM-02 | Answer upload persists one answer per assigned question with linkage | service + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/answers -run TestCreateAnswerPersistsQuestionLink -count=1` | ❌ Wave 0 |
-| EXAM-03 | Finish is idempotent and emits one processing-launch fence | service + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/examinations -run TestFinishIsIdempotent -count=1` | ❌ Wave 0 |
-| EXAM-04 | Specialist history returns authoritative workflow statuses | HTTP + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/examinations -run TestListBySpecialistReturnsCurrentStatuses -count=1` | ❌ Wave 0 |
+| ACCS-01 | Valid login returns access token and authenticated user payload | HTTP + service | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/auth -run 'TestLogin|TestMe' -count=1` | ❌ Wave 0 |
+| ACCS-02 | Refresh rotates refresh session and returns new access token | service + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/auth -run TestRefreshRotation -count=1` | ❌ Wave 0 |
+| ACCS-03 | Logout revokes refresh session and blocks reuse | service + HTTP | `cd /home/vadim/diplom/core-backend && go test ./internal/auth ./internal/http -run TestLogoutRevokesSession -count=1` | ❌ Wave 0 |
+| ACCS-04 | Admin/operator endpoints reject wrong role | middleware + HTTP | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run TestRequireRoles -count=1` | ❌ Wave 0 |
+| EXAM-01 | Examination creation snapshots assigned questions | service + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/examinations -run TestCreateExaminationSnapshotsQuestions -count=1` | ❌ Wave 0 |
+| EXAM-02 | Answer upload persists one answer per assigned question with linkage | service + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/answers -run TestCreateAnswerPersistsQuestionLink -count=1` | ❌ Wave 0 |
+| EXAM-03 | Finish is idempotent and emits one processing-launch fence | service + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/examinations -run TestFinishIsIdempotent -count=1` | ❌ Wave 0 |
+| EXAM-04 | Specialist history returns authoritative workflow statuses | HTTP + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/examinations -run TestListBySpecialistReturnsCurrentStatuses -count=1` | ❌ Wave 0 |
 
 ### Sampling Rate
-- **Per task commit:** `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/auth ./internal/examinations ./internal/answers -count=1`
-- **Per wave merge:** `cd /home/katya/dimplom/core-backend && go test ./... -count=1`
+- **Per task commit:** `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/auth ./internal/examinations ./internal/answers -count=1`
+- **Per wave merge:** `cd /home/vadim/diplom/core-backend && go test ./... -count=1`
 - **Phase gate:** Full suite green before `/gsd:verify-work`
 
 ### Wave 0 Gaps
-- [ ] `/home/katya/dimplom/core-backend/internal/http/auth_handler_test.go` — login, refresh, logout, `/me`
-- [ ] `/home/katya/dimplom/core-backend/internal/http/rbac_test.go` — wrong-role rejection and allowed-role success
-- [ ] `/home/katya/dimplom/core-backend/internal/auth/service_test.go` — refresh rotation, revocation, inactive-user checks
-- [ ] `/home/katya/dimplom/core-backend/internal/examinations/service_test.go` — create snapshot, finish completeness, idempotent finish
-- [ ] `/home/katya/dimplom/core-backend/internal/answers/service_test.go` — question linkage and duplicate-answer handling
+- [ ] `/home/vadim/diplom/core-backend/internal/http/auth_handler_test.go` — login, refresh, logout, `/me`
+- [ ] `/home/vadim/diplom/core-backend/internal/http/rbac_test.go` — wrong-role rejection and allowed-role success
+- [ ] `/home/vadim/diplom/core-backend/internal/auth/service_test.go` — refresh rotation, revocation, inactive-user checks
+- [ ] `/home/vadim/diplom/core-backend/internal/examinations/service_test.go` — create snapshot, finish completeness, idempotent finish
+- [ ] `/home/vadim/diplom/core-backend/internal/answers/service_test.go` — question linkage and duplicate-answer handling
 - [ ] Minimal repository integration harness for transaction-sensitive behavior — otherwise finish/idempotency tests will be too mock-heavy
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Local product spec: `/home/katya/dimplom/docs/00_project.md` — auth, refresh, RBAC, answer linkage, workflow, and testing requirements
-- Local contract: `/home/katya/dimplom/docs/01_contract.md` — current API/schema shape and current gaps
-- Local implementation map: `/home/katya/dimplom/.planning/codebase/ARCHITECTURE.md`, `/home/katya/dimplom/.planning/codebase/CONCERNS.md`, `/home/katya/dimplom/.planning/codebase/TESTING.md`
-- Current code: `/home/katya/dimplom/core-backend/internal/http/router.go`, `/home/katya/dimplom/core-backend/internal/auth/service.go`, `/home/katya/dimplom/core-backend/internal/examinations/service.go`, `/home/katya/dimplom/core-backend/internal/answers/service.go`
+- Local product spec: `/home/vadim/diplom/docs/00_project.md` — auth, refresh, RBAC, answer linkage, workflow, and testing requirements
+- Local contract: `/home/vadim/diplom/docs/01_contract.md` — current API/schema shape and current gaps
+- Local implementation map: `/home/vadim/diplom/.planning/codebase/ARCHITECTURE.md`, `/home/vadim/diplom/.planning/codebase/CONCERNS.md`, `/home/vadim/diplom/.planning/codebase/TESTING.md`
+- Current code: `/home/vadim/diplom/core-backend/internal/http/router.go`, `/home/vadim/diplom/core-backend/internal/auth/service.go`, `/home/vadim/diplom/core-backend/internal/examinations/service.go`, `/home/vadim/diplom/core-backend/internal/answers/service.go`
 - OWASP Session Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
 - MDN `Set-Cookie`: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
 - PostgreSQL explicit locking: https://www.postgresql.org/docs/current/explicit-locking.html

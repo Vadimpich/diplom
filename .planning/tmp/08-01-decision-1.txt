@@ -1,0 +1,1 @@
+Phase 8 keeps the current Next 15 + Tailwind 3 stack; no stack migration is bundled into contour work.

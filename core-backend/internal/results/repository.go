@@ -6,8 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"dimplom/internal/aggregation"
-	"dimplom/internal/repository"
+	"diplom/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,14 +19,14 @@ func NewRepository(pool *pgxpool.Pool) *SQLRepository {
 	return &SQLRepository{pool: pool}
 }
 
-func (r *SQLRepository) GetExaminationResult(ctx context.Context, examinationID int64) (aggregation.AggregatedProfile, error) {
+func (r *SQLRepository) GetExaminationResult(ctx context.Context, examinationID int64) (ExaminationResultResponse, error) {
 	const profileQuery = `
 SELECT
 	p.examination_id,
 	p.specialist_id,
 	p.schema_version,
 	p.aggregation_version,
-	p.status,
+	e.status,
 	p.generated_at,
 	p.overall_score,
 	p.overall_band,
@@ -41,32 +40,50 @@ SELECT
 	b.personal_delta,
 	b.personal_band,
 	b.baseline_exam_count,
-	b.update_eligible
+	b.update_eligible,
+	ds.status,
+	ds.recommendation,
+	ds.message,
+	ds.correlation_id,
+	ds.attempt_count,
+	ds.max_attempts,
+	ds.last_attempt_at,
+	ds.diagnostics_json,
+	(ds.raw_response_json IS NOT NULL) AS raw_response_available
 FROM aggregated_examination_profiles p
+JOIN examinations e
+	ON e.id = p.examination_id
 LEFT JOIN examination_baseline_snapshots b
 	ON b.profile_id = p.id
+LEFT JOIN decision_snapshots ds
+	ON ds.examination_id = p.examination_id
 WHERE p.examination_id = $1
-  AND p.status = 'aggregated'`
+  AND e.status IN ('decision_pending', 'completed')`
 
-	var profile aggregation.AggregatedProfile
-	var generalRef *string
+	var result ExaminationResultResponse
 	var refreshedAt *time.Time
+	var generalRef *string
 	var generalDelta, personalDelta *float64
 	var generalBand, personalBand *string
 	var baselineExamCount *int
 	var updateEligible *bool
+	var decisionState, decisionRecommendation, decisionMessage, decisionCorrelation *string
+	var decisionAttemptCount, decisionMaxAttempts *int32
+	var lastAttemptAt *time.Time
+	var diagnosticsJSON []byte
+	var rawResponseAvailable bool
 	err := r.pool.QueryRow(ctx, profileQuery, examinationID).Scan(
-		&profile.ExaminationID,
-		&profile.SpecialistID,
-		&profile.SchemaVersion,
-		&profile.AggregationVersion,
-		&profile.Status,
-		&profile.GeneratedAt,
-		&profile.Summary.OverallScore,
-		&profile.Summary.OverallBand,
-		&profile.Summary.PrimaryMetricKey,
-		&profile.Summary.NeutralRecommendationPlaceholder,
-		&profile.BaselineSnapshot.AlgorithmVersion,
+		&result.ExaminationID,
+		&result.SpecialistID,
+		&result.SchemaVersion,
+		&result.AggregationVersion,
+		&result.Status,
+		&result.GeneratedAt,
+		&result.Summary.OverallScore,
+		&result.Summary.OverallBand,
+		&result.Summary.PrimaryMetricKey,
+		&result.Summary.NeutralRecommendationPlaceholder,
+		&result.BaselineSnapshot.AlgorithmVersion,
 		&refreshedAt,
 		&generalDelta,
 		&generalBand,
@@ -75,54 +92,94 @@ WHERE p.examination_id = $1
 		&personalBand,
 		&baselineExamCount,
 		&updateEligible,
+		&decisionState,
+		&decisionRecommendation,
+		&decisionMessage,
+		&decisionCorrelation,
+		&decisionAttemptCount,
+		&decisionMaxAttempts,
+		&lastAttemptAt,
+		&diagnosticsJSON,
+		&rawResponseAvailable,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return aggregation.AggregatedProfile{}, repository.ErrNotFound
+			return ExaminationResultResponse{}, repository.ErrNotFound
 		}
-		return aggregation.AggregatedProfile{}, err
+		return ExaminationResultResponse{}, err
 	}
+
 	if refreshedAt != nil {
-		profile.BaselineSnapshot.RefreshedAt = refreshedAt.UTC()
+		result.BaselineSnapshot.RefreshedAt = refreshedAt.UTC().Format(time.RFC3339)
 	}
 	if generalDelta != nil {
-		profile.BaselineSnapshot.General.Delta = *generalDelta
+		result.BaselineSnapshot.General.Delta = *generalDelta
 	}
 	if generalBand != nil {
-		profile.BaselineSnapshot.General.Band = *generalBand
+		result.BaselineSnapshot.General.Band = *generalBand
 	}
 	if generalRef != nil {
-		profile.BaselineSnapshot.General.ReferencePopulationVersion = *generalRef
+		result.BaselineSnapshot.General.ReferencePopulationVersion = *generalRef
 	}
 	if personalDelta != nil {
-		profile.BaselineSnapshot.Personal.Delta = *personalDelta
+		result.BaselineSnapshot.Personal.Delta = *personalDelta
 	}
 	if personalBand != nil {
-		profile.BaselineSnapshot.Personal.Band = *personalBand
+		result.BaselineSnapshot.Personal.Band = *personalBand
 	}
 	if baselineExamCount != nil {
-		profile.BaselineSnapshot.Personal.BaselineExamCount = *baselineExamCount
+		result.BaselineSnapshot.Personal.BaselineExamCount = *baselineExamCount
 	}
 	if updateEligible != nil {
-		profile.BaselineSnapshot.Personal.UpdateEligible = *updateEligible
+		result.BaselineSnapshot.Personal.UpdateEligible = *updateEligible
+	}
+
+	if decisionState != nil {
+		result.Decision.State = *decisionState
+	}
+	if decisionRecommendation != nil {
+		result.Decision.Recommendation = *decisionRecommendation
+	}
+	if decisionMessage != nil {
+		result.Decision.Message = *decisionMessage
+	}
+	if decisionCorrelation != nil {
+		result.Decision.CorrelationID = *decisionCorrelation
+	}
+	if decisionAttemptCount != nil {
+		result.Decision.AttemptCount = *decisionAttemptCount
+	}
+	if decisionMaxAttempts != nil {
+		result.Decision.MaxAttempts = *decisionMaxAttempts
+	}
+	if lastAttemptAt != nil {
+		value := lastAttemptAt.UTC().Format(time.RFC3339)
+		result.Decision.LastAttemptAt = &value
+	}
+	result.Decision.RawResponseAvailable = rawResponseAvailable
+	if len(diagnosticsJSON) > 0 {
+		if err := json.Unmarshal(diagnosticsJSON, &result.Decision.Diagnostics); err != nil {
+			return ExaminationResultResponse{}, err
+		}
 	}
 
 	metrics, err := r.loadMetrics(ctx, examinationID)
 	if err != nil {
-		return aggregation.AggregatedProfile{}, err
+		return ExaminationResultResponse{}, err
 	}
-	profile.Metrics = metrics
+	result.Metrics = metrics
 	contributions, err := r.loadContributions(ctx, examinationID)
 	if err != nil {
-		return aggregation.AggregatedProfile{}, err
+		return ExaminationResultResponse{}, err
 	}
-	profile.ChannelContributions = contributions
+	result.ChannelContributions = contributions
 	explanations, err := r.loadExplanations(ctx, examinationID)
 	if err != nil {
-		return aggregation.AggregatedProfile{}, err
+		return ExaminationResultResponse{}, err
 	}
-	profile.Explanations = explanations
-	return profile, nil
+	result.Explanations = explanations
+
+	return result, nil
 }
 
 func (r *SQLRepository) GetSpecialistHistory(ctx context.Context, specialistID int64) (SpecialistHistoryResponse, error) {
@@ -189,11 +246,7 @@ ORDER BY p.generated_at DESC, p.id DESC`
 		}
 		item.KeyMetrics = make([]HistoryMetric, 0, len(metrics))
 		for _, metric := range metrics {
-			record := HistoryMetric{
-				Key:   metric.Key,
-				Label: metric.Label,
-				Value: metric.Value,
-			}
+			record := HistoryMetric{Key: metric.Key, Label: metric.Label, Value: metric.Value}
 			if previous, ok := previousMetrics[metric.Key]; ok {
 				prev := previous
 				delta := metric.Value - previous
@@ -209,13 +262,10 @@ ORDER BY p.generated_at DESC, p.id DESC`
 		return SpecialistHistoryResponse{}, err
 	}
 
-	return SpecialistHistoryResponse{
-		SpecialistID: specialistID,
-		Items:        items,
-	}, nil
+	return SpecialistHistoryResponse{SpecialistID: specialistID, Items: items}, nil
 }
 
-func (r *SQLRepository) loadMetrics(ctx context.Context, examinationID int64) ([]aggregation.Metric, error) {
+func (r *SQLRepository) loadMetrics(ctx context.Context, examinationID int64) ([]ExaminationMetric, error) {
 	const query = `
 SELECT m.metric_key, m.label, m.value, m.scale, m.direction
 FROM aggregated_profile_metrics m
@@ -228,9 +278,9 @@ ORDER BY m.metric_key ASC`
 		return nil, err
 	}
 	defer rows.Close()
-	items := make([]aggregation.Metric, 0)
+	items := make([]ExaminationMetric, 0)
 	for rows.Next() {
-		var item aggregation.Metric
+		var item ExaminationMetric
 		if err := rows.Scan(&item.Key, &item.Label, &item.Value, &item.Scale, &item.Direction); err != nil {
 			return nil, err
 		}
@@ -239,7 +289,7 @@ ORDER BY m.metric_key ASC`
 	return items, rows.Err()
 }
 
-func (r *SQLRepository) loadContributions(ctx context.Context, examinationID int64) ([]aggregation.ChannelContribution, error) {
+func (r *SQLRepository) loadContributions(ctx context.Context, examinationID int64) ([]ChannelContribution, error) {
 	const query = `
 SELECT c.channel, c.metric_key, c.weight, c.contribution, c.evidence_keys
 FROM aggregated_profile_channel_contributions c
@@ -252,9 +302,9 @@ ORDER BY c.contribution DESC, c.channel ASC`
 		return nil, err
 	}
 	defer rows.Close()
-	items := make([]aggregation.ChannelContribution, 0)
+	items := make([]ChannelContribution, 0)
 	for rows.Next() {
-		var item aggregation.ChannelContribution
+		var item ChannelContribution
 		var evidence []byte
 		if err := rows.Scan(&item.Channel, &item.MetricKey, &item.Weight, &item.Contribution, &evidence); err != nil {
 			return nil, err
@@ -269,7 +319,7 @@ ORDER BY c.contribution DESC, c.channel ASC`
 	return items, rows.Err()
 }
 
-func (r *SQLRepository) loadExplanations(ctx context.Context, examinationID int64) ([]aggregation.Explanation, error) {
+func (r *SQLRepository) loadExplanations(ctx context.Context, examinationID int64) ([]Explanation, error) {
 	const query = `
 SELECT e.position, e.kind, e.text
 FROM aggregated_profile_explanations e
@@ -282,9 +332,9 @@ ORDER BY e.position ASC`
 		return nil, err
 	}
 	defer rows.Close()
-	items := make([]aggregation.Explanation, 0)
+	items := make([]Explanation, 0)
 	for rows.Next() {
-		var item aggregation.Explanation
+		var item Explanation
 		if err := rows.Scan(&item.Position, &item.Kind, &item.Text); err != nil {
 			return nil, err
 		}

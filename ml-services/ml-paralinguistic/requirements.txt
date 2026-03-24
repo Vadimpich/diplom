@@ -1,5 +1,7 @@
-aio-pika==9.6.1
-fastapi==0.115.12
-minio==7.2.18
-pydantic==2.11.2
-uvicorn==0.34.0
+aio-pika
+fastapi
+minio
+pydantic
+pytest
+httpx
+uvicorn

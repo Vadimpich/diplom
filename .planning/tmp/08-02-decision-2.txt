@@ -1,0 +1,1 @@
+OperatorShell and AdminShell evolve as separate contour wrappers on one shared AppShell frame.

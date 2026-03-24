@@ -82,7 +82,7 @@ completed: 2026-03-22
 **2. [Rule 3 - Blocking] Used an isolated temporary Python venv for verification**
 - **Found during:** Task 1 and Task 2 verification
 - **Issue:** System Python in the local environment lacked `pytest`, which blocked required test execution.
-- **Fix:** Created `/tmp/dimplom-ml-baseline-venv` outside the repository and installed only the packages needed to run the focused `ml-services/ml-baseline` tests.
+- **Fix:** Created `/tmp/diplom-ml-baseline-venv` outside the repository and installed only the packages needed to run the focused `ml-services/ml-baseline` tests.
 - **Files modified:** None in repository
 - **Verification:** `pytest` commands for service and algorithm tests passed in the isolated environment.
 - **Committed in:** No repository files changed

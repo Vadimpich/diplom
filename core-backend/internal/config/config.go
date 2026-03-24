@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	HTTPAddr            string
+	LogLevel            string
 	AllowedOrigins      []string
 	DatabaseURL         string
 	RabbitMQURL         string
@@ -17,6 +18,11 @@ type Config struct {
 	BaselineTimeout     time.Duration
 	BaselineAlgorithm   string
 	BaselineReference   string
+	KESMIBaseURL        string
+	KESMITimeout        time.Duration
+	KESMIModelID        string
+	KESMIMaxRetries     int32
+	KESMIRetryBackoff   time.Duration
 	MigrationsDir       string
 	JWTIssuer           string
 	JWTAccessSecret     string
@@ -37,6 +43,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		HTTPAddr:           envOrDefault("HTTP_ADDR", ":8080"),
+		LogLevel:           envOrDefault("LOG_LEVEL", "INFO"),
 		AllowedOrigins:     envCSVOrDefault("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://127.0.0.1:3000"}),
 		MigrationsDir:      envOrDefault("MIGRATIONS_DIR", "migrations"),
 		JWTIssuer:          envOrDefault("JWT_ISSUER", "core-backend"),
@@ -44,9 +51,12 @@ func Load() (Config, error) {
 		S3UseSSL:           envBoolOrDefault("MINIO_USE_SSL", false),
 		MaxUploadSizeBytes: envInt64OrDefault("MAX_UPLOAD_SIZE_BYTES", 25<<20),
 		RabbitMQURL:        envOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		BaselineBaseURL:    envOrDefault("BASELINE_SERVICE_URL", "http://ml-baseline:8090"),
+		BaselineBaseURL:    envOrDefault("BASELINE_SERVICE_URL", "http://ml-baseline:8080"),
 		BaselineAlgorithm:  envOrDefault("BASELINE_ALGORITHM_VERSION", "baseline-v1"),
 		BaselineReference:  envOrDefault("BASELINE_GENERAL_REFERENCE_VERSION", "general-v1"),
+		KESMIBaseURL:       envOrDefault("KESMI_BASE_URL", "http://wimi:8081"),
+		KESMIModelID:       envOrDefault("KESMI_MODEL_ID", "placeholder-model"),
+		KESMIMaxRetries:    int32(envInt64OrDefault("KESMI_MAX_RETRIES", 2)),
 		OutboxMaxAttempts:  int32(envInt64OrDefault("PROCESSING_OUTBOX_MAX_ATTEMPTS", 3)),
 	}
 
@@ -71,6 +81,14 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("BASELINE_SERVICE_TIMEOUT: %w", err)
 	}
+	cfg.KESMITimeout, err = envDurationOrDefault("KESMI_TIMEOUT_MS", 3*time.Second)
+	if err != nil {
+		return Config{}, fmt.Errorf("KESMI_TIMEOUT_MS: %w", err)
+	}
+	cfg.KESMIRetryBackoff, err = envDurationOrDefault("KESMI_RETRY_BACKOFF_MS", time.Second)
+	if err != nil {
+		return Config{}, fmt.Errorf("KESMI_RETRY_BACKOFF_MS: %w", err)
+	}
 	cfg.InitialUserLogin = os.Getenv("INITIAL_USER_LOGIN")
 	cfg.InitialUserPassword = os.Getenv("INITIAL_USER_PASSWORD")
 	cfg.S3Endpoint = os.Getenv("MINIO_ENDPOINT")
@@ -91,6 +109,9 @@ func Load() (Config, error) {
 	}
 	if cfg.OutboxMaxAttempts <= 0 {
 		return Config{}, fmt.Errorf("PROCESSING_OUTBOX_MAX_ATTEMPTS must be positive")
+	}
+	if cfg.KESMIMaxRetries <= 0 {
+		return Config{}, fmt.Errorf("KESMI_MAX_RETRIES must be positive")
 	}
 
 	return cfg, nil

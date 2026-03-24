@@ -10,24 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { getOperatorExaminationHref } from "@/lib/operator/examination-navigation";
 import { formatDateTime } from "@/lib/utils";
-
-function getExaminationHref(examinationId: number, specialistId: number, status: string) {
-  if (
-    status === "ready_for_processing" ||
-    status === "processing" ||
-    status === "aggregating" ||
-    status === "failed"
-  ) {
-    return `/operator/examinations/${examinationId}/processing?specialistId=${specialistId}`;
-  }
-
-  if (status === "aggregated") {
-    return `/operator/examinations/${examinationId}/results?specialistId=${specialistId}`;
-  }
-
-  return `/operator/examinations/${examinationId}?specialistId=${specialistId}`;
-}
 
 export default function OperatorHistoryPage() {
   const [query, setQuery] = useState("");
@@ -50,7 +34,7 @@ export default function OperatorHistoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="История обследований"
-        description="Общий список обследований из `GET /examinations` с переходом либо в processing, либо в готовый result view."
+        description="Общий список обследований из `GET /examinations` с переходом в intake, processing diagnostics или итоговый result view для `aggregated`, `decision_pending` и `completed`."
       />
       <Card>
         <CardHeader>
@@ -67,7 +51,7 @@ export default function OperatorHistoryPage() {
             {filtered.map((item) => (
               <Link
                 key={item.id}
-                href={getExaminationHref(item.id, item.specialist_id, item.status)}
+                href={getOperatorExaminationHref(item.id, item.specialist_id, item.status)}
                 className="block rounded-2xl border border-border/70 p-4 transition hover:bg-secondary/40"
               >
                 <div className="flex items-center justify-between gap-4">

@@ -10,6 +10,16 @@ Self-hosted система для проведения обследований 
 
 Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
 
+## Current Milestone: v1.1 UI & Admin Completion
+
+**Goal:** довести пользовательский слой системы до production-уровня через завершённые operator/admin интерфейсы, полноценную административную панель и целостный frontend design-system без изменения ML-логики и decision layer.
+
+**Target features:**
+- Полное разделение `operator` и `admin` как двух независимых UI-контуров.
+- Полноценная admin panel: пользователи и роли, конструктор опросов, системные настройки, базовый мониторинг, техстатистика и audit log.
+- Production-level operator UX: читаемый results screen, качественный feedback, корректные loading/empty/error состояния.
+- Единая профессиональная design-system для всего frontend без заглушек и черновых элементов.
+
 ## Requirements
 
 ### Validated
@@ -25,11 +35,10 @@ Self-hosted система для проведения обследований 
 
 ### Active
 
-- [ ] Встроить реальную decision-модель WiMi и утвердить окончательный feature mapping вместо pre-model `analysis_not_implemented_yet`
-- [ ] Довести ML-модели каналов от stub/runtime-ready реализации до финального предметного качества и зафиксированных feature schemas
-- [ ] Добавить operator/admin возможности следующего слоя: TTL management, audit log browsing и техническую статистику без прямого обращения к инфраструктуре
-- [ ] Рассмотреть confidence/explainability extension для итогового decision flow после стабилизации реальных моделей
-- [ ] Подготовить следующий milestone с новыми requirement-границами вместо повторного использования v1 backlog
+- [ ] Завершить разделение operator/admin интерфейсов в два независимых UI-контура с отдельными UX-приоритетами
+- [ ] Реализовать полноценную административную панель поверх существующей архитектуры и без добавления новых сервисов
+- [ ] Довести операторский UX до production-уровня: result screen, feedback, ошибки и состояния
+- [ ] Привести весь frontend к единой профессиональной design-system и убрать временные/черновые UI-элементы
 
 ### Out of Scope
 
@@ -53,12 +62,13 @@ Self-hosted система для проведения обследований 
 - 7 phases completed, 36 plans completed, 25 milestone tasks recorded by archival workflow
 - Approximate codebase size in shipped stack: `80,821` lines across Go, TypeScript/TSX, and Python sources
 - Git planning range used for milestone traceability: `1f61843` -> `2b2ff47`
+- Milestone `v1.1 UI & Admin Completion` is being defined as a frontend-first follow-up without scope expansion into ML or decision-model work
 
 ## Next Milestone Goals
 
-- Подготовить новый milestone вокруг реальных ML-моделей и live WiMi decision mapping
-- Формализовать новые requirements вместо продолжения работы поверх archived v1 requirement matrix
-- Решить, какие deferred items остаются tech debt, а какие становятся активными deliverables следующего milestone
+- Завершить user-facing слой системы до уровня цельного production UI для оператора и администратора
+- Реализовать ключевые admin возможности, уже ожидаемые `docs/00_project.md`: роли, опросы, настройки, мониторинг, аудит
+- Закрыть UX-долги shipped frontend: states, feedback, errors, result readability, visual consistency
 
 ## Constraints
 
@@ -78,6 +88,25 @@ Self-hosted система для проведения обследований 
 | Зафиксировать существующий функционал как Validated, а оставшийся путь до целевой архитектуры как Active | Это позволяет планировать workstream по gap between current implementation and target architecture без потери уже построенного | ✓ Good |
 | Развивать ML и KЭСМИ integration contract-first, даже при отсутствии финальных моделей | Это позволяет завершить архитектурные и workflow-фазы заранее и отложить только feature mapping и model-specific verification | ✓ Good |
 | Инициализировать workflow с commit tracking и полным набором quality agents | Проект high-stakes, многосервисный и интеграционный; дешёвые shortcuts здесь повышают риск неверного плана | ✓ Good |
+| Сфокусировать milestone `v1.1` на frontend/admin completion, а не на ML или decision expansion | Пользовательский слой уже является главным видимым gap после закрытия v1 orchestration-platform | ✓ Good |
+| Ограничить backend-изменения точечными API-доработками под UI/admin нужды | Это сохраняет архитектурную стабильность и не раздувает milestone за пределы UI-first scope | ✓ Good |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `$gsd-transition`):
+1. Requirements invalidated? -> Move to Out of Scope with reason
+2. Requirements validated? -> Move to Validated with phase reference
+3. New requirements emerged? -> Add to Active
+4. Decisions to log? -> Add to Key Decisions
+5. "What This Is" still accurate? -> Update if drifted
+
+**After each milestone** (via `$gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check -> still the right priority?
+3. Audit Out of Scope -> reasons still valid?
+4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after v1.0 milestone completion*
+*Last updated: 2026-03-24 after starting milestone v1.1 UI & Admin Completion*

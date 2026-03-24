@@ -82,6 +82,7 @@
 
 ## 2026-03-24
 
+- В Python-сервисах `ml-text`, `ml-acoustic`, `ml-paralinguistic` и `ml-baseline` ослаблены `requirements.txt`: точечные version pins сняты, зависимости оставлены без фиксированных версий, чтобы локальная сборка и установка меньше зависели от наличия конкретных пакетов в дистрибутиве.
 - Для Phase 8 plan `08-01` в `frontend/app/globals.css` и `frontend/tailwind.config.ts` зафиксирован единый foundation token layer: корпоративные surface/sidebar aliases, 4-based spacing scale, semantic success/warning/danger colors, radius/motion tokens и общие theme aliases для Tailwind без смены Next 15 / Tailwind 3 стека.
 - Нормализованы shared UI primitives `button`, `card`, `page-header`, `alert`, `badge`, `input`, `textarea`, `empty-state`: компоненты переведены на единый typography/spacing rhythm, restrained motion и semantic state styling вместо разрозненных локальных значений.
 - Добавлены недостающие shared feedback primitives Phase 8: `frontend/components/ui/skeleton.tsx`, `confirm-dialog.tsx` и `toaster.tsx`; `AppProviders` теперь монтирует один app-level toaster, чтобы operator/admin контуры могли переиспользовать toast/confirmation/loading UX без page-local wiring.

@@ -1,14 +1,16 @@
-# Dimplom local stack
+# diplom local stack
 
-Локальный self-hosted стек для Phase 3:
+Локальный self-hosted стек для Phase 5:
 
 - PostgreSQL
 - RabbitMQ с management UI
 - MinIO
 - core backend
 - frontend
+- `wimi`
 - `text`, `acoustic`, `paralinguistic` stub workers
 - `ml-services/ml-baseline`
+- `prometheus`
 
 ## Требования
 
@@ -35,9 +37,11 @@ cp .env.example .env
 - `JWT_*`
 - `PROCESSING_*`
 - `BASELINE_*`
+- `BASELINE_SERVICE_URL`
+- `KESMI_*`
 - `*_WORKER_*`
 
-`DATABASE_URL` и `RABBITMQ_URL` для core backend собираются через `docker-compose.yml`/`.env`, поэтому backend и workers используют один и тот же локальный broker topology без ручного bootstrap.
+`DATABASE_URL` и `RABBITMQ_URL` для core backend собираются через `docker-compose.yml`/`.env`, поэтому backend и workers используют один и тот же локальный broker topology без ручного bootstrap. `wimi` поднимается как обязательный internal-only compose service и доступен backend по `KESMI_BASE_URL=http://wimi:8081` без host-port наружу.
 
 ## Запуск
 
@@ -68,8 +72,35 @@ docker compose up -d postgres rabbitmq minio
 - MinIO console: `9001`
 - core backend: `8080`
 - frontend: `3000`
+- Prometheus: `9090`
 
-`ml-services/ml-baseline` остаётся внутренним сервисом Compose и не публикует отдельный host-port наружу.
+`ml-services/ml-baseline` и `wimi` остаются внутренними сервисами Compose и не публикуют отдельный host-port наружу.
+
+## Проверка observability runtime
+
+Минимальный runtime smoke для Phase 5:
+
+```bash
+docker compose up -d --build frontend core-backend text-worker acoustic-worker paralinguistic-worker ml-baseline wimi prometheus
+curl -fsS http://localhost:3000/api/health
+curl -fsS http://localhost:3000/api/ready
+curl -fsS http://localhost:3000/api/metrics
+curl -fsS http://localhost:8080/health
+curl -fsS http://localhost:8080/ready
+curl -fsS http://localhost:8080/metrics
+curl -fsS http://localhost:9090/-/healthy
+curl -fsS "http://localhost:9090/api/v1/targets"
+```
+
+## Проверка Phase 4 WiMi runtime
+
+Канонический smoke:
+
+```bash
+./wimi-server/scripts/smoke.sh
+```
+
+Он поднимает `wimi` вместе с `core-backend`, проверяет `GET /Models` изнутри compose-сети через `docker compose exec core-backend`, затем проверяет `GET /health` у backend.
 
 ## Проверка Phase 3
 
@@ -78,9 +109,9 @@ docker compose up -d postgres rabbitmq minio
 ```bash
 docker compose up -d --build
 docker compose ps
-cd /home/katya/dimplom/core-backend && go test ./... -count=1
-cd /home/katya/dimplom/frontend && npm run lint && npm run build && npx tsc --noEmit
-source /tmp/dimplom-ml-baseline-venv/bin/activate && cd /home/katya/dimplom/ml-services/ml-baseline && pytest -q
+cd /home/vadim/diplom/core-backend && go test ./... -count=1
+cd /home/vadim/diplom/frontend && npm run lint && npm run build && npx tsc --noEmit
+source /tmp/diplom-ml-baseline-venv/bin/activate && cd /home/vadim/diplom/ml-services/ml-baseline && pytest -q
 ```
 
 Примечание по frontend: `next build` генерирует актуальные `.next/types` для App Router. Если рабочее дерево уже содержит устаревшие `.next` артефакты, запускайте `npm run build` перед отдельным `npx tsc --noEmit`.

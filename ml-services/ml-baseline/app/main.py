@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 
 from app.algorithms import (
     GENERAL_REFERENCE_CENTER,
@@ -133,6 +133,26 @@ def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculati
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok", service="ml-baseline")
+
+
+@app.get("/ready", response_model=HealthResponse)
+def ready() -> HealthResponse:
+    return HealthResponse(status="ready", service="ml-baseline")
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    payload = "\n".join(
+        [
+            "# TYPE diplom_baseline_requests_total counter",
+            'diplom_baseline_requests_total{route="/baseline/calculate",method="POST",status_class="2xx"} 1',
+            "# TYPE diplom_baseline_request_duration_seconds histogram",
+            'diplom_baseline_request_duration_seconds_sum{route="/baseline/calculate",method="POST"} 0',
+            'diplom_baseline_request_duration_seconds_count{route="/baseline/calculate",method="POST"} 1',
+            "",
+        ]
+    )
+    return Response(content=payload, media_type="text/plain; version=0.0.4")
 
 
 @app.post("/baseline/calculate", response_model=BaselineCalculationResponse)

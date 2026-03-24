@@ -19,16 +19,16 @@ created: 2026-03-20
 |----------|-------|
 | **Framework** | Go stdlib `testing` + `net/http/httptest` |
 | **Config file** | none |
-| **Quick run command** | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestMe|TestListBySpecialistReturnsCurrentStatuses' -count=1 && go test ./internal/examinations -run 'TestCreateExaminationRejectsMissingQuestionnaire|TestFinishRequiresAllAnswers' -count=1 && go test ./internal/answers -run 'TestCreateAnswerRejectsMismatchedQuestion' -count=1` |
-| **Full suite command** | `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` |
+| **Quick run command** | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestMe|TestListBySpecialistReturnsCurrentStatuses' -count=1 && go test ./internal/examinations -run 'TestCreateExaminationRejectsMissingQuestionnaire|TestFinishRequiresAllAnswers' -count=1 && go test ./internal/answers -run 'TestCreateAnswerRejectsMismatchedQuestion' -count=1` |
+| **Full suite command** | `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` |
 | **Estimated runtime** | ~25 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestMe|TestListBySpecialistReturnsCurrentStatuses' -count=1 && go test ./internal/examinations -run 'TestCreateExaminationRejectsMissingQuestionnaire|TestFinishRequiresAllAnswers' -count=1 && go test ./internal/answers -run 'TestCreateAnswerRejectsMismatchedQuestion' -count=1`
-- **After every plan wave:** Run `cd /home/katya/dimplom/core-backend && go test ./... -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit`
+- **After every task commit:** Run `cd /home/vadim/diplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestMe|TestListBySpecialistReturnsCurrentStatuses' -count=1 && go test ./internal/examinations -run 'TestCreateExaminationRejectsMissingQuestionnaire|TestFinishRequiresAllAnswers' -count=1 && go test ./internal/answers -run 'TestCreateAnswerRejectsMismatchedQuestion' -count=1`
+- **After every plan wave:** Run `cd /home/vadim/diplom/core-backend && go test ./... -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit`
 - **Before `$gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 25 seconds
 
@@ -38,22 +38,22 @@ created: 2026-03-20
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 1-01-01 | 01 | 1 | ACCS-01, ACCS-02, ACCS-03 | HTTP + service | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/auth -run 'TestLogin|TestRefreshRotation|TestLogoutRevokesSession|TestMe' -count=1` | ❌ W0 | ⬜ pending |
-| 1-01-02 | 01 | 1 | ACCS-01, ACCS-02, ACCS-03 | docs + tests | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/auth -run 'TestLogin|TestRefreshRotation|TestLogoutRevokesSession|TestMe' -count=1` | ❌ W0 | ⬜ pending |
-| 1-02-01 | 02 | 2 | ACCS-04 | middleware + HTTP | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestAdminRoutes|TestOperatorRoutes' -count=1` | ❌ W0 | ⬜ pending |
-| 1-02-02 | 02 | 2 | ACCS-04 | docs + tests | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestAdminRoutes|TestOperatorRoutes' -count=1` | ❌ W0 | ⬜ pending |
-| 1-03-01 | 03 | 2 | ACCS-02, ACCS-03 | frontend BFF | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
-| 1-03-02 | 03 | 2 | ACCS-02, ACCS-03 | docs | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
-| 1-04-01 | 04 | 3 | EXAM-01 | service + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/examinations -run 'TestCreateExaminationSnapshotsQuestions|TestCreateExaminationRejectsMissingQuestionnaire|TestCreateExaminationRejectsInvalidQuestionnaire' -count=1` | ❌ W0 | ⬜ pending |
-| 1-04-02 | 04 | 3 | EXAM-01 | docs | `cd /home/katya/dimplom/core-backend && go test ./internal/examinations -run 'TestCreateExaminationSnapshotsQuestions|TestCreateExaminationRejectsMissingQuestionnaire|TestCreateExaminationRejectsInvalidQuestionnaire' -count=1` | ❌ W0 | ⬜ pending |
-| 1-05-01 | 05 | 4 | EXAM-02 | service + repository | `cd /home/katya/dimplom/core-backend && go test ./internal/answers -run 'TestCreateAnswerPersistsQuestionLink|TestCreateAnswerRejectsMismatchedQuestion|TestCreateAnswerRejectsDuplicateQuestionAnswer' -count=1` | ❌ W0 | ⬜ pending |
-| 1-05-02 | 05 | 4 | EXAM-02 | docs | `cd /home/katya/dimplom/core-backend && go test ./internal/answers -run 'TestCreateAnswerPersistsQuestionLink|TestCreateAnswerRejectsMismatchedQuestion|TestCreateAnswerRejectsDuplicateQuestionAnswer' -count=1` | ❌ W0 | ⬜ pending |
-| 1-06-01 | 06 | 5 | EXAM-03 | service + HTTP | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/examinations -run 'TestFinishIsIdempotent|TestFinishRequiresAllAnswers|TestListBySpecialistReturnsCurrentStatuses' -count=1` | ❌ W0 | ⬜ pending |
-| 1-06-02 | 06 | 5 | EXAM-03 | docs | `cd /home/katya/dimplom/core-backend && go test ./internal/http ./internal/examinations -run 'TestFinishIsIdempotent|TestFinishRequiresAllAnswers|TestListBySpecialistReturnsCurrentStatuses' -count=1` | ❌ W0 | ⬜ pending |
-| 1-07-01 | 07 | 6 | EXAM-04 | backend + frontend | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run TestListBySpecialistReturnsCurrentStatuses -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
-| 1-07-02 | 07 | 6 | EXAM-04 | docs | `cd /home/katya/dimplom/core-backend && go test ./internal/http -run TestListBySpecialistReturnsCurrentStatuses -count=1 && cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
-| 1-08-01 | 08 | 3 | ACCS-02, ACCS-03 | frontend session UX | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
-| 1-08-02 | 08 | 3 | ACCS-02, ACCS-03 | docs | `cd /home/katya/dimplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 1-01-01 | 01 | 1 | ACCS-01, ACCS-02, ACCS-03 | HTTP + service | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/auth -run 'TestLogin|TestRefreshRotation|TestLogoutRevokesSession|TestMe' -count=1` | ❌ W0 | ⬜ pending |
+| 1-01-02 | 01 | 1 | ACCS-01, ACCS-02, ACCS-03 | docs + tests | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/auth -run 'TestLogin|TestRefreshRotation|TestLogoutRevokesSession|TestMe' -count=1` | ❌ W0 | ⬜ pending |
+| 1-02-01 | 02 | 2 | ACCS-04 | middleware + HTTP | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestAdminRoutes|TestOperatorRoutes' -count=1` | ❌ W0 | ⬜ pending |
+| 1-02-02 | 02 | 2 | ACCS-04 | docs + tests | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run 'TestRequireRoles|TestAdminRoutes|TestOperatorRoutes' -count=1` | ❌ W0 | ⬜ pending |
+| 1-03-01 | 03 | 2 | ACCS-02, ACCS-03 | frontend BFF | `cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 1-03-02 | 03 | 2 | ACCS-02, ACCS-03 | docs | `cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 1-04-01 | 04 | 3 | EXAM-01 | service + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/examinations -run 'TestCreateExaminationSnapshotsQuestions|TestCreateExaminationRejectsMissingQuestionnaire|TestCreateExaminationRejectsInvalidQuestionnaire' -count=1` | ❌ W0 | ⬜ pending |
+| 1-04-02 | 04 | 3 | EXAM-01 | docs | `cd /home/vadim/diplom/core-backend && go test ./internal/examinations -run 'TestCreateExaminationSnapshotsQuestions|TestCreateExaminationRejectsMissingQuestionnaire|TestCreateExaminationRejectsInvalidQuestionnaire' -count=1` | ❌ W0 | ⬜ pending |
+| 1-05-01 | 05 | 4 | EXAM-02 | service + repository | `cd /home/vadim/diplom/core-backend && go test ./internal/answers -run 'TestCreateAnswerPersistsQuestionLink|TestCreateAnswerRejectsMismatchedQuestion|TestCreateAnswerRejectsDuplicateQuestionAnswer' -count=1` | ❌ W0 | ⬜ pending |
+| 1-05-02 | 05 | 4 | EXAM-02 | docs | `cd /home/vadim/diplom/core-backend && go test ./internal/answers -run 'TestCreateAnswerPersistsQuestionLink|TestCreateAnswerRejectsMismatchedQuestion|TestCreateAnswerRejectsDuplicateQuestionAnswer' -count=1` | ❌ W0 | ⬜ pending |
+| 1-06-01 | 06 | 5 | EXAM-03 | service + HTTP | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/examinations -run 'TestFinishIsIdempotent|TestFinishRequiresAllAnswers|TestListBySpecialistReturnsCurrentStatuses' -count=1` | ❌ W0 | ⬜ pending |
+| 1-06-02 | 06 | 5 | EXAM-03 | docs | `cd /home/vadim/diplom/core-backend && go test ./internal/http ./internal/examinations -run 'TestFinishIsIdempotent|TestFinishRequiresAllAnswers|TestListBySpecialistReturnsCurrentStatuses' -count=1` | ❌ W0 | ⬜ pending |
+| 1-07-01 | 07 | 6 | EXAM-04 | backend + frontend | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run TestListBySpecialistReturnsCurrentStatuses -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 1-07-02 | 07 | 6 | EXAM-04 | docs | `cd /home/vadim/diplom/core-backend && go test ./internal/http -run TestListBySpecialistReturnsCurrentStatuses -count=1 && cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 1-08-01 | 08 | 3 | ACCS-02, ACCS-03 | frontend session UX | `cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 1-08-02 | 08 | 3 | ACCS-02, ACCS-03 | docs | `cd /home/vadim/diplom/frontend && npm run lint && npx tsc --noEmit` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -61,14 +61,14 @@ created: 2026-03-20
 
 ## Wave 0 Requirements
 
-- [ ] `/home/katya/dimplom/core-backend/internal/http/auth_handler_test.go` — login, refresh, logout, `/me`
-- [ ] `/home/katya/dimplom/core-backend/internal/http/rbac_test.go` — wrong-role rejection and allowed-role success
-- [ ] `/home/katya/dimplom/core-backend/internal/auth/service_test.go` — refresh rotation, revocation, inactive-user checks
-- [ ] `/home/katya/dimplom/core-backend/internal/examinations/service_test.go` — create snapshot, missing-questionnaire rejection, finish completeness, idempotent finish
-- [ ] `/home/katya/dimplom/core-backend/internal/answers/service_test.go` — question linkage and duplicate-answer handling
-- [ ] `/home/katya/dimplom/core-backend/internal/http/examinations_handler_test.go` — authoritative specialist history endpoint after finish
-- [ ] `/home/katya/dimplom/frontend/app/api/auth/login/route.ts` and related BFF route handlers — auth transport boundary
-- [ ] `/home/katya/dimplom/frontend/hooks/use-current-user.ts` and protected layouts — session bootstrap UX
+- [ ] `/home/vadim/diplom/core-backend/internal/http/auth_handler_test.go` — login, refresh, logout, `/me`
+- [ ] `/home/vadim/diplom/core-backend/internal/http/rbac_test.go` — wrong-role rejection and allowed-role success
+- [ ] `/home/vadim/diplom/core-backend/internal/auth/service_test.go` — refresh rotation, revocation, inactive-user checks
+- [ ] `/home/vadim/diplom/core-backend/internal/examinations/service_test.go` — create snapshot, missing-questionnaire rejection, finish completeness, idempotent finish
+- [ ] `/home/vadim/diplom/core-backend/internal/answers/service_test.go` — question linkage and duplicate-answer handling
+- [ ] `/home/vadim/diplom/core-backend/internal/http/examinations_handler_test.go` — authoritative specialist history endpoint after finish
+- [ ] `/home/vadim/diplom/frontend/app/api/auth/login/route.ts` and related BFF route handlers — auth transport boundary
+- [ ] `/home/vadim/diplom/frontend/hooks/use-current-user.ts` and protected layouts — session bootstrap UX
 - [ ] Minimal repository integration harness for transaction-sensitive behavior — otherwise finish/idempotency tests will be too mock-heavy
 
 ---

@@ -40,8 +40,8 @@ Output: idempotent aggregation eligibility, deterministic profile assembly, and 
 </objective>
 
 <execution_context>
-@/home/katya/.codex/get-shit-done/workflows/execute-plan.md
-@/home/katya/.codex/get-shit-done/templates/summary.md
+@/home/vadim/.codex/get-shit-done/workflows/execute-plan.md
+@/home/vadim/.codex/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -84,7 +84,7 @@ var MandatoryChannels = []string{
   </behavior>
   <action>Create `internal/aggregation` as the Go-owned aggregation domain for Phase 3. Implement eligibility checks, profile normalization, channel contribution calculation, and human-readable explanation rules using deterministic mappings from the persisted stub channel payloads. Follow the research conclusion even though `docs/00_project.md` mentions a separate Aggregator component: for Phase 3, the logic lives in Go core because PostgreSQL already owns the workflow and persisted channel results. Keep metric names neutral and proxy-oriented; do not introduce clinical labels or KESMI-oriented recommendation logic.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestAggregationIncludesContributionsAndExplanations' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/aggregation -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestAggregationStoresVersionedProfile|TestAggregationIncludesContributionsAndExplanations' -count=1</automated>
   </verify>
   <done>`internal/aggregation` can decide readiness, build the canonical profile, and pass the RED tests for normalized metrics, contributions, and explanations.</done>
 </task>
@@ -99,7 +99,7 @@ var MandatoryChannels = []string{
   </behavior>
   <action>Extend the existing `channelresults` success path so that after saving a successful channel result it asks the aggregation repository whether all mandatory channels are complete and whether a profile already exists. If ready, acquire a DB fence, switch the examination to `aggregating`, and persist the canonical aggregated profile assembled by `internal/aggregation`. Update the processing-status projection so `aggregating` is backend-authoritative and not terminal yet. Do not call the baseline service in this plan; leave that integration for the dedicated baseline plan that follows.</action>
   <verify>
-    <automated>cd /home/katya/dimplom/core-backend && go test ./internal/aggregation ./internal/processing -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestProcessingStatusShowsAggregating' -count=1</automated>
+    <automated>cd /home/vadim/diplom/core-backend && go test ./internal/aggregation ./internal/processing -run 'TestAggregationReadyOnlyAfterAllChannelsSucceeded|TestProcessingStatusShowsAggregating' -count=1</automated>
   </verify>
   <done>The core backend now promotes fully successful examinations into `aggregating`, persists one canonical profile row, and reports the new status without duplicate aggregation side effects.</done>
 </task>

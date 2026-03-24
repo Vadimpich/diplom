@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/repository"
+	"diplom/internal/audit"
+	"diplom/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -78,6 +79,51 @@ func TestLoginRejectsInactiveUser(t *testing.T) {
 	})
 	if !errors.Is(err, ErrInactiveUser) {
 		t.Fatalf("expected ErrInactiveUser, got %v", err)
+	}
+}
+
+func TestLoginWritesAuditEvent(t *testing.T) {
+	now := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	auditRepo := &authAuditRepoStub{}
+	service := NewService(repo, &stubTokenManager{token: "access-1", expiresIn: 900}, audit.NewService(auditRepo))
+
+	if _, err := service.Login(context.Background(), LoginInput{
+		Login:     "operator",
+		Password:  "secret",
+		IP:        "127.0.0.1",
+		UserAgent: "test-agent",
+	}); err != nil {
+		t.Fatalf("login returned error: %v", err)
+	}
+	if len(auditRepo.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeAuthLogin {
+		t.Fatalf("expected auth.login event, got %q", auditRepo.events[0].Type)
+	}
+}
+
+func TestFailedLoginWritesAuditEvent(t *testing.T) {
+	now := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	auditRepo := &authAuditRepoStub{}
+	service := NewService(repo, &stubTokenManager{token: "access-1", expiresIn: 900}, audit.NewService(auditRepo))
+
+	_, err := service.Login(context.Background(), LoginInput{
+		Login:     "operator",
+		Password:  "wrong",
+		IP:        "127.0.0.1",
+		UserAgent: "test-agent",
+	})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials, got %v", err)
+	}
+	if len(auditRepo.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeAuthLoginFailed {
+		t.Fatalf("expected auth.login_failed event, got %q", auditRepo.events[0].Type)
 	}
 }
 
@@ -263,4 +309,17 @@ func strPtr(value string) *string {
 		return nil
 	}
 	return &value
+}
+
+type authAuditRepoStub struct {
+	events []audit.Event
+}
+
+func (s *authAuditRepoStub) Append(_ context.Context, event audit.Event) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
+func (s *authAuditRepoStub) List(context.Context, audit.ListFilter) ([]audit.Event, error) {
+	return append([]audit.Event(nil), s.events...), nil
 }

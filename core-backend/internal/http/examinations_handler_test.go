@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"dimplom/internal/examinations"
+	"diplom/internal/examinations"
 	"github.com/go-chi/chi/v5"
 )
 

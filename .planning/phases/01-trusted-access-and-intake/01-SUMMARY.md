@@ -23,10 +23,10 @@ patterns:
   - short-lived access JWT plus opaque hashed refresh session
   - backend exposes token exchange while frontend BFF owns HttpOnly cookie transport
 key_files:
-  - /home/katya/dimplom/core-backend/internal/auth/service.go
-  - /home/katya/dimplom/core-backend/internal/http/auth_handler.go
-  - /home/katya/dimplom/core-backend/migrations/000003_refresh_sessions.up.sql
-  - /home/katya/dimplom/docs/01_contract.md
+  - /home/vadim/diplom/core-backend/internal/auth/service.go
+  - /home/vadim/diplom/core-backend/internal/http/auth_handler.go
+  - /home/vadim/diplom/core-backend/migrations/000003_refresh_sessions.up.sql
+  - /home/vadim/diplom/docs/01_contract.md
 decisions:
   - Keep browser cookie ownership out of core-backend; return refresh tokens to the trusted frontend BFF boundary instead.
   - Store only hashed opaque refresh tokens in PostgreSQL so logout and rotation remain server-authoritative.

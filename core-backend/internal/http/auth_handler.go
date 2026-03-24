@@ -3,7 +3,8 @@ package http
 import (
 	"net/http"
 
-	"dimplom/internal/auth"
+	"diplom/internal/audit"
+	"diplom/internal/auth"
 )
 
 type AuthHandler struct {
@@ -42,7 +43,15 @@ func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.Login(r.Context(), auth.LoginInput{
+	ctx := audit.WithMetadata(r.Context(), audit.Metadata{
+		Actor: audit.Actor{
+			Login:     request.Login,
+			IP:        clientIP(r),
+			UserAgent: r.UserAgent(),
+		},
+	})
+
+	result, err := h.service.Login(ctx, auth.LoginInput{
 		Login:     request.Login,
 		Password:  request.Password,
 		IP:        clientIP(r),

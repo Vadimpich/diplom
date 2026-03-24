@@ -76,7 +76,7 @@ Each task was committed atomically:
 - **Issue:** `go test ./...` failed because the phase already had a contract/test for `GET /examinations/{id}/processing-status`, but router wiring was absent.
 - **Fix:** Added handler wiring plus PostgreSQL-backed status read path, with safe router fallback for tests that construct `Dependencies` without a processing service.
 - **Files modified:** `core-backend/internal/processing/service.go`, `core-backend/internal/processing/repository.go`, `core-backend/internal/http/examinations_handler.go`, `core-backend/internal/http/router.go`, `docs/02_implementation.md`
-- **Verification:** `cd /home/katya/dimplom/core-backend && go test ./...`
+- **Verification:** `cd /home/vadim/diplom/core-backend && go test ./...`
 - **Committed in:** `a3f78be`
 
 ---

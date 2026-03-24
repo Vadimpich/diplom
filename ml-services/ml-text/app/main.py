@@ -12,10 +12,12 @@ from uuid import uuid4
 
 import aio_pika
 from aio_pika import ExchangeType, IncomingMessage, Message, RobustChannel, RobustConnection
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from fastapi.responses import JSONResponse
 from minio import Minio
 from minio.error import S3Error
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from app.telemetry import metrics_payload, ready_payload, test_mode
 
 
 CHANNEL = "text"
@@ -49,6 +51,9 @@ class ProcessingCommandEnvelope(BaseModel):
     message_version: int
     message_id: str
     correlation_id: str
+    request_id: str = ""
+    traceparent: str = ""
+    tracestate: str = ""
     examination_id: int
     specialist_id: int
     channel: str
@@ -96,8 +101,8 @@ def build_rabbitmq_url() -> str:
 
     host = os.getenv("RABBITMQ_HOST", "rabbitmq")
     port = os.getenv("RABBITMQ_PORT", "5672")
-    user = os.getenv("RABBITMQ_USER", "dimplom")
-    password = os.getenv("RABBITMQ_PASSWORD", "dimplom_dev_password")
+    user = os.getenv("RABBITMQ_USER", "diplom")
+    password = os.getenv("RABBITMQ_PASSWORD", "diplom_dev_password")
     vhost = os.getenv("RABBITMQ_VHOST", "/").lstrip("/")
     return f"amqp://{user}:{password}@{host}:{port}/{vhost}"
 
@@ -244,6 +249,9 @@ class WorkerState:
             "message_version": 1,
             "message_id": str(uuid4()),
             "correlation_id": "",
+            "request_id": "",
+            "traceparent": "",
+            "tracestate": "",
             "examination_id": 0,
             "channel": CHANNEL,
             "attempt": 0,
@@ -267,6 +275,9 @@ class WorkerState:
             "message_version": command.message_version,
             "message_id": str(uuid4()),
             "correlation_id": command.correlation_id,
+            "request_id": command.request_id,
+            "traceparent": command.traceparent,
+            "tracestate": command.tracestate,
             "examination_id": command.examination_id,
             "channel": command.channel,
             "attempt": command.attempt,
@@ -287,6 +298,9 @@ class WorkerState:
                 "message_version": 1,
                 "message_id": str(uuid4()),
                 "correlation_id": "",
+                "request_id": "",
+                "traceparent": "",
+                "tracestate": "",
                 "examination_id": 0,
                 "channel": CHANNEL,
                 "attempt": 0,
@@ -364,6 +378,9 @@ async def run_worker() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if test_mode():
+        yield
+        return
     worker_task = asyncio.create_task(run_worker())
     try:
         yield
@@ -382,6 +399,17 @@ app = FastAPI(title=config.app_name, lifespan=lifespan)
 @app.get("/health")
 async def health() -> dict[str, Any]:
     return state.health()
+
+
+@app.get("/ready")
+async def ready() -> JSONResponse:
+    payload, status_code = ready_payload(state, CHANNEL)
+    return JSONResponse(content=payload, status_code=status_code)
+
+
+@app.get("/metrics")
+async def metrics() -> Response:
+    return Response(metrics_payload(CHANNEL), media_type="text/plain; version=0.0.4")
 
 
 def _handle_signal(_: int, __: Any) -> None:

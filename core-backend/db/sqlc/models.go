@@ -8,6 +8,56 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AggregatedExaminationProfile struct {
+	ID                               int64
+	ExaminationID                    int64
+	SpecialistID                     int64
+	SchemaVersion                    int32
+	AggregationVersion               string
+	BaselineAlgorithmVersion         string
+	Status                           string
+	GeneratedAt                      pgtype.Timestamptz
+	BaselineRefreshedAt              pgtype.Timestamptz
+	BaselineExamCount                int32
+	OverallScore                     pgtype.Float8
+	OverallBand                      pgtype.Text
+	PrimaryMetricKey                 pgtype.Text
+	NeutralRecommendationPlaceholder pgtype.Text
+	CreatedAt                        pgtype.Timestamptz
+	UpdatedAt                        pgtype.Timestamptz
+}
+
+type AggregatedProfileChannelContribution struct {
+	ID           int64
+	ProfileID    int64
+	Channel      string
+	MetricKey    string
+	Weight       float64
+	Contribution float64
+	EvidenceKeys []byte
+	CreatedAt    pgtype.Timestamptz
+}
+
+type AggregatedProfileExplanation struct {
+	ID        int64
+	ProfileID int64
+	Position  int32
+	Kind      string
+	Text      string
+	CreatedAt pgtype.Timestamptz
+}
+
+type AggregatedProfileMetric struct {
+	ID        int64
+	ProfileID int64
+	MetricKey string
+	Label     string
+	Value     float64
+	Scale     string
+	Direction string
+	CreatedAt pgtype.Timestamptz
+}
+
 type Answer struct {
 	ID                    int64
 	ExaminationID         int64
@@ -17,6 +67,88 @@ type Answer struct {
 	CreatedAt             pgtype.Timestamptz
 	ExaminationQuestionID pgtype.Int8
 	SpecialistID          pgtype.Int8
+}
+
+type AuditLog struct {
+	ID                 int64
+	EventType          string
+	EventKey           pgtype.Text
+	Outcome            string
+	HappenedAt         pgtype.Timestamptz
+	RequestID          pgtype.Text
+	TraceID            pgtype.Text
+	Traceparent        pgtype.Text
+	Tracestate         pgtype.Text
+	CorrelationID      pgtype.Text
+	ActorUserID        pgtype.Int8
+	ActorLogin         pgtype.Text
+	ActorRoleSlug      pgtype.Text
+	ActorIp            pgtype.Text
+	ActorUserAgent     pgtype.Text
+	ResourceKind       string
+	ResourceID         pgtype.Int8
+	ExaminationID      pgtype.Int8
+	SpecialistID       pgtype.Int8
+	QuestionnaireID    pgtype.Int8
+	Channel            pgtype.Text
+	DecisionSnapshotID pgtype.Int8
+	Payload            []byte
+	CreatedAt          pgtype.Timestamptz
+}
+
+type ChannelResult struct {
+	ID                  int64
+	ExaminationID       int64
+	ChannelRunID        int64
+	Channel             string
+	MessageVersion      int32
+	Attempt             int32
+	Status              string
+	ModelVersion        string
+	Payload             []byte
+	ErrorCode           pgtype.Text
+	ErrorMessage        pgtype.Text
+	BrokerMessageID     pgtype.Text
+	BrokerCorrelationID pgtype.Text
+	CompletedAt         pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+}
+
+type DecisionAttempt struct {
+	ID                  int64
+	DecisionSnapshotID  int64
+	AttemptNumber       int32
+	CorrelationID       pgtype.Text
+	RequestPayloadJson  []byte
+	ResponsePayloadJson []byte
+	ErrorCode           pgtype.Text
+	ErrorMessage        pgtype.Text
+	ErrorClass          pgtype.Text
+	Retryable           bool
+	HttpStatus          pgtype.Int4
+	StartedAt           pgtype.Timestamptz
+	FinishedAt          pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+}
+
+type DecisionSnapshot struct {
+	ID                 int64
+	ExaminationID      int64
+	SpecialistID       int64
+	Status             string
+	PayloadVersion     string
+	AggregationVersion string
+	Recommendation     string
+	Message            string
+	CorrelationID      pgtype.Text
+	MaxAttempts        int32
+	AttemptCount       int32
+	LastAttemptAt      pgtype.Timestamptz
+	CompletedAt        pgtype.Timestamptz
+	DiagnosticsJson    []byte
+	RawResponseJson    []byte
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
 }
 
 type Examination struct {
@@ -29,6 +161,42 @@ type Examination struct {
 	FinishedAt      pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
 	QuestionnaireID pgtype.Int8
+}
+
+type ExaminationBaselineSnapshot struct {
+	ID                                int64
+	ExaminationID                     int64
+	ProfileID                         int64
+	AlgorithmVersion                  string
+	RefreshedAt                       pgtype.Timestamptz
+	GeneralDelta                      float64
+	GeneralBand                       string
+	GeneralReferencePopulationVersion pgtype.Text
+	PersonalDelta                     float64
+	PersonalBand                      string
+	BaselineExamCount                 int32
+	UpdateEligible                    bool
+	UpdateReason                      pgtype.Text
+	CreatedAt                         pgtype.Timestamptz
+}
+
+type ExaminationChannelRun struct {
+	ID                  int64
+	ExaminationID       int64
+	Channel             string
+	Status              string
+	AttemptCount        int32
+	MaxAttempts         int32
+	MessageVersion      int32
+	LastErrorCode       pgtype.Text
+	LastErrorMessage    pgtype.Text
+	BrokerMessageID     pgtype.Text
+	BrokerCorrelationID pgtype.Text
+	QueuedAt            pgtype.Timestamptz
+	StartedAt           pgtype.Timestamptz
+	FinishedAt          pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 type ExaminationProcessingLaunch struct {
@@ -44,6 +212,27 @@ type ExaminationQuestion struct {
 	SourceQuestionID pgtype.Int8
 	Position         int32
 	QuestionText     string
+}
+
+type ProcessingOutbox struct {
+	ID                  int64
+	ExaminationID       int64
+	ChannelRunID        int64
+	Channel             string
+	ExchangeName        string
+	RoutingKey          string
+	Status              string
+	AttemptCount        int32
+	MaxAttempts         int32
+	MessageVersion      int32
+	Payload             []byte
+	BrokerMessageID     pgtype.Text
+	BrokerCorrelationID pgtype.Text
+	LastErrorCode       pgtype.Text
+	LastErrorMessage    pgtype.Text
+	PublishedAt         pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 type Question struct {
@@ -94,6 +283,19 @@ type Specialist struct {
 	PersonnelNumber pgtype.Text
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+}
+
+type SpecialistBaselineState struct {
+	ID                int64
+	SpecialistID      int64
+	AlgorithmVersion  string
+	RefreshedAt       pgtype.Timestamptz
+	BaselineExamCount int32
+	UpdateEligible    bool
+	UpdateReason      pgtype.Text
+	Metrics           []byte
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 }
 
 type User struct {
