@@ -7,7 +7,7 @@
     "build": "node ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "node ./node_modules/eslint/bin/eslint.js .",
-    "test": "vitest run"
+    "test": "node ./node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -35,8 +35,7 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.1"
-    ,
+    "vitest": "^4.1.1",
     "yocto-queue": "^1.2.2"
   }
 }
