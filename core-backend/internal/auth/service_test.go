@@ -127,6 +127,91 @@ func TestFailedLoginWritesAuditEvent(t *testing.T) {
 	}
 }
 
+func TestGetUserByIDDoesNotWriteUpdateAuditEvent(t *testing.T) {
+	now := time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	auditRepo := &authAuditRepoStub{}
+	service := NewService(repo, &stubTokenManager{}, audit.NewService(auditRepo))
+
+	user, err := service.GetUserByID(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("get user returned error: %v", err)
+	}
+
+	if user.ID != 1 {
+		t.Fatalf("expected user ID 1, got %d", user.ID)
+	}
+	if len(auditRepo.events) != 0 {
+		t.Fatalf("expected no audit events for read path, got %d", len(auditRepo.events))
+	}
+}
+
+func TestCreateUserAndLoginAuditBehaviorRemainsIntact(t *testing.T) {
+	now := time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	auditRepo := &authAuditRepoStub{}
+	service := NewService(repo, &stubTokenManager{token: "access-1", expiresIn: 900}, audit.NewService(auditRepo))
+
+	createdUser, err := service.CreateUser(context.Background(), CreateUserInput{
+		Login:    "admin-2",
+		Password: "secret-2",
+		RoleSlug: "admin",
+	})
+	if err != nil {
+		t.Fatalf("create user returned error: %v", err)
+	}
+
+	if createdUser.Login != "admin-2" {
+		t.Fatalf("expected created login admin-2, got %q", createdUser.Login)
+	}
+
+	if _, err := service.Login(context.Background(), LoginInput{
+		Login:     "operator",
+		Password:  "secret",
+		IP:        "127.0.0.1",
+		UserAgent: "test-agent",
+	}); err != nil {
+		t.Fatalf("login returned error: %v", err)
+	}
+
+	if len(auditRepo.events) != 2 {
+		t.Fatalf("expected two audit events, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeAdminUserCreated {
+		t.Fatalf("expected first event admin.user_created, got %q", auditRepo.events[0].Type)
+	}
+	if auditRepo.events[1].Type != audit.EventTypeAuthLogin {
+		t.Fatalf("expected second event auth.login, got %q", auditRepo.events[1].Type)
+	}
+}
+
+func TestUpdateUserIsOnlyPathThatWritesUserUpdatedAuditEvent(t *testing.T) {
+	now := time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	auditRepo := &authAuditRepoStub{}
+	service := NewService(repo, &stubTokenManager{}, audit.NewService(auditRepo))
+
+	updatedUser, err := service.UpdateUser(context.Background(), UpdateUserInput{
+		ID:       1,
+		Login:    "operator-2",
+		RoleSlug: "admin",
+		IsActive: false,
+	})
+	if err != nil {
+		t.Fatalf("update user returned error: %v", err)
+	}
+
+	if updatedUser.Login != "operator-2" {
+		t.Fatalf("expected updated login operator-2, got %q", updatedUser.Login)
+	}
+	if len(auditRepo.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(auditRepo.events))
+	}
+	if auditRepo.events[0].Type != audit.EventTypeAdminUserUpdated {
+		t.Fatalf("expected admin.user_updated event, got %q", auditRepo.events[0].Type)
+	}
+}
+
 type stubTokenManager struct {
 	token     string
 	expiresIn int64
@@ -147,8 +232,10 @@ func (s *stubTokenManager) Parse(token string) (Claims, error) {
 type authRepoStub struct {
 	usersByLogin     map[string]StoredUser
 	usersByID        map[int64]StoredUser
+	rolesBySlug      map[string]Role
 	refreshSessions  map[string]RefreshSession
 	nextSessionID    int64
+	nextUserID       int64
 	seedRefreshToken string
 }
 
@@ -184,10 +271,19 @@ func newAuthRepoStub(now time.Time) *authRepoStub {
 	return &authRepoStub{
 		usersByLogin: map[string]StoredUser{user.Login: user},
 		usersByID:    map[int64]StoredUser{user.ID: user},
+		rolesBySlug: map[string]Role{
+			"admin": {
+				ID:   1,
+				Slug: "admin",
+				Name: "Admin",
+			},
+			"operator": user.Role,
+		},
 		refreshSessions: map[string]RefreshSession{
 			hashKey(session.TokenHash): session,
 		},
 		nextSessionID:    11,
+		nextUserID:       2,
 		seedRefreshToken: seedToken,
 	}
 }
@@ -212,16 +308,54 @@ func (r *authRepoStub) ListUsers(context.Context) ([]StoredUser, error) {
 	return nil, nil
 }
 
-func (r *authRepoStub) GetRoleBySlug(context.Context, string) (Role, error) {
-	return Role{}, nil
+func (r *authRepoStub) GetRoleBySlug(_ context.Context, slug string) (Role, error) {
+	role, ok := r.rolesBySlug[slug]
+	if !ok {
+		return Role{}, repository.ErrNotFound
+	}
+	return role, nil
 }
 
-func (r *authRepoStub) CreateUser(context.Context, CreateUserParams) (StoredUser, error) {
-	return StoredUser{}, nil
+func (r *authRepoStub) CreateUser(_ context.Context, params CreateUserParams) (StoredUser, error) {
+	role, ok := roleByID(r.rolesBySlug, params.RoleID)
+	if !ok {
+		return StoredUser{}, repository.ErrNotFound
+	}
+
+	user := StoredUser{
+		ID:           r.nextUserID,
+		Login:        params.Login,
+		PasswordHash: params.PasswordHash,
+		Role:         role,
+		IsActive:     true,
+		Created:      time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC),
+		Updated:      time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC),
+	}
+	r.usersByID[user.ID] = user
+	r.usersByLogin[user.Login] = user
+	r.nextUserID++
+	return user, nil
 }
 
-func (r *authRepoStub) UpdateUser(context.Context, UpdateUserParams) (StoredUser, error) {
-	return StoredUser{}, nil
+func (r *authRepoStub) UpdateUser(_ context.Context, params UpdateUserParams) (StoredUser, error) {
+	user, ok := r.usersByID[params.ID]
+	if !ok {
+		return StoredUser{}, repository.ErrNotFound
+	}
+
+	role, ok := roleByID(r.rolesBySlug, params.RoleID)
+	if !ok {
+		return StoredUser{}, repository.ErrNotFound
+	}
+
+	delete(r.usersByLogin, user.Login)
+	user.Login = params.Login
+	user.Role = role
+	user.IsActive = params.IsActive
+	user.Updated = time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
+	r.usersByID[user.ID] = user
+	r.usersByLogin[user.Login] = user
+	return user, nil
 }
 
 func (r *authRepoStub) UpsertUser(context.Context, UpsertUserParams) (StoredUser, error) {
@@ -309,6 +443,15 @@ func strPtr(value string) *string {
 		return nil
 	}
 	return &value
+}
+
+func roleByID(roles map[string]Role, id int64) (Role, bool) {
+	for _, role := range roles {
+		if role.ID == id {
+			return role, true
+		}
+	}
+	return Role{}, false
 }
 
 type authAuditRepoStub struct {

@@ -459,21 +459,6 @@ func (s *Service) GetUserByID(ctx context.Context, id int64) (User, error) {
 		return User{}, err
 	}
 
-	s.appendAudit(ctx, audit.Event{
-		Type:    audit.EventTypeAdminUserUpdated,
-		Key:     fmt.Sprintf("admin-user-updated:%d:%s:%t", user.ID, user.Login, user.IsActive),
-		Outcome: audit.OutcomeSucceeded,
-		Resource: audit.ResourceRef{
-			Kind: "user",
-			ID:   user.ID,
-		},
-		Payload: mustJSON(map[string]any{
-			"login":     user.Login,
-			"role_slug": user.Role.Slug,
-			"is_active": user.IsActive,
-		}),
-	})
-
 	return toUser(user), nil
 }
 
@@ -498,6 +483,21 @@ func (s *Service) UpdateUser(ctx context.Context, input UpdateUserInput) (User, 
 	if err != nil {
 		return User{}, err
 	}
+
+	s.appendAudit(ctx, audit.Event{
+		Type:    audit.EventTypeAdminUserUpdated,
+		Key:     fmt.Sprintf("admin-user-updated:%d:%s:%t", user.ID, user.Login, user.IsActive),
+		Outcome: audit.OutcomeSucceeded,
+		Resource: audit.ResourceRef{
+			Kind: "user",
+			ID:   user.ID,
+		},
+		Payload: mustJSON(map[string]any{
+			"login":     user.Login,
+			"role_slug": user.Role.Slug,
+			"is_active": user.IsActive,
+		}),
+	})
 
 	return toUser(user), nil
 }
