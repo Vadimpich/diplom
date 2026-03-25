@@ -37,17 +37,17 @@ export function UserForm({
 
   return (
     <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle>{mode === "create" ? "Новая учётная запись" : "Параметры доступа"}</CardTitle>
+      <CardHeader className="gap-1.5 pb-4">
+        <CardTitle>{mode === "create" ? "Новая учётная запись" : "Данные доступа"}</CardTitle>
         <CardDescription>
           {mode === "create"
-            ? "После создания откроется карточка пользователя для дальнейшего администрирования."
-            : "Изменяйте логин, роль и активность. Пароль в текущем контракте меняется отдельно."}
+            ? "Задайте логин, стартовый пароль и роль. После сохранения откроется карточка пользователя."
+            : "Изменяйте логин, роль и доступ к системе. Пароль при необходимости меняется отдельно."}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="space-y-2">
+        <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-1.5">
             <Label htmlFor="login">Логин</Label>
             <Input id="login" autoComplete="username" {...form.register("login")} />
             {form.formState.errors.login ? (
@@ -56,7 +56,7 @@ export function UserForm({
           </div>
 
           {mode === "create" ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Стартовый пароль</Label>
               <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
               {form.formState.errors.password ? (
@@ -69,7 +69,7 @@ export function UserForm({
             </div>
           ) : null}
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="role">Роль</Label>
             <select
               id="role"
@@ -85,7 +85,7 @@ export function UserForm({
           </div>
 
           {mode === "edit" ? (
-            <label className="flex items-start gap-3 rounded-2xl border border-border/70 p-4 text-sm">
+            <label className="flex items-start gap-3 rounded-2xl border border-border/70 bg-surface/50 px-4 py-3 text-sm">
               <input type="checkbox" className="mt-1 h-4 w-4" {...form.register("is_active")} />
               <span className="space-y-1">
                 <span className="block font-medium text-foreground">Учётная запись активна</span>

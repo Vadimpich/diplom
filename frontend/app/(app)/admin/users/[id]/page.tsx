@@ -60,6 +60,11 @@ export default function AdminUserEditPage() {
     mutationFn: (values: { login: string; role: "admin" | "operator"; is_active: boolean }) =>
       apiClient.updateUser(userId, values),
     onSuccess: async (user) => {
+      form.reset({
+        login: user.login,
+        role: user.role.slug,
+        is_active: user.is_active,
+      });
       await queryClient.invalidateQueries({ queryKey: ["users"] });
       await queryClient.invalidateQueries({ queryKey: ["user", userId] });
       toast.success("Изменения сохранены", {
@@ -122,15 +127,16 @@ export default function AdminUserEditPage() {
   const user = userQuery.data;
   const roleLabel = user.role.slug === "admin" ? "Администратор" : "Оператор";
   const accessLabel = user.is_active ? "Доступ активен" : "Доступ отключён";
+  const lastLoginLabel = user.last_login_at ? formatDateTime(user.last_login_at) : "Вход в систему ещё не зафиксирован";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title={`Пользователь ${user.login}`}
-        description="Изменение логина, роли и статуса активности без дополнительных frontend-правил доступа."
+        description="Проверьте доступ, роль и последние действия пользователя перед сохранением изменений."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <UserForm
           mode="edit"
           form={form}
@@ -147,29 +153,46 @@ export default function AdminUserEditPage() {
           user={user}
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Состояние доступа</CardTitle>
+        <Card className="h-fit">
+          <CardHeader className="gap-1.5 pb-4">
+            <CardTitle>Контекст доступа</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Роль</p>
-              <Badge variant="info">{roleLabel}</Badge>
+          <CardContent className="space-y-5 text-sm">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Роль</p>
+                <Badge variant="info">{roleLabel}</Badge>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Статус</p>
+                <Badge variant={user.is_active ? "success" : "warning"}>{accessLabel}</Badge>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Статус</p>
-              <Badge variant={user.is_active ? "success" : "warning"}>{accessLabel}</Badge>
+
+            <div className="space-y-3 rounded-2xl border border-border/70 bg-surface/50 px-4 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последний вход</p>
+                <p className="mt-1 font-medium text-foreground">{lastLoginLabel}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Логин для входа</p>
+                <p className="mt-1 text-muted-foreground">{user.login}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Создан</p>
-              <p className="mt-1 text-muted-foreground">{formatDateTime(user.created_at)}</p>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Создан</p>
+                <p className="mt-1 text-muted-foreground">{formatDateTime(user.created_at)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последнее изменение</p>
+                <p className="mt-1 text-muted-foreground">{formatDateTime(user.updated_at)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Обновлён</p>
-              <p className="mt-1 text-muted-foreground">{formatDateTime(user.updated_at)}</p>
-            </div>
+
             <Alert variant="default">
-              Открытие этой страницы больше не формирует mutation audit event: история аудита остаётся привязанной только к реальным изменениям.
+              Проверяйте роль и активность перед сохранением. Если доступ отключён, пользователь не сможет войти в систему.
             </Alert>
           </CardContent>
         </Card>
