@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { AlertCircle, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -53,33 +52,29 @@ export default function LoginPage() {
 
   if (sessionQuery.isLoading || sessionQuery.data) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4 py-10">
-        <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <section className="rounded-[32px] border border-border/60 bg-primary p-8 text-primary-foreground shadow-panel md:p-12">
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-36 bg-white/20 from-white/10 via-white/25 to-white/10" />
-              <Skeleton className="h-12 w-full max-w-2xl bg-white/20 from-white/10 via-white/25 to-white/10" />
-              <Skeleton className="h-5 w-full max-w-xl bg-white/15 from-white/10 via-white/20 to-white/10" />
-              <Skeleton className="h-5 w-full max-w-lg bg-white/15 from-white/10 via-white/20 to-white/10" />
-            </div>
-            <div className="mt-10 grid gap-4 md:grid-cols-2">
-              <Skeleton className="h-36 w-full rounded-3xl bg-white/15 from-white/10 via-white/20 to-white/10" />
-              <Skeleton className="h-36 w-full rounded-3xl bg-white/15 from-white/10 via-white/20 to-white/10" />
+      <div className="flex min-h-screen items-center justify-center bg-muted/20 px-4 py-10">
+        <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <section className="rounded-[28px] border border-border/70 bg-white px-6 py-7 shadow-sm md:px-8">
+            <div className="space-y-3">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-9 w-full max-w-sm" />
+              <Skeleton className="h-4 w-full max-w-md" />
+              <Skeleton className="h-4 w-full max-w-xs" />
             </div>
           </section>
 
-          <Card className="border-border/70">
-            <CardHeader className="space-y-3">
-              <Skeleton className="h-8 w-44" />
-              <Skeleton className="h-5 w-full max-w-xs" />
+          <Card className="border-border/80 shadow-panel">
+            <CardHeader className="space-y-3 pb-4">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-4 w-full max-w-[18rem]" />
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-16" />
                 <Skeleton className="h-11 w-full" />
               </div>
               <div className="space-y-2">
-                <Skeleton className="h-4 w-18" />
+                <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-11 w-full" />
               </div>
               <Skeleton className="h-10 w-full" />
@@ -91,38 +86,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <section className="rounded-[32px] border border-border/60 bg-primary p-8 text-primary-foreground shadow-panel md:p-12">
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Мультимодальная оценка</p>
-          <h1 className="mt-6 max-w-xl text-4xl font-semibold leading-tight">
-            Единая рабочая среда оператора и администратора для проведения обследований.
+    <div className="flex min-h-screen items-center justify-center bg-muted/20 px-4 py-10">
+      <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="rounded-[28px] border border-border/70 bg-white px-6 py-7 shadow-sm md:px-8">
+          <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">Единый контур доступа</p>
+          <h1 className="mt-3 max-w-sm text-3xl font-semibold tracking-tight text-foreground">
+            Вход в рабочую среду
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-white/70">
-            Интерфейс построен вокруг подтверждённых backend-контрактов. Неготовые этапы анализа помечены
-            как системные заглушки без фейковой логики.
+          <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            Используйте учётную запись оператора или администратора, чтобы продолжить работу в системе.
           </p>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <div className="rounded-3xl bg-white/8 p-5">
-              <ShieldCheck className="h-6 w-6 text-emerald-300" />
-              <p className="mt-4 text-lg font-medium">Защищённый доступ</p>
-              <p className="mt-2 text-sm text-white/65">JWT-сессия, ролевые маршруты и проверка `/me` после входа.</p>
-            </div>
-            <div className="rounded-3xl bg-white/8 p-5">
-              <AlertCircle className="h-6 w-6 text-sky-300" />
-              <p className="mt-4 text-lg font-medium">Честные состояния системы</p>
-              <p className="mt-2 text-sm text-white/65">Нет вымышленных результатов или списков, если контракт их пока не описывает.</p>
-            </div>
-          </div>
+          <p className="mt-5 text-sm font-medium text-foreground">После входа откроется доступный для вашей роли раздел.</p>
         </section>
 
-        <Card className="border-border/70">
-          <CardHeader>
+        <Card className="border-border/80 shadow-panel">
+          <CardHeader className="pb-4">
             <CardTitle>Вход в систему</CardTitle>
-            <CardDescription>Используйте учётную запись, созданную в core backend.</CardDescription>
+            <CardDescription>Введите логин и пароль, чтобы открыть рабочее место.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-5" onSubmit={form.handleSubmit((values) => loginMutation.mutate(values))}>
+            <form className="space-y-4" onSubmit={form.handleSubmit((values) => loginMutation.mutate(values))}>
               <div className="space-y-2">
                 <Label htmlFor="login">Логин</Label>
                 <Input id="login" autoComplete="username" {...form.register("login")} />
@@ -142,7 +125,7 @@ export default function LoginPage() {
                   {(loginMutation.error as ApiError).message}
                 </Alert>
               ) : null}
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              <Button type="submit" className="mt-2 w-full" disabled={loginMutation.isPending}>
                 {loginMutation.isPending ? (
                   <>
                     <Spinner />
