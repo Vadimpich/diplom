@@ -107,6 +107,7 @@
 - `auth.login_failed`
 - `admin.user_created`
 - `admin.user_updated`
+- `admin.settings_updated`
 - `admin.questionnaire_created`
 - `admin.questionnaire_updated`
 - `examination.created`
@@ -124,6 +125,126 @@
 - для fenced idempotent transitions допустим ровно один semantic audit event на один `event_key`;
 - failed login обязан попадать в audit trail даже без успешной доменной транзакции;
 - raw credentials, refresh tokens, raw WiMi payload и raw channel payload в `payload` запрещены.
+
+### GET /audit/events
+
+Назначение:
+- admin-only read surface для UI-аудита без прямого доступа к внутреннему storage package.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`;
+- доступно только роли `admin`.
+
+Query parameters:
+- `event_type`: optional точный фильтр по `audit_event.event_type`;
+- `resource_kind`: optional фильтр по связанному объекту (`user`, `questionnaire`, `examination`, `channel_result`, `decision_snapshot`, `auth_session`);
+- `resource_id`: optional `bigint` идентификатор связанного объекта; допускается только вместе с `resource_kind`;
+- `from`: optional lower bound для `happened_at` в RFC3339;
+- `to`: optional upper bound для `happened_at` в RFC3339;
+- `limit`: optional количество записей, `1..200`, default `100`.
+
+Ответ `200 OK`:
+
+```json
+{
+  "items": [
+    {
+      "id": 901,
+      "event_type": "decision.completed",
+      "event_key": "decision:44:completed",
+      "outcome": "succeeded",
+      "happened_at": "2026-03-24T16:30:00Z",
+      "request_id": "req-4b09d7d9b1b8",
+      "trace_id": "8ec8c1b6409f4a6cb80cfcb4f74aa98c",
+      "traceparent": "00-8ec8c1b6409f4a6cb80cfcb4f74aa98c-5d7c1f97db7840b3-01",
+      "correlation_id": "exam-101-kesmi-1",
+      "actor": {
+        "user_id": 1,
+        "login": "admin",
+        "role_slug": "admin",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0"
+      },
+      "resource": {
+        "kind": "decision_snapshot",
+        "id": 44
+      },
+      "domain_refs": {
+        "examination_id": 101,
+        "decision_snapshot_id": 44
+      },
+      "payload": {
+        "recommendation": "unavailable"
+      }
+    }
+  ]
+}
+```
+
+Правила:
+- сортировка по `happened_at DESC`;
+- endpoint возвращает тот же canonical `audit_event`, который пишет backend, без отдельной read-model;
+- `resource_id` без `resource_kind` возвращает `400 Bad Request`;
+- `from > to`, невалидный RFC3339 и `limit` вне диапазона тоже возвращают `400 Bad Request`.
+
+### GET /settings
+
+Назначение:
+- чтение mutable subset system settings из persisted core-owned source of truth.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`;
+- доступно только роли `admin`.
+
+Ответ `200 OK`:
+
+```json
+{
+  "audio_retention_ttl_days": 30,
+  "processing_max_attempts": 3,
+  "kesmi_max_retries": 2,
+  "created_at": "2026-03-24T11:00:00Z",
+  "updated_at": "2026-03-24T11:30:00Z"
+}
+```
+
+Правила:
+- endpoint не раскрывает secrets, hostnames, bootstrap credentials и env-only runtime topology;
+- значения относятся только к mutable subset, который core backend действительно хранит и читает;
+- `processing_max_attempts` применяется к будущим processing launches;
+- `kesmi_max_retries` применяется к новым decision snapshots;
+- `audio_retention_ttl_days` хранится как persisted retention policy для audio artifacts и не является proxy для правки `.env`.
+
+### PUT /settings
+
+Назначение:
+- обновление mutable subset system settings.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`;
+- доступно только роли `admin`.
+
+Запрос:
+
+```json
+{
+  "audio_retention_ttl_days": 45,
+  "processing_max_attempts": 4,
+  "kesmi_max_retries": 3
+}
+```
+
+Правила валидации:
+- `audio_retention_ttl_days`: `1..365`;
+- `processing_max_attempts`: `1..10`;
+- `kesmi_max_retries`: `1..10`.
+
+Ответ `200 OK`: обновлённый объект `GET /settings`.
+
+Ошибки:
+- `400 Bad Request` если payload невалидный;
+- `401 Unauthorized` если токен отсутствует или невалиден;
+- `403 Forbidden` если роль не `admin`.
 
 ### Runtime health, readiness, metrics
 
@@ -345,11 +466,17 @@ KESMI / WiMi boundary:
       "name": "Operator"
     },
     "is_active": true,
+    "last_login_at": "2026-03-25T08:15:00Z",
     "created_at": "2026-03-19T12:00:00Z",
     "updated_at": "2026-03-19T12:00:00Z"
   }
 }
 ```
+
+Поле `user.last_login_at`:
+- nullable RFC3339 timestamp последнего успешного логина;
+- обновляется только после успешного `POST /auth/login`;
+- чтение этого поля через `/me`, `GET /users` и `GET /users/{id}` не создаёт новых auth/admin mutation событий.
 
 Ошибки:
 - `401 Unauthorized` при неверных учётных данных;
@@ -463,7 +590,8 @@ Endpoints:
 - `Authorization: Bearer <jwt>`.
 
 Роли и авторизация:
-- `/users` и `/questionnaires` доступны только роли `admin`; для роли `operator` backend возвращает `403 Forbidden`;
+- `/users`, `POST /questionnaires`, `GET /questionnaires/{id}` и `PUT /questionnaires/{id}` доступны только роли `admin`; для роли `operator` backend возвращает `403 Forbidden`;
+- `GET /questionnaires` доступен ролям `operator` и `admin` как read-only список для operator examination flow и admin configuration UI;
 - `/specialists`, `/examinations`, `/answers` и `GET /specialists/{id}/examinations` доступны ролям `operator` и `admin`;
 - `/me` доступен любой аутентифицированной роли.
 
@@ -1011,12 +1139,16 @@ Phase 3 baseline остаётся отдельным Python compute-only service
         "name": "Operator"
       },
       "is_active": true,
+      "last_login_at": "2026-03-25T08:15:00Z",
       "created_at": "2026-03-19T12:00:00Z",
       "updated_at": "2026-03-19T12:00:00Z"
     }
   ]
 }
 ```
+
+Дополнительно:
+- `last_login_at` может быть `null`, если пользователь ещё ни разу не входил после появления этой метрики.
 
 ### GET /users/{id}
 
@@ -1070,10 +1202,28 @@ Phase 3 baseline остаётся отдельным Python compute-only service
   "id": 10,
   "full_name": "Иванов Иван Иванович",
   "personnel_number": "A-123",
+  "examinations_count": 6,
+  "last_examination_id": 42,
+  "last_examination_at": "2026-03-25T07:40:00Z",
+  "last_examination_status": "completed",
+  "last_overall_score": 0.74,
+  "last_overall_band": "elevated",
+  "baseline_exam_count": 4,
+  "baseline_refreshed_at": "2026-03-24T12:00:00Z",
   "created_at": "2026-03-19T12:00:00Z",
   "updated_at": "2026-03-19T12:00:00Z"
 }
 ```
+
+Поля registry summary:
+- `examinations_count`: общее число обследований специалиста;
+- `last_examination_id`: идентификатор последнего обследования или `null`, если обследований ещё не было;
+- `last_examination_at`: timestamp последнего обследования (`finished_at`, иначе `started_at`, иначе `created_at`) или `null`;
+- `last_examination_status`: текущий coarse status последнего обследования или `null`;
+- `last_overall_score`: итоговый агрегированный score последнего обследования, если aggregated profile уже сохранён;
+- `last_overall_band`: итоговая textual band последнего обследования, если aggregated profile уже сохранён;
+- `baseline_exam_count`: текущее количество обследований, вошедших в persisted baseline state;
+- `baseline_refreshed_at`: время последнего обновления baseline state или `null`.
 
 Все endpoints раздела защищены Bearer JWT.
 
@@ -1105,6 +1255,14 @@ Phase 3 baseline остаётся отдельным Python compute-only service
       "id": 10,
       "full_name": "Иванов Иван Иванович",
       "personnel_number": "A-123",
+      "examinations_count": 6,
+      "last_examination_id": 42,
+      "last_examination_at": "2026-03-25T07:40:00Z",
+      "last_examination_status": "completed",
+      "last_overall_score": 0.74,
+      "last_overall_band": "elevated",
+      "baseline_exam_count": 4,
+      "baseline_refreshed_at": "2026-03-24T12:00:00Z",
       "created_at": "2026-03-19T12:00:00Z",
       "updated_at": "2026-03-19T12:00:00Z"
     }
@@ -1586,7 +1744,15 @@ Worker runtime env:
 ### GET /questionnaires
 
 Назначение:
-- получение списка опросников для operator/admin frontend-сценариев.
+- получение read-only списка опросников для operator/admin frontend-сценариев.
+
+Аутентификация:
+- `Authorization: Bearer <jwt>`.
+
+Роли и авторизация:
+- доступно ролям `operator` и `admin`;
+- endpoint предназначен для выбора опросника в operator flow и для чтения списка в admin UI;
+- endpoint не расширяет mutation-права оператора: создание и изменение опросников остаются только у `admin`.
 
 Ответ `200 OK`:
 
@@ -1598,6 +1764,13 @@ Worker runtime env:
       "title": "Предсменный опрос",
       "description": "Базовый набор вопросов",
       "is_active": true,
+      "usage_count": 18,
+      "last_used_at": "2026-03-25T06:20:00Z",
+      "last_edited_at": "2026-03-25T05:55:00Z",
+      "last_editor": {
+        "id": 1,
+        "login": "admin"
+      },
       "questions": [
         {
           "id": 11,
@@ -1612,7 +1785,16 @@ Worker runtime env:
 }
 ```
 
+Дополнительно:
+- `usage_count` — реальное число обследований, созданных с этим `questionnaire_id`;
+- `last_used_at` — время последнего использования опросника в обследовании или `null`, если он ещё не использовался;
+- `last_edited_at` — persisted timestamp последнего административного изменения метаданных/состава вопросов;
+- `last_editor` — `{ id, login }` пользователя, выполнившего последнее изменение, либо `null` для исторических записей без зафиксированного редактора.
+
 ### POST /questionnaires
+
+Роли и авторизация:
+- доступно только роли `admin`.
 
 Запрос:
 
@@ -1646,7 +1828,10 @@ Worker runtime env:
 
 ### GET /questionnaires/{id}
 
-Ответ `200 OK`: объект `Questionnaire`.
+Роли и авторизация:
+- доступно только роли `admin`.
+
+Ответ `200 OK`: объект `Questionnaire` того же enriched формата, что и в `GET /questionnaires`.
 
 Ошибки:
 - `404 Not Found` если опросник не найден.
@@ -1667,6 +1852,7 @@ Worker runtime env:
 Ошибки:
 - `400 Bad Request` если payload невалидный;
 - `404 Not Found` если опросник не найден.
+- `403 Forbidden` если роль не `admin`.
 
 ## Infrastructure Config Contract
 
@@ -1684,6 +1870,7 @@ Worker runtime env:
 - `RABBITMQ_URL`, по умолчанию `amqp://guest:guest@localhost:5672/`
 - `PROCESSING_OUTBOX_POLL_INTERVAL`, по умолчанию `1s`
 - `PROCESSING_OUTBOX_MAX_ATTEMPTS`, по умолчанию `3`
+- `AUDIO_RETENTION_TTL_DAYS`, по умолчанию `30`
 - `JWT_ISSUER`, по умолчанию `core-backend`
 - `JWT_ACCESS_TTL`, по умолчанию `15m`
 - `MINIO_USE_SSL`, по умолчанию `false`
@@ -1900,9 +2087,15 @@ Migrations bootstrap:
 
 ### `NEXT_PUBLIC_API_URL`
 
-- Базовый URL core backend для frontend-клиента.
+- Public base URL core backend для browser-side frontend requests.
+- В Docker Compose должен указывать на host-reachable адрес `http://localhost:18080`, потому что это значение попадает в клиентский bundle и используется браузером, а не контейнерной сетью.
+- Для локального запуска вне Compose по умолчанию также используется `http://localhost:18080`.
+
+### `INTERNAL_API_BASE_URL`
+
+- Server-side base URL core backend для Next.js route handlers и readiness probe внутри frontend runtime.
 - В Docker Compose должен указывать на внутренний адрес `http://core-backend:8080`.
-- Для локального запуска вне Compose по умолчанию используется `http://localhost:8080`.
+- Вне Compose по умолчанию может совпадать с `http://localhost:18080`.
 
 ### `FRONTEND_HOST_PORT`
 
