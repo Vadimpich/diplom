@@ -106,11 +106,11 @@ Plans:
 **Goal:** Operator and admin interfaces read as dense operational work surfaces with contract-backed registries, stronger task priority, and no developer-facing copy on the main screens.
 **Requirements**: DSGN-02, OPRX-02, OPRX-03, OPRX-04, ADMN-01, ADMN-02, QSTR-01, QSTR-02, STNG-02, MONR-01, RICH-01, AMON-01
 **Depends on:** Phase 11
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 Plans:
 - [x] 12-01-PLAN.md — Tighten login and shared contour chrome into compact enterprise entry surfaces.
-- [ ] 12-02-PLAN.md — Publish bounded contract/backend support for dense registries and summaries.
+- [x] 12-02-PLAN.md — Publish bounded contract/backend support for dense registries and summaries.
 - [ ] 12-03-PLAN.md — Rebuild operator dashboard, specialists, and history as operational registries.
 - [ ] 12-04-PLAN.md — Reframe admin home, registries, and monitoring as compact control surfaces.
 - [ ] 12-05-PLAN.md — Densify operator specialist detail and examination workflow surfaces.
