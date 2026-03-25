@@ -10,10 +10,14 @@ Self-hosted система для проведения обследований 
 
 Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
 
-## Current Milestone: None
+## Current Milestone: v1.2 Operator UI
 
-**Last archived milestone:** `v1.1 UI & Admin Completion` on 2026-03-25  
-**Archive status:** accepted with audit gaps
+**Goal:** полностью перестроить operator UX как рабочий инструмент с search-first, list-first и action-first взаимодействием, без dashboard-паттернов и лишнего текста.
+
+**Target features:**
+- Полностью пересобранный login screen с одной центрированной формой без информационных панелей.
+- Workflow-first operator home, список специалистов и история обследований без карточного dashboard UI.
+- Упрощённый examination screen, в котором оператор видит только вопрос, запись и прогресс.
 
 ## Requirements
 
@@ -30,9 +34,9 @@ Self-hosted система для проведения обследований 
 
 ### Active
 
-- [ ] Закрыть verification debt milestone `v1.1`: добавить `VERIFICATION.md` для фаз `8-12` и повторно прогнать milestone audit на актуальном коде
-- [ ] Повторно проверить live runtime пути operator auth/examination save/processing/result после post-closure fixes
-- [ ] Определить scope следующего milestone поверх уже shipped платформы и UI/admin baseline
+- [ ] Пересобрать operator UX как рабочий инструмент, а не dashboard
+- [ ] Убрать dashboard-карточки, лишние тексты и конкурирующие блоки со всех ключевых operator-экранов из milestone scope
+- [ ] Свести operator взаимодействие к search-first, list-first и action-first flow без изменения admin интерфейса
 
 ### Out of Scope
 
@@ -48,6 +52,7 @@ Self-hosted система для проведения обследований 
 - Текущий shipped baseline включает `frontend/` на Next.js App Router, `core-backend/` на Go, PostgreSQL, RabbitMQ, MinIO, Python ML services, `ml-baseline`, WiMi/KЭСМИ runtime и Prometheus-backed observability surfaces
 - Milestone `v1.0` закрыт с passed audit: `30/30 requirements`, `7/7 phases`, `6/6 integration`, `6/6 flows`
 - Milestone `v1.1` архивирован 2026-03-25 по прямому решению пользователя, но с сохранённым `gaps_found` audit и accepted verification debt
+- Новый milestone `v1.2` не добавляет новые product capabilities, а целенаправленно заменяет концептуально неверную interaction model operator UI
 - Архитектура дипломного проекта по-прежнему предполагает отдельные ML-сервисы, baseline service, integration boundary с КЭСМИ и идемпотентные source-of-truth переходы workflow
 - На текущем этапе всё ещё допускается отсутствие финальных ML- и KЭСМИ-моделей: это уже не архитектурный blocker, а следующее предметное расширение поверх стабилизированной orchestration-платформы
 
@@ -55,15 +60,15 @@ Self-hosted система для проведения обследований 
 
 - Milestone `v1.0 MVP` shipped and archived on 2026-03-24
 - Milestone `v1.1 UI & Admin Completion` archived on 2026-03-25 with accepted audit gaps
-- Latest archived UI/admin milestone delivered 5 phases, 24 plans, and a denser operator/admin control surface on top of the `v1.0` platform
+- Milestone `v1.2 Operator UI` starts from a shipped platform where operator/admin surfaces already exist, but operator interaction model is considered conceptually wrong and subject to replacement
 - Approximate codebase size across Go, TypeScript/TSX, and Python sources: `28,816` lines in the current working tree estimate
-- Current planning state has no active milestone; the next step is either verification-debt closure or next-milestone definition
+- Current planning state is reset for a new operator-only milestone starting at Phase 13
 
 ## Next Milestone Goals
 
-- Решить, превращается ли archived `v1.1` verification debt в отдельный cleanup milestone или принимается как исторически зафиксированный риск
-- При необходимости формально довести UI/admin milestone до auditable состояния через `VERIFICATION.md` и live revalidation
-- После этого определить следующий product milestone поверх уже shipped orchestration и UI/admin foundation
+- Перестроить operator UI вокруг линейного рабочего процесса `найти специалиста -> открыть -> провести обследование`
+- Убрать dashboard-паттерны, визуальный шум и весь текст, не влияющий на действие оператора
+- Сохранить существующие возможности системы, меняя только interaction model и operator-facing structure
 
 ## Constraints
 
@@ -86,6 +91,8 @@ Self-hosted система для проведения обследований 
 | Сфокусировать milestone `v1.1` на frontend/admin completion, а не на ML или decision expansion | Пользовательский слой уже является главным видимым gap после закрытия v1 orchestration-platform | ✓ Good |
 | Ограничить backend-изменения точечными API-доработками под UI/admin нужды | Это сохраняет архитектурную стабильность и не раздувает milestone за пределы UI-first scope | ✓ Good |
 | Архивировать `v1.1` с сохранённым failed audit по прямому решению пользователя | Пользователь предпочёл зафиксировать milestone как завершённый организационно, не скрывая verification debt | ⚠ Revisit |
+| Перестраивать `v1.2` вокруг operator workflow, а не вокруг визуального polish | Пользователь явно потребовал заменить interaction model и запретил dashboard-style улучшательства | ✓ Good |
+| Не трогать admin interface в `v1.2` | Scope milestone жёстко ограничен operator UX restructuring | ✓ Good |
 
 ## Evolution
 
@@ -105,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after archiving milestone v1.1 UI & Admin Completion*
+*Last updated: 2026-03-25 after starting milestone v1.2 Operator UI*
