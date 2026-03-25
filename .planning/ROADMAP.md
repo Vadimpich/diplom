@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** - Phases 1-7 shipped 2026-03-24. Full archive: [v1.0-ROADMAP.md](/home/vadim/diplom/.planning/milestones/v1.0-ROADMAP.md), [v1.0-REQUIREMENTS.md](/home/vadim/diplom/.planning/milestones/v1.0-REQUIREMENTS.md), [v1.0-MILESTONE-AUDIT.md](/home/vadim/diplom/.planning/milestones/v1.0-MILESTONE-AUDIT.md)
-- 🚧 **v1.1 UI & Admin Completion** - Phases 8-11 planned
+- 🚧 **v1.1 UI & Admin Completion** - Phases 8-12 planned
 
 ## Overview
 
@@ -16,9 +16,10 @@ Milestone `v1.1` closes the remaining frontend and admin gaps on top of the ship
 - This milestone starts at Phase 8 because v1.0 ended at Phase 7
 
 - [x] **Phase 8: UI Contours & Design Foundation** - Separate operator/admin shells and establish the shared design-system foundation.
-- [ ] **Phase 9: Admin Users & Questionnaires** - Deliver core admin CRUD workflows for users, roles, and questionnaire management.
-- [ ] **Phase 10: Admin Control Surfaces** - Deliver admin settings, system monitoring, and audit visibility from the UI.
-- [ ] **Phase 11: Operator UX & Visual Completion** - Bring operator workflows and primary screens to production-level feedback and finish quality.
+- [x] **Phase 9: Admin Users & Questionnaires** - Deliver core admin CRUD workflows for users, roles, and questionnaire management.
+- [x] **Phase 10: Admin Control Surfaces** - Deliver admin settings, system monitoring, and audit visibility from the UI.
+- [x] **Phase 11: Operator UX & Visual Completion** - Bring operator workflows and primary screens to production-level feedback and finish quality.
+- [ ] **Phase 12: Улучшение UI и закрытие замечаний аудита** - Convert the shipped frontend from “implemented” to dense, enterprise-style operational UI and close the remaining audit findings.
 
 ## Phase Details
 
@@ -49,8 +50,8 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 09-01-PLAN.md — Complete users list/create/edit UX and remove read-path audit pollution.
-- [ ] 09-02-PLAN.md — Complete questionnaire list/create/edit UX with explicit ordered-question builder controls.
-- [ ] 09-03-PLAN.md — Apply phase-level admin polish and verify the full users/questionnaires flow.
+- [x] 09-02-PLAN.md — Complete questionnaire list/create/edit UX with explicit ordered-question builder controls.
+- [x] 09-03-PLAN.md — Apply phase-level admin polish and verify the full users/questionnaires flow.
 **UI hint**: yes
 
 ### Phase 10: Admin Control Surfaces
@@ -62,7 +63,12 @@ Plans:
   2. Settings screens show current values and return explicit success or error feedback after save attempts.
   3. Administrator can see system health/readiness and key technical indicators from the admin panel without infrastructure access.
   4. Administrator can filter audit records by event type, period, and linked domain object directly in the UI.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [x] 10-01-PLAN.md — Expand monitoring into a readiness-first admin runtime surface on existing endpoints.
+- [x] 10-02-PLAN.md — Publish the admin audit read API and document its filterable contract.
+- [x] 10-03-PLAN.md — Build `/admin/audit` with explicit filtering and list-state UX.
+- [x] 10-04-PLAN.md — Replace the settings placeholder with a persisted settings contract, backend, and UI.
 **UI hint**: yes
 
 ### Phase 11: Operator UX & Visual Completion
@@ -75,7 +81,15 @@ Plans:
   3. Key operator and admin pages render intentional `loading`, `empty`, and `error` states instead of blank or placeholder UI, including list screens highlighted by the Phase 07 UI review.
   4. Key edit and destructive actions in operator/admin flows provide confirmation where appropriate and explicit success or error feedback after completion.
   5. Main shipped frontend flows no longer contain temporary stubs, draft elements, or visibly unfinished screens.
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+- [x] 11-01-PLAN.md — Reframe the operator result screen into an interpretation-first surface with separate technical details.
+- [x] 11-02-PLAN.md — Add explicit operator flow feedback and confirmations for key mutation/destructive actions.
+- [x] 11-03-PLAN.md — Normalize loading/empty/error states across the remaining key operator pages.
+- [x] 11-04-PLAN.md — Apply the final shipped-UX finish pass and record phase validation.
+- [x] 11-05-PLAN.md — Align questionnaire list ACL and contract so operator examination flow is no longer blocked.
+- [x] 11-06-PLAN.md — Close the remaining history/dashboard empty-state defects found in UAT.
+- [x] 11-07-PLAN.md — Record the post-UAT fix pass in validation, implementation log, and planning state.
 **UI hint**: yes
 
 ## Progress
@@ -83,6 +97,22 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 8. UI Contours & Design Foundation | v1.1 | 3/3 | Complete | 2026-03-24 |
-| 9. Admin Users & Questionnaires | v1.1 | 0/3 | Ready to execute | - |
-| 10. Admin Control Surfaces | v1.1 | 0/TBD | Not started | - |
-| 11. Operator UX & Visual Completion | v1.1 | 0/TBD | Not started | - |
+| 9. Admin Users & Questionnaires | v1.1 | 3/3 | Complete | 2026-03-24 |
+| 10. Admin Control Surfaces | v1.1 | 4/4 | Complete | 2026-03-24 |
+| 11. Operator UX & Visual Completion | v1.1 | 7/7 | Complete | 2026-03-25 |
+
+### Phase 12: Улучшение UI и закрытие замечаний аудита
+
+**Goal:** Operator and admin interfaces read as dense operational work surfaces with contract-backed registries, stronger task priority, and no developer-facing copy on the main screens.
+**Requirements**: DSGN-02, OPRX-02, OPRX-03, OPRX-04, ADMN-01, ADMN-02, QSTR-01, QSTR-02, STNG-02, MONR-01, RICH-01, AMON-01
+**Depends on:** Phase 11
+**Plans:** 7 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Tighten login and shared contour chrome into compact enterprise entry surfaces.
+- [ ] 12-02-PLAN.md — Publish bounded contract/backend support for dense registries and summaries.
+- [ ] 12-03-PLAN.md — Rebuild operator dashboard, specialists, and history as operational registries.
+- [ ] 12-04-PLAN.md — Reframe admin home, registries, and monitoring as compact control surfaces.
+- [ ] 12-05-PLAN.md — Densify operator specialist detail and examination workflow surfaces.
+- [ ] 12-06-PLAN.md — Tighten admin user, questionnaire, and settings editor surfaces.
+- [ ] 12-07-PLAN.md — Sync implementation log and validation artifacts after the UI pass lands.
