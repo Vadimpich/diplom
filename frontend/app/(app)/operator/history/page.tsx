@@ -4,10 +4,9 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { ExaminationsJournal, type ExaminationJournalItem } from "@/components/operator/examinations-journal";
-import { OperatorKpiStrip } from "@/components/operator/operator-kpi-strip";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -90,61 +89,22 @@ export default function OperatorHistoryPage() {
   );
 
   const examinationItems = examinationsQuery.data?.items ?? [];
-  const kpis = [
-    {
-      label: "Всего записей",
-      value: examinationsQuery.isError ? "—" : examinationItems.length,
-      hint: "Полный журнал обследований",
-      tone: examinationsQuery.isError ? ("danger" as const) : ("default" as const),
-    },
-    {
-      label: "Требует внимания",
-      value: examinationsQuery.isError
-        ? "—"
-        : examinationItems.filter(
-            (item) => item.status === "created" || item.status === "collecting_answers" || item.status === "failed",
-          ).length,
-      hint: "Нужно вернуться к кейсу или проверить ошибку",
-      tone: ("danger" as const),
-    },
-    {
-      label: "В обработке",
-      value: examinationsQuery.isError
-        ? "—"
-        : examinationItems.filter((item) => item.status !== "completed" && item.status !== "failed").length,
-      hint: "Сбор ответов или автоматическая обработка",
-      tone: ("warning" as const),
-    },
-    {
-      label: "С итогом",
-      value: examinationsQuery.isError ? "—" : examinationItems.filter((item) => item.status === "completed").length,
-      hint: "Можно сразу открыть результат",
-      tone: ("success" as const),
-    },
-  ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="История обследований"
-        description="Рабочий журнал с поиском, статусными группами и прямым возвратом к нужному этапу обследования."
-      />
-      <OperatorKpiStrip items={kpis} isLoading={examinationsQuery.isLoading} />
+    <div className="space-y-5">
+      <PageHeader title="История обследований" />
+
       <Card>
-        <CardHeader>
-          <CardTitle>Журнал обследований</CardTitle>
-          <CardDescription>Фильтр по специалисту, номеру обследования и текущему этапу.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-5">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
             <Input
-              placeholder="Поиск по специалисту, табельному номеру, ID или статусу"
+              placeholder="Найти запись"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <div className="flex flex-wrap gap-2">
               {[
-                { key: "all", label: "Весь журнал" },
+                { key: "all", label: "Все" },
                 { key: "attention", label: "Требует внимания" },
                 { key: "active", label: "В работе" },
                 { key: "completed", label: "С итогом" },
@@ -165,59 +125,53 @@ export default function OperatorHistoryPage() {
           {examinationsQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="grid gap-3 rounded-2xl border border-border/70 p-4 lg:grid-cols-[1.4fr_1fr_auto]">
-                  <Skeleton className="h-14 w-full" />
-                  <Skeleton className="h-14 w-full" />
-                  <Skeleton className="h-9 w-28" />
+                <div key={index} className="grid grid-cols-[1.5fr_1fr_1fr_auto] gap-4 rounded-2xl border border-border/70 px-4 py-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-9 w-24" />
                 </div>
               ))}
             </div>
           ) : null}
 
           {examinationsQuery.isError ? (
-            <Alert variant="danger">
-              Не удалось загрузить историю обследований. Повторите попытку позже или проверьте доступность backend.
-            </Alert>
+            <Alert variant="danger">Не удалось загрузить историю обследований.</Alert>
           ) : null}
 
           {!specialistsQuery.isLoading && specialistsQuery.isError && !examinationsQuery.isError ? (
-            <Alert>
-              Не удалось подтянуть полный реестр специалистов, поэтому часть записей показана с резервным названием по ID.
-            </Alert>
+            <Alert>Часть записей показана по ID специалиста.</Alert>
           ) : null}
 
-          {!examinationsQuery.isLoading &&
-          !examinationsQuery.isError &&
-          examinationItems.length === 0 ? (
-            <EmptyState
-              title="История пока пуста"
-              description="Как только вы завершите первое обследование, оно появится в этом журнале."
-            />
+          {!examinationsQuery.isLoading && !examinationsQuery.isError && examinationItems.length === 0 ? (
+            <EmptyState title="История пока пуста" description="Записи появятся после первых обследований." />
           ) : null}
 
-          {!examinationsQuery.isLoading &&
-          !examinationsQuery.isError &&
-          examinationItems.length > 0 &&
-          filtered.length === 0 ? (
+          {!examinationsQuery.isLoading && !examinationsQuery.isError && examinationItems.length > 0 && filtered.length === 0 ? (
             <EmptyState
               title="Совпадений не найдено"
-              description="Уточните номер обследования или снимите фильтр, чтобы снова увидеть весь журнал."
+              description="Снимите фильтр или уточните запрос."
               action={
-                <Button type="button" variant="outline" onClick={() => setQuery("")}>
-                  Сбросить поиск
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setQuery("");
+                    setFilter("all");
+                  }}
+                >
+                  Сбросить
                 </Button>
               }
             />
           ) : null}
 
-          {!examinationsQuery.isLoading &&
-          !examinationsQuery.isError &&
-          filtered.length > 0 ? (
+          {!examinationsQuery.isLoading && !examinationsQuery.isError && filtered.length > 0 ? (
             <ExaminationsJournal
               items={journalItems}
               emptyTitle="Совпадений не найдено"
               emptyDescription="Снимите фильтр или уточните запрос."
-              mode="grouped"
+              mode="flat"
             />
           ) : null}
         </CardContent>

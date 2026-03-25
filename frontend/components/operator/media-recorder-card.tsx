@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, Pause, RotateCcw, StopCircle, Upload } from "lucide-react";
+import { CheckCircle2, Mic, Pause, RotateCcw, StopCircle, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,23 +8,25 @@ import { apiClient, ApiError } from "@/lib/api/client";
 import { appendDraftAnswer } from "@/lib/examination-drafts";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import type { Answer } from "@/lib/api/types";
 
 type RecorderState = "idle" | "recording" | "recorded";
 
 export function MediaRecorderCard({
   examinationId,
-  questionLabel,
+  examinationQuestionId,
+  specialistId,
   answerIndex,
+  totalQuestions,
   onUploaded,
 }: {
   examinationId: number;
-  questionLabel?: string;
+  examinationQuestionId?: number;
+  specialistId?: number;
   answerIndex: number;
+  totalQuestions: number;
   onUploaded: (answer: Answer) => void;
 }) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -32,7 +34,6 @@ export function MediaRecorderCard({
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [transcript, setTranscript] = useState("");
   const [recorderError, setRecorderError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,6 +49,9 @@ export function MediaRecorderCard({
       if (!audioBlob) {
         throw new Error("Сначала запишите ответ.");
       }
+      if (!examinationQuestionId || !specialistId) {
+        throw new Error("Для этого обследования ещё не определён текущий вопрос.");
+      }
 
       const file = new File([audioBlob], "answer.webm", {
         type: audioBlob.type || "audio/webm",
@@ -55,7 +59,8 @@ export function MediaRecorderCard({
 
       return apiClient.uploadAnswer({
         examination_id: examinationId,
-        text: transcript,
+        examination_question_id: examinationQuestionId,
+        specialist_id: specialistId,
         audio: file,
       });
     },
@@ -63,9 +68,8 @@ export function MediaRecorderCard({
       appendDraftAnswer(answer);
       onUploaded(answer);
       toast.success("Ответ сохранён", {
-        description: "Запись и текст ответа добавлены в текущее обследование.",
+        description: "Аудиозапись добавлена в текущее обследование.",
       });
-      setTranscript("");
       setAudioBlob(null);
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
@@ -77,14 +81,14 @@ export function MediaRecorderCard({
 
   const durationHint = useMemo(() => {
     if (recorderState === "recording") {
-      return "Идёт запись. Завершите ответ после окончания реплики.";
+      return "Идёт запись";
     }
 
     if (audioBlob) {
-      return "Запись готова к отправке. При необходимости перезапишите ответ.";
+      return "Запись готова";
     }
 
-    return "Для работы требуется разрешение браузера на микрофон.";
+    return "Готово к записи";
   }, [audioBlob, recorderState]);
 
   async function startRecording() {
@@ -134,17 +138,60 @@ export function MediaRecorderCard({
 
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <CardTitle>Запись ответа</CardTitle>
-        <CardDescription>{durationHint}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Текущий ответ</p>
-          <p className="mt-2 text-base font-semibold">Ответ {answerIndex}</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {questionLabel ?? "Запишите реплику обследуемого и затем сохраните её в карточке сеанса."}
-          </p>
+      <CardContent className="space-y-5 p-5">
+        <div className="rounded-[24px] border border-border/70 bg-secondary/15 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Mic className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Ответ {totalQuestions > 0 ? `${answerIndex} / ${totalQuestions}` : answerIndex}</p>
+                <p className="text-sm text-muted-foreground">
+                  {recorderState === "recording"
+                    ? "Идёт запись"
+                    : recorderState === "recorded"
+                      ? "Запись готова"
+                      : "Микрофон готов"}
+                </p>
+              </div>
+            </div>
+            {recorderState === "recording" ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-danger/10 px-3 py-2 text-sm text-danger">
+                <Pause className="h-4 w-4" />
+                {durationHint}
+              </span>
+            ) : recorderState === "recorded" ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                {durationHint}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-full bg-background px-3 py-2 text-sm text-muted-foreground">
+                <Mic className="h-4 w-4" />
+                {durationHint}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-5 grid grid-cols-8 gap-2">
+            {Array.from({ length: 8 }).map((_, index) => {
+              const active = recorderState === "recording" && index % 2 === 0;
+              const height = recorderState === "recorded" ? ((index % 4) + 2) * 12 : ((index % 3) + 1) * 10;
+
+              return (
+                <div
+                  key={index}
+                  className="flex h-20 items-end rounded-2xl bg-background/70 px-1.5 py-2"
+                >
+                  <div
+                    className={`w-full rounded-full transition-all ${active ? "animate-pulse bg-primary" : "bg-primary/35"}`}
+                    style={{ height }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -163,28 +210,14 @@ export function MediaRecorderCard({
             <RotateCcw className="mr-2 h-4 w-4" />
             Перезаписать
           </Button>
-          {recorderState === "recording" ? (
-            <span className="inline-flex items-center gap-2 rounded-full bg-danger/10 px-3 py-2 text-sm text-danger">
-              <Pause className="h-4 w-4" />
-              Идёт запись
-            </span>
-          ) : null}
         </div>
 
-        {audioUrl ? <audio className="w-full" controls src={audioUrl} /> : null}
-
-        <div className="space-y-2">
-          <Label htmlFor="answer-text">Текст ответа</Label>
-          <Textarea
-            id="answer-text"
-            placeholder="Зафиксируйте содержание ответа после записи"
-            value={transcript}
-            onChange={(event) => setTranscript(event.target.value)}
-          />
-          <p className="text-sm text-muted-foreground">
-            Сначала остановите запись, затем сохраните ответ. После сохранения он сразу появится в журнале сеанса справа.
-          </p>
-        </div>
+        {audioUrl ? (
+          <div className="rounded-2xl border border-border/70 bg-background p-4">
+            <p className="text-sm font-medium">Предпрослушивание</p>
+            <audio className="mt-4 w-full" controls src={audioUrl} />
+          </div>
+        ) : null}
 
         {recorderError ? <Alert variant="danger">{recorderError}</Alert> : null}
         {uploadMutation.isError ? (
@@ -194,7 +227,7 @@ export function MediaRecorderCard({
         <Button
           type="button"
           className="w-full"
-          disabled={uploadMutation.isPending || !audioBlob || transcript.trim().length === 0}
+          disabled={uploadMutation.isPending || !audioBlob || !examinationQuestionId || !specialistId}
           onClick={() => uploadMutation.mutate()}
         >
           {uploadMutation.isPending ? (
@@ -205,7 +238,7 @@ export function MediaRecorderCard({
           ) : (
             <>
               <Upload className="mr-2 h-4 w-4" />
-              Сохранить ответ в сеансе
+              Сохранить аудиоответ
             </>
           )}
         </Button>

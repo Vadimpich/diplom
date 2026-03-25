@@ -16,9 +16,9 @@ Milestone `v1.2` intentionally rebuilds only the operator interaction model. The
 - Integer phases continue milestone history and execute in numeric order
 - This milestone starts at Phase 13 because `v1.1` ended at Phase 12
 
-- [ ] **Phase 13: Operator Entry And Shell Discipline** - Rebuild the login screen and lock the operator shell to a strict work-tool layout.
-- [ ] **Phase 14: Operator Worklists And Search Flow** - Replace dashboard patterns with compact home, specialists, and history worklists.
-- [ ] **Phase 15: Operator Examination Flow Minimalism** - Strip the examination path down to the essential act-only flow and close milestone validation.
+- [x] **Phase 13: Operator Entry And Shell Discipline** - Rebuild the login screen and lock the operator shell to a strict work-tool layout. (completed 2026-03-25)
+- [x] **Phase 14: Operator Worklists And Search Flow** - Replace dashboard patterns with compact home, specialists, and history worklists. (completed 2026-03-25)
+- [x] **Phase 15: Operator Examination Flow Minimalism** - Strip the examination path down to the essential act-only flow and close milestone validation. (completed 2026-03-25)
 
 ## Phase Details
 
@@ -30,7 +30,9 @@ Milestone `v1.2` intentionally rebuilds only the operator interaction model. The
   1. Login screen consists of one centered form with `login`, `password`, and a submit button, without side panels, descriptive paragraphs, or decorative promo content.
   2. Operator sidebar keeps the existing information architecture but has fixed viewport height and a logout action pinned at the bottom.
   3. Operator shell no longer stretches or introduces competing visual blocks around the main work area.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [x] 13-01-PLAN.md — Rebuild login and operator shell into a minimal, fixed-structure work environment.
 **UI hint**: yes
 
 ### Phase 14: Operator Worklists And Search Flow
@@ -41,7 +43,9 @@ Milestone `v1.2` intentionally rebuilds only the operator interaction model. The
   1. Operator home shows only a header, one primary action, inline stats, a prominent search field, and a recent or active specialists list.
   2. Specialists screen is a dense list or table where each row shows only the fields needed to decide whether to open the specialist.
   3. History screen is a flat filter-plus-list journal with no summary cards, grouped decorative blocks, or duplicated information.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [x] 14-01-PLAN.md — Replace operator dashboard patterns with search-first worklists on home, specialists, and history.
 **UI hint**: yes
 
 ### Phase 15: Operator Examination Flow Minimalism
@@ -52,13 +56,15 @@ Milestone `v1.2` intentionally rebuilds only the operator interaction model. The
   1. Examination screen keeps only the current question, the answer recording surface, and a progress indicator.
   2. Secondary panels, explanatory texts, duplicate status blocks, and dashboard-style widgets are removed from the operator examination flow.
   3. The rebuilt operator surfaces follow one workflow-first rule set: one dominant action per screen, lists instead of cards, and text only when it changes user action.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [x] 15-01-PLAN.md — Reduce the operator examination screen to question, recording, and progress only.
 **UI hint**: yes
 
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 13. Operator Entry And Shell Discipline | v1.2 | 0/0 | Planned | — |
-| 14. Operator Worklists And Search Flow | v1.2 | 0/0 | Planned | — |
-| 15. Operator Examination Flow Minimalism | v1.2 | 0/0 | Planned | — |
+| 13. Operator Entry And Shell Discipline | v1.2 | 1/1 | Complete | 2026-03-25 |
+| 14. Operator Worklists And Search Flow | v1.2 | 1/1 | Complete | 2026-03-25 |
+| 15. Operator Examination Flow Minimalism | v1.2 | 1/1 | Complete | 2026-03-25 |

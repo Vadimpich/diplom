@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { SpecialistsRegistry } from "@/components/operator/specialists-registry";
-import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -39,12 +39,16 @@ export default function SpecialistsPage() {
       return true;
     });
 
+    const sorted = byFilter
+      .slice()
+      .sort((left, right) => Date.parse(right.last_examination_at ?? right.updated_at) - Date.parse(left.last_examination_at ?? left.updated_at));
+
     if (!query.trim()) {
-      return byFilter;
+      return sorted;
     }
 
     const normalized = query.toLowerCase();
-    return byFilter.filter(
+    return sorted.filter(
       (item) =>
         item.full_name.toLowerCase().includes(normalized) ||
         item.personnel_number?.toLowerCase().includes(normalized),
@@ -54,10 +58,9 @@ export default function SpecialistsPage() {
   const counts = specialistsQuery.data?.items ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Специалисты"
-        description="Плотный рабочий реестр с последним обследованием, baseline и прямыми действиями по строке."
         action={
           <Button asChild>
             <Link href="/operator/specialists/new">Добавить специалиста</Link>
@@ -66,10 +69,10 @@ export default function SpecialistsPage() {
       />
 
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4 p-5">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
             <Input
-              placeholder="Поиск по ФИО или табельному номеру"
+              placeholder="Найти специалиста"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -110,25 +113,22 @@ export default function SpecialistsPage() {
           {specialistsQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="grid grid-cols-[1.45fr_1fr_1fr_auto] gap-4 rounded-2xl border border-border/70 px-4 py-4">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-9 w-28" />
+                <div key={index} className="grid grid-cols-[1.7fr_0.9fr_0.9fr_auto] gap-4 rounded-2xl border border-border/70 px-4 py-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-9 w-24" />
                 </div>
               ))}
             </div>
           ) : specialistsQuery.isError ? (
             <Alert variant="danger">Не удалось загрузить список специалистов.</Alert>
           ) : items.length === 0 && counts.length === 0 ? (
-            <EmptyState
-              title="Список пуст"
-              description="Создайте первую карточку специалиста, чтобы начать обследования и накапливать историю."
-            />
+            <EmptyState title="Список пуст" description="Создайте первую карточку специалиста." />
           ) : items.length === 0 ? (
             <EmptyState
               title="Совпадений не найдено"
-              description="Снимите фильтр или уточните запрос, чтобы снова увидеть рабочий реестр."
+              description="Снимите фильтр или уточните запрос."
               action={
                 <Button
                   type="button"
@@ -138,7 +138,7 @@ export default function SpecialistsPage() {
                     setFilter("all");
                   }}
                 >
-                  Сбросить фильтры
+                  Сбросить
                 </Button>
               }
             />
@@ -146,8 +146,8 @@ export default function SpecialistsPage() {
             <SpecialistsRegistry
               items={items}
               emptyTitle="Совпадений не найдено"
-              emptyDescription="Снимите фильтр или уточните запрос, чтобы снова увидеть рабочий реестр."
-              actionLabel="Открыть карточку"
+              emptyDescription="Снимите фильтр или уточните запрос."
+              actionLabel="Открыть"
             />
           )}
         </CardContent>

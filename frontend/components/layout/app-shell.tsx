@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { clearSession } from "@/lib/auth";
@@ -37,27 +38,29 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
   const isOperator = contour === "operator";
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6">
+      <div className="mx-auto grid min-h-screen max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[248px_1fr] lg:px-6">
         <aside
           className={cn(
-            "app-shell-grid rounded-[28px] border text-primary-foreground",
+            "app-shell-grid rounded-[24px] border text-primary-foreground",
             isOperator ? "border-border/70 bg-primary" : "border-slate-700/80 bg-slate-900",
+            isOperator ? "lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]" : "",
           )}
         >
-          <div className="flex h-full flex-col p-6">
-            <div className="space-y-2 border-b border-white/10 pb-5">
-              <p className="text-xs uppercase tracking-[0.32em] text-white/55">{eyebrow}</p>
+          <div className="flex h-full flex-col p-5">
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <p className="text-xs uppercase tracking-[0.28em] text-white/55">{eyebrow}</p>
               <div>
-                <h1 className={cn("font-semibold", isOperator ? "text-2xl" : "text-[1.75rem] leading-tight")}>{title}</h1>
-                <p className="mt-1 text-sm text-white/62">{subtitle}</p>
+                <h1 className={cn("font-semibold", isOperator ? "text-xl" : "text-[1.75rem] leading-tight")}>{title}</h1>
+                {subtitle ? <p className="mt-1 text-sm text-white/62">{subtitle}</p> : null}
               </div>
             </div>
-            <nav className={cn("mt-5 flex flex-1 flex-col", isOperator ? "gap-3" : "gap-4")}>
+            <nav className={cn("mt-4 flex flex-1 flex-col", isOperator ? "gap-2" : "gap-4")}>
               {navSections.map((section) => (
                 <div key={section.title ?? section.items.map((item) => item.href).join(":")} className="space-y-2">
                   {section.title ? (
@@ -71,14 +74,14 @@ export function AppShell({
                           key={item.href}
                           href={item.href}
                           className={cn(
-                            "block rounded-2xl border px-3 py-2.5 transition",
+                            "block rounded-xl border px-3 py-2.5 transition",
                             active
                               ? "border-white/12 bg-white/12 text-white"
                               : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/8 hover:text-white",
                           )}
                         >
                           <p className="text-sm font-medium">{item.label}</p>
-                          {item.description ? <p className="mt-1 text-xs text-white/55">{item.description}</p> : null}
+                          {item.description && !isOperator ? <p className="mt-1 text-xs text-white/55">{item.description}</p> : null}
                         </Link>
                       );
                     })}
@@ -86,8 +89,8 @@ export function AppShell({
                 </div>
               ))}
             </nav>
-            <div className="space-y-3 border-t border-white/10 pt-5">
-              <div className="rounded-2xl border border-white/10 bg-white/8 px-3 py-3">
+            <div className="mt-auto space-y-3 border-t border-white/10 pt-4">
+              <div className="rounded-xl border border-white/10 bg-white/8 px-3 py-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/50">Сеанс</p>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -101,6 +104,7 @@ export function AppShell({
                 className="w-full justify-center bg-white text-primary hover:bg-white/90"
                 onClick={async () => {
                   await clearSession();
+                  queryClient.removeQueries({ queryKey: ["session"], exact: true });
                   router.replace("/login");
                   router.refresh();
                 }}
@@ -111,7 +115,7 @@ export function AppShell({
             </div>
           </div>
         </aside>
-        <main className="space-y-6 rounded-[28px] border border-border/70 bg-white/70 p-4 backdrop-blur md:p-6">
+        <main className="space-y-5 rounded-[24px] border border-border/70 bg-white/70 p-4 backdrop-blur md:p-5">
           {children}
         </main>
       </div>

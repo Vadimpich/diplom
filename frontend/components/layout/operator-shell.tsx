@@ -18,9 +18,9 @@ export function OperatorShell({ children }: { children: ReactNode }) {
   return (
     <AppShell
       contour="operator"
-      eyebrow="diplom operator"
-      title="Operator"
-      subtitle="Рабочая станция обследований"
+      eyebrow="оператор"
+      title="Рабочее место"
+      subtitle=""
       navSections={navSections}
     >
       {children}
