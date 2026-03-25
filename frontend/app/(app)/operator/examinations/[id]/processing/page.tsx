@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import type {
   ExaminationProcessingStatus,
   ExaminationProcessingStatusChannel,
@@ -79,7 +80,7 @@ function ChannelCard({
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base">{channelLabels[channel]}</CardTitle>
-            <CardDescription>{state ? `Попытка ${state.attempt_count} из ${state.max_attempts}` : "Ожидает данных backend"}</CardDescription>
+            <CardDescription>{state ? `Попытка ${state.attempt_count} из ${state.max_attempts}` : "Ожидает запуска обработки"}</CardDescription>
           </div>
           {state ? <ChannelStatusBadge status={state.status} /> : <Badge variant="neutral">Нет данных</Badge>}
         </div>
@@ -116,6 +117,21 @@ function buildChannels(data: ExaminationProcessingStatus) {
   }));
 }
 
+function describePipelineStatus(status: ExaminationProcessingStatus["status"]) {
+  switch (status) {
+    case "ready_for_processing":
+      return "Ответы собраны и поставлены в очередь на анализ.";
+    case "processing":
+      return "Обязательные аналитические каналы обрабатывают ответы обследуемого.";
+    case "aggregating":
+      return "Система собирает единый профиль и сравнивает его с накопленной нормой.";
+    case "aggregated":
+      return "Сводный профиль уже подготовлен и доступен на экране результата.";
+    case "failed":
+      return "Один из этапов обработки остановился с ошибкой и требует внимания.";
+  }
+}
+
 export default function ExaminationProcessingPage() {
   const params = useParams<{ id: string }>();
   const examinationId = Number(params.id);
@@ -148,7 +164,7 @@ export default function ExaminationProcessingPage() {
     <div className="space-y-6">
       <PageHeader
         title={`Обработка обследования #${examinationId}`}
-        description="Экран показывает backend-authoritative состояние `GET /examinations/{id}/processing-status`."
+        description="Здесь видно, как обследование проходит этап анализа и на каком шаге сейчас находится обработка."
         action={
           <Button asChild variant="outline">
             <Link href={`/operator/examinations/${examinationId}/results`}>Открыть экран результатов</Link>
@@ -166,13 +182,13 @@ export default function ExaminationProcessingPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Состояние конвейера</CardTitle>
-                <CardDescription>Общий статус обследования и прогресс по обязательным каналам.</CardDescription>
+                <CardDescription>Общий статус обследования и ход обработки по трём обязательным аналитическим каналам.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="flex flex-wrap items-center gap-3">
                   <ExaminationStatusBadge status={data.status} />
                   <Badge variant={data.terminal ? "success" : "warning"}>
-                    {data.terminal ? "Терминальное состояние" : "Polling активен"}
+                    {data.terminal ? "Итог зафиксирован" : "Обновление включено"}
                   </Badge>
                 </div>
 
@@ -184,8 +200,8 @@ export default function ExaminationProcessingPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Версия сообщения</p>
-                    <p className="mt-2 text-sm font-medium">{data.message_version}</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Текущий этап</p>
+                    <p className="mt-2 text-sm font-medium">{describePipelineStatus(data.status)}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Старт обработки</p>
@@ -207,19 +223,19 @@ export default function ExaminationProcessingPage() {
 
                 {data.status === "aggregated" ? (
                   <Alert variant="success">
-                    Backend завершил baseline-aware агрегацию. Можно переходить на экран результата.
+                    Сводный профиль уже подготовлен. Можно переходить к экрану результата и знакомиться с итоговой интерпретацией.
                   </Alert>
                 ) : null}
 
                 {data.status === "aggregating" ? (
                   <Alert variant="warning">
-                    Все обязательные каналы завершились, сейчас core backend собирает канонический профиль и baseline snapshot.
+                    Аналитические каналы завершили расчёты. Сейчас система собирает общий профиль и сравнивает его с baseline.
                   </Alert>
                 ) : null}
 
                 {data.status === "failed" ? (
                   <Alert variant="danger">
-                    Backend перевёл обследование в `failed`. Детали по каналу смотрите в карточках ниже.
+                    Обработка остановилась с ошибкой. Ниже можно посмотреть, на каком канале возникла проблема и была ли попытка повтора.
                   </Alert>
                 ) : null}
               </CardContent>
@@ -227,15 +243,15 @@ export default function ExaminationProcessingPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Поведение polling</CardTitle>
-                <CardDescription>TanStack Query автоматически перестаёт опрашивать endpoint после terminal=true.</CardDescription>
+                <CardTitle>Что делать оператору</CardTitle>
+                <CardDescription>Экран обновляется автоматически, поэтому вручную перезагружать страницу обычно не требуется.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-sm text-muted-foreground">
                 <div className="rounded-2xl border border-border/70 p-4">
-                  Запрос выполняется каждые 3 секунды, пока backend не вернёт терминальное состояние.
+                  Пока обработка не завершена, статус обновляется автоматически каждые несколько секунд.
                 </div>
                 <div className="rounded-2xl border border-border/70 p-4">
-                  UI не вычисляет прогресс самостоятельно и не подменяет backend-статусы локальным workflow.
+                  Если один из каналов даст сбой, здесь появится причина и можно будет понять, стоит ли ждать повторной попытки.
                 </div>
               </CardContent>
             </Card>
@@ -248,12 +264,59 @@ export default function ExaminationProcessingPage() {
           </div>
         </>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Загрузка статуса обработки</CardTitle>
-            <CardDescription>Ожидается ответ от backend progress endpoint.</CardDescription>
-          </CardHeader>
-        </Card>
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-7 w-52" />
+                <Skeleton className="h-4 w-full max-w-xl" />
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="flex gap-3">
+                  <Skeleton className="h-7 w-36 rounded-full" />
+                  <Skeleton className="h-7 w-36 rounded-full" />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index}>
+                      <Skeleton className="h-3 w-28" />
+                      <Skeleton className="mt-2 h-5 w-full max-w-[11rem]" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-7 w-40" />
+                <Skeleton className="h-4 w-full max-w-sm" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <Skeleton key={index} className="h-20 w-full rounded-2xl" />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-full max-w-xs" />
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  {Array.from({ length: 4 }).map((__, detailIndex) => (
+                    <div key={detailIndex}>
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="mt-2 h-5 w-full max-w-[9rem]" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
