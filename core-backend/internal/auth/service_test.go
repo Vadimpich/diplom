@@ -87,6 +87,7 @@ func TestLoginWritesAuditEvent(t *testing.T) {
 	repo := newAuthRepoStub(now)
 	auditRepo := &authAuditRepoStub{}
 	service := NewService(repo, &stubTokenManager{token: "access-1", expiresIn: 900}, audit.NewService(auditRepo))
+	service.now = func() time.Time { return now }
 
 	if _, err := service.Login(context.Background(), LoginInput{
 		Login:     "operator",
@@ -101,6 +102,10 @@ func TestLoginWritesAuditEvent(t *testing.T) {
 	}
 	if auditRepo.events[0].Type != audit.EventTypeAuthLogin {
 		t.Fatalf("expected auth.login event, got %q", auditRepo.events[0].Type)
+	}
+	loggedInUser := repo.usersByID[1]
+	if loggedInUser.LastLoginAt == nil || !loggedInUser.LastLoginAt.Equal(now) {
+		t.Fatalf("expected last login to be updated to %s, got %#v", now.Format(time.RFC3339), loggedInUser.LastLoginAt)
 	}
 }
 
@@ -212,6 +217,28 @@ func TestUpdateUserIsOnlyPathThatWritesUserUpdatedAuditEvent(t *testing.T) {
 	}
 }
 
+func TestListUsersIncludesLastLoginTimestamp(t *testing.T) {
+	now := time.Date(2026, 3, 25, 8, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	lastLogin := now.Add(-2 * time.Hour)
+	user := repo.usersByID[1]
+	user.LastLoginAt = &lastLogin
+	repo.usersByID[user.ID] = user
+	repo.usersByLogin[user.Login] = user
+
+	service := NewService(repo, &stubTokenManager{})
+	items, err := service.ListUsers(context.Background())
+	if err != nil {
+		t.Fatalf("list users returned error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected one user, got %d", len(items))
+	}
+	if items[0].LastLoginAt == nil || !items[0].LastLoginAt.Equal(lastLogin) {
+		t.Fatalf("expected last login %s, got %#v", lastLogin.Format(time.RFC3339), items[0].LastLoginAt)
+	}
+}
+
 type stubTokenManager struct {
 	token     string
 	expiresIn int64
@@ -305,7 +332,11 @@ func (r *authRepoStub) GetUserByID(_ context.Context, id int64) (StoredUser, err
 }
 
 func (r *authRepoStub) ListUsers(context.Context) ([]StoredUser, error) {
-	return nil, nil
+	items := make([]StoredUser, 0, len(r.usersByID))
+	for _, user := range r.usersByID {
+		items = append(items, user)
+	}
+	return items, nil
 }
 
 func (r *authRepoStub) GetRoleBySlug(_ context.Context, slug string) (Role, error) {
@@ -432,6 +463,17 @@ func (r *authRepoStub) RevokeRefreshSession(_ context.Context, params RevokeRefr
 		}
 	}
 	return repository.ErrNotFound
+}
+
+func (r *authRepoStub) UpdateUserLastLogin(_ context.Context, userID int64, loggedAt time.Time) error {
+	user, ok := r.usersByID[userID]
+	if !ok {
+		return repository.ErrNotFound
+	}
+	user.LastLoginAt = &loggedAt
+	r.usersByID[userID] = user
+	r.usersByLogin[user.Login] = user
+	return nil
 }
 
 func hashKey(hash []byte) string {
