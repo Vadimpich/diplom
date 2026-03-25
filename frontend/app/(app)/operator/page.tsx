@@ -18,6 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Examination, Specialist } from "@/lib/api/types";
 import { getOperatorExaminationHref } from "@/lib/operator/examination-navigation";
 
+const EMPTY_SPECIALISTS: Specialist[] = [];
+const EMPTY_EXAMINATIONS: Examination[] = [];
+
 export default function OperatorDashboardPage() {
   const [query, setQuery] = useState("");
   const specialistsQuery = useQuery({
@@ -29,8 +32,8 @@ export default function OperatorDashboardPage() {
     queryFn: apiClient.getExaminations,
   });
 
-  const specialists = specialistsQuery.data?.items ?? [];
-  const examinations = examinationsQuery.data?.items ?? [];
+  const specialists = specialistsQuery.data?.items ?? EMPTY_SPECIALISTS;
+  const examinations = examinationsQuery.data?.items ?? EMPTY_EXAMINATIONS;
 
   const specialistsById = useMemo(
     () => new Map(specialists.map((item) => [item.id, item])),
