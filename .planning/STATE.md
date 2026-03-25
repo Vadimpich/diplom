@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: UI & Admin Completion
 status: Ready to execute
-stopped_at: Completed 12-ui-02-PLAN.md
-last_updated: "2026-03-25T08:34:42.825Z"
+stopped_at: Completed 12-ui-03-PLAN.md
+last_updated: "2026-03-25T08:50:06.411Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 19
+  completed_plans: 21
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-24)
 ## Current Position
 
 Phase: 12 (ui) — EXECUTING
-Plan: 3 of 7
+Plan: 5 of 7
 
 ## Performance Metrics
 
@@ -58,6 +58,8 @@ Plan: 3 of 7
 | Phase 09 P03 | skipped runtime | 2 tasks | 8 files |
 | Phase 12 P01 | 4 min | 2 tasks | 5 files |
 | Phase 12-ui P02 | 18 min | 3 tasks | 23 files |
+| Phase 12-ui P04 | 12min | 3 tasks | 8 files |
+| Phase 12-ui P03 | 12 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -81,6 +83,11 @@ Recent decisions affecting current work:
 - [Phase 12]: Kept the existing AppShell split and auth redirect flow, changing only copy and density to stay inside Phase 12 scope.
 - [Phase 12]: Preserved loading, validation, error, and logout behaviors while removing developer-facing and decorative UI copy.
 - [Phase 12-ui]: Phase 12 registry density persists only user last login and questionnaire editor facts; specialist summary fields stay derived from existing examinations, aggregated profiles, and baseline state.
+- [Phase 12-ui]: Сводки /admin собраны из уже доступных users, questionnaires, examinations, audit и monitoring queries без новых backend summary endpoints.
+- [Phase 12-ui]: Реестры пользователей и опросников переведены в плотные таблицы с поиском, фильтрами и сортировкой только по реальным полям из 12-02.
+- [Phase 12-ui]: Мониторинг честно показывает только сигналы доступности и связи, а отсутствующие метрики явно обозначает как недоступные на текущем экране.
+- [Phase 12-ui]: History and dashboard specialist names stay client-joined from existing specialists data; no backend DTO expansion was added for Phase 12-03.
+- [Phase 12-ui]: Operator attention and latest-profile blocks are limited to contract-backed status and last_overall_band/score fields from 12-02.
 
 ### Roadmap Evolution
 
@@ -97,6 +104,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-25T08:34:42.823Z
-Stopped at: Completed 12-ui-02-PLAN.md
+Last session: 2026-03-25T08:50:06.409Z
+Stopped at: Completed 12-ui-03-PLAN.md
 Resume file: None
