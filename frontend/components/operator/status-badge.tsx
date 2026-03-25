@@ -30,11 +30,11 @@ const statusConfig: Record<
     variant: "success",
   },
   decision_pending: {
-    label: "Decision отправляется",
+    label: "Ожидает итогового ответа",
     variant: "warning",
   },
   completed: {
-    label: "Decision готов",
+    label: "Результат готов",
     variant: "success",
   },
   failed: {
