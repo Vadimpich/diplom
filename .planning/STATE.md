@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: UI & Admin Completion
 status: Ready to execute
-stopped_at: Completed 12-06-PLAN.md
-last_updated: "2026-03-25T09:01:25.161Z"
+stopped_at: Completed 12-05-PLAN.md
+last_updated: "2026-03-25T09:06:25.840Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-24)
 ## Current Position
 
 Phase: 12 (ui) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Plan: 6 of 7
 | Phase 12-ui P04 | 12min | 3 tasks | 8 files |
 | Phase 12-ui P03 | 12 min | 3 tasks | 7 files |
 | Phase 12 P06 | 8min | 3 tasks | 7 files |
+| Phase 12-ui P05 | 13 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 12-ui]: Operator attention and latest-profile blocks are limited to contract-backed status and last_overall_band/score fields from 12-02.
 - [Phase 12]: Unsaved questionnaire warnings now follow React Hook Form dirty state and clear after successful save resets.
 - [Phase 12]: Admin edit sidebars show only contract-backed access and usage metadata, with truthful fallbacks when activity fields are absent.
+- [Phase 12-ui]: Specialist detail remains contract-backed from existing specialist, examination history, and result-history queries only.
+- [Phase 12-ui]: Examination intake preserves prior confirm/toast and honest disabled-state behavior while strengthening progress and saved-answer context.
+- [Phase 12-ui]: Result DTO keys are translated through existing metric labels before reaching the operator reading path.
 
 ### Roadmap Evolution
 
@@ -107,6 +111,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-25T09:01:25.159Z
-Stopped at: Completed 12-06-PLAN.md
+Last session: 2026-03-25T09:06:25.838Z
+Stopped at: Completed 12-05-PLAN.md
 Resume file: None
