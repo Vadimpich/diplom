@@ -1,5 +1,18 @@
 # Milestones
 
+## v1.3 Admin UI Simplification (Archived: 2026-03-25)
+
+**Archive status:** tech debt accepted  
+**Phases completed:** 4 phases, 4 plans  
+**Archive files:** [v1.3-ROADMAP.md](/home/vadim/diplom/.planning/milestones/v1.3-ROADMAP.md), [v1.3-REQUIREMENTS.md](/home/vadim/diplom/.planning/milestones/v1.3-REQUIREMENTS.md), [v1.3-MILESTONE-AUDIT.md](/home/vadim/diplom/.planning/milestones/v1.3-MILESTONE-AUDIT.md)
+
+**Key accomplishments:**
+
+- Admin contour entry was stripped of dashboard behavior and redirected directly into working registries.
+- Users and questionnaires became compact clickable tables with inline filters and without summary-heavy chrome.
+- Audit and monitoring were reduced to quiet read-only operational surfaces instead of admin dashboards.
+- User, questionnaire, and settings editors were rebuilt as single-column forms, and question ordering moved to drag-and-drop.
+
 ## v1.1 UI & Admin Completion (Archived: 2026-03-25)
 
 **Archive status:** accepted with audit gaps  
