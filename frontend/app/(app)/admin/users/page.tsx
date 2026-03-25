@@ -17,7 +17,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Пользователи"
-        description="Управление административными и операторскими учётными записями."
+        description="Реестр учётных записей с ролями, доступом и недавней активностью."
         action={
           <Button asChild>
             <Link href="/admin/users/new">Создать пользователя</Link>
