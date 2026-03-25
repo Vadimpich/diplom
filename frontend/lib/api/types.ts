@@ -11,6 +11,7 @@ export interface User {
   login: string;
   role: Role;
   is_active: boolean;
+  last_login_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,14 @@ export interface Specialist {
   id: number;
   full_name: string;
   personnel_number: string | null;
+  examinations_count: number;
+  last_examination_id: number | null;
+  last_examination_at: string | null;
+  last_examination_status: ExaminationStatus | null;
+  last_overall_score: number | null;
+  last_overall_band: string | null;
+  baseline_exam_count: number;
+  baseline_refreshed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -131,9 +140,18 @@ export interface Questionnaire {
   title: string;
   description: string | null;
   is_active: boolean;
+  usage_count: number;
+  last_used_at: string | null;
+  last_edited_at: string;
+  last_editor: QuestionnaireEditor | null;
   questions: Question[];
   created_at: string;
   updated_at: string;
+}
+
+export interface QuestionnaireEditor {
+  id: number;
+  login: string;
 }
 
 export interface QuestionnairesResponse {
@@ -153,6 +171,71 @@ export interface FrontendReadinessResponse {
   status: "ready" | "degraded";
   service: "frontend";
   dependencies: FrontendDependencyState;
+}
+
+export interface AdminMonitoringMetrics {
+  frontend_dependency_up: 0 | 1;
+}
+
+export type AuditOutcome = "succeeded" | "failed" | "rejected";
+
+export interface AuditActor {
+  user_id?: number | null;
+  login: string;
+  role_slug: string;
+  ip: string;
+  user_agent: string;
+}
+
+export interface AuditResourceRef {
+  kind: string;
+  id: number;
+}
+
+export interface AuditDomainRefs {
+  examination_id?: number | null;
+  specialist_id?: number | null;
+  questionnaire_id?: number | null;
+  channel?: string | null;
+  decision_snapshot_id?: number | null;
+}
+
+export interface AuditEvent {
+  id: number;
+  event_type: string;
+  event_key: string;
+  outcome: AuditOutcome;
+  happened_at: string;
+  request_id: string;
+  trace_id: string;
+  traceparent: string;
+  tracestate: string;
+  correlation_id: string;
+  actor: AuditActor;
+  resource: AuditResourceRef;
+  domain_refs: AuditDomainRefs;
+  payload: Record<string, unknown>;
+}
+
+export interface AuditEventsResponse {
+  items: AuditEvent[];
+}
+
+export interface AuditEventsQuery {
+  event_type?: string;
+  resource_kind?: string;
+  resource_id?: number;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+export interface SystemSettings {
+  audio_retention_ttl_days: number;
+  processing_max_attempts: number;
+  kesmi_max_retries: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ApiErrorShape {
