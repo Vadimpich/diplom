@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: UI & Admin Completion
 status: Ready to execute
-stopped_at: Completed 12-ui-03-PLAN.md
-last_updated: "2026-03-25T08:50:06.411Z"
+stopped_at: Completed 12-06-PLAN.md
+last_updated: "2026-03-25T09:01:25.161Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-24)
 ## Current Position
 
 Phase: 12 (ui) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Plan: 5 of 7
 | Phase 12-ui P02 | 18 min | 3 tasks | 23 files |
 | Phase 12-ui P04 | 12min | 3 tasks | 8 files |
 | Phase 12-ui P03 | 12 min | 3 tasks | 7 files |
+| Phase 12 P06 | 8min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase 12-ui]: Мониторинг честно показывает только сигналы доступности и связи, а отсутствующие метрики явно обозначает как недоступные на текущем экране.
 - [Phase 12-ui]: History and dashboard specialist names stay client-joined from existing specialists data; no backend DTO expansion was added for Phase 12-03.
 - [Phase 12-ui]: Operator attention and latest-profile blocks are limited to contract-backed status and last_overall_band/score fields from 12-02.
+- [Phase 12]: Unsaved questionnaire warnings now follow React Hook Form dirty state and clear after successful save resets.
+- [Phase 12]: Admin edit sidebars show only contract-backed access and usage metadata, with truthful fallbacks when activity fields are absent.
 
 ### Roadmap Evolution
 
@@ -104,6 +107,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-25T08:50:06.409Z
-Stopped at: Completed 12-ui-03-PLAN.md
+Last session: 2026-03-25T09:01:25.159Z
+Stopped at: Completed 12-06-PLAN.md
 Resume file: None
