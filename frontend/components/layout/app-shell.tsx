@@ -26,7 +26,6 @@ export function AppShell({
   title,
   subtitle,
   navSections,
-  contourSummary,
   children,
 }: {
   contour: "operator" | "admin";
@@ -34,7 +33,6 @@ export function AppShell({
   title: string;
   subtitle: string;
   navSections: NavSection[];
-  contourSummary: ReactNode;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -52,22 +50,14 @@ export function AppShell({
           )}
         >
           <div className="flex h-full flex-col p-6">
-            <div className="space-y-3 border-b border-white/10 pb-6">
+            <div className="space-y-2 border-b border-white/10 pb-5">
               <p className="text-xs uppercase tracking-[0.32em] text-white/55">{eyebrow}</p>
               <div>
                 <h1 className={cn("font-semibold", isOperator ? "text-2xl" : "text-[1.75rem] leading-tight")}>{title}</h1>
-                <p className="mt-1 text-sm text-white/70">{subtitle}</p>
+                <p className="mt-1 text-sm text-white/62">{subtitle}</p>
               </div>
             </div>
-            <div
-              className={cn(
-                "mt-6 rounded-3xl border px-4 py-4",
-                isOperator ? "border-white/10 bg-white/8" : "border-slate-700 bg-slate-800/70",
-              )}
-            >
-              {contourSummary}
-            </div>
-            <nav className={cn("mt-6 flex flex-1 flex-col", isOperator ? "gap-3" : "gap-5")}>
+            <nav className={cn("mt-5 flex flex-1 flex-col", isOperator ? "gap-3" : "gap-4")}>
               {navSections.map((section) => (
                 <div key={section.title ?? section.items.map((item) => item.href).join(":")} className="space-y-2">
                   {section.title ? (
@@ -81,7 +71,7 @@ export function AppShell({
                           key={item.href}
                           href={item.href}
                           className={cn(
-                            "block rounded-2xl border px-4 py-3 transition",
+                            "block rounded-2xl border px-3 py-2.5 transition",
                             active
                               ? "border-white/12 bg-white/12 text-white"
                               : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/8 hover:text-white",
@@ -96,11 +86,15 @@ export function AppShell({
                 </div>
               ))}
             </nav>
-            <div className="space-y-4 border-t border-white/10 pt-6">
-              <div className="rounded-2xl bg-white/8 p-4">
+            <div className="space-y-3 border-t border-white/10 pt-5">
+              <div className="rounded-2xl border border-white/10 bg-white/8 px-3 py-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/50">Сеанс</p>
-                <p className="mt-2 text-sm font-medium">{user?.login ?? "Загрузка..."}</p>
-                <p className="text-sm text-white/60">{user?.role.name ?? "Роль не определена"}</p>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{user?.login ?? "Загрузка..."}</p>
+                    <p className="text-xs text-white/60">{user?.role.name ?? "Роль не определена"}</p>
+                  </div>
+                </div>
               </div>
               <Button
                 variant="secondary"
