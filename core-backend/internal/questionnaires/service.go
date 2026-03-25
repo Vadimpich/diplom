@@ -19,13 +19,22 @@ type Question struct {
 }
 
 type Questionnaire struct {
-	ID          int64      `json:"id"`
-	Title       string     `json:"title"`
-	Description *string    `json:"description,omitempty"`
-	IsActive    bool       `json:"is_active"`
-	Questions   []Question `json:"questions"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID           int64                `json:"id"`
+	Title        string               `json:"title"`
+	Description  *string              `json:"description,omitempty"`
+	IsActive     bool                 `json:"is_active"`
+	UsageCount   int64                `json:"usage_count"`
+	LastUsedAt   *time.Time           `json:"last_used_at"`
+	LastEditedAt time.Time            `json:"last_edited_at"`
+	LastEditor   *QuestionnaireEditor `json:"last_editor"`
+	Questions    []Question           `json:"questions"`
+	CreatedAt    time.Time            `json:"created_at"`
+	UpdatedAt    time.Time            `json:"updated_at"`
+}
+
+type QuestionnaireEditor struct {
+	ID    int64  `json:"id"`
+	Login string `json:"login"`
 }
 
 type QuestionInput struct {
@@ -33,18 +42,20 @@ type QuestionInput struct {
 }
 
 type CreateInput struct {
-	Title       string
-	Description *string
-	IsActive    bool
-	Questions   []QuestionInput
+	Title        string
+	Description  *string
+	IsActive     bool
+	Questions    []QuestionInput
+	EditorUserID int64
 }
 
 type UpdateInput struct {
-	ID          int64
-	Title       string
-	Description *string
-	IsActive    bool
-	Questions   []QuestionInput
+	ID           int64
+	Title        string
+	Description  *string
+	IsActive     bool
+	Questions    []QuestionInput
+	EditorUserID int64
 }
 
 type Repository interface {
@@ -143,11 +154,12 @@ func normalizeCreate(input CreateInput) CreateInput {
 
 func normalizeUpdate(input UpdateInput) UpdateInput {
 	return UpdateInput{
-		ID:          input.ID,
-		Title:       strings.TrimSpace(input.Title),
-		Description: normalizeDescription(input.Description),
-		IsActive:    input.IsActive,
-		Questions:   normalizeQuestions(input.Questions),
+		ID:           input.ID,
+		Title:        strings.TrimSpace(input.Title),
+		Description:  normalizeDescription(input.Description),
+		IsActive:     input.IsActive,
+		Questions:    normalizeQuestions(input.Questions),
+		EditorUserID: input.EditorUserID,
 	}
 }
 

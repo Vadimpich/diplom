@@ -28,12 +28,13 @@ type Role struct {
 }
 
 type User struct {
-	ID       int64     `json:"id"`
-	Login    string    `json:"login"`
-	Role     Role      `json:"role"`
-	IsActive bool      `json:"is_active"`
-	Created  time.Time `json:"created_at"`
-	Updated  time.Time `json:"updated_at"`
+	ID          int64      `json:"id"`
+	Login       string     `json:"login"`
+	Role        Role       `json:"role"`
+	IsActive    bool       `json:"is_active"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	Created     time.Time  `json:"created_at"`
+	Updated     time.Time  `json:"updated_at"`
 }
 
 type LoginInput struct {
@@ -87,6 +88,7 @@ type Repository interface {
 	RotateRefreshSession(context.Context, RotateRefreshSessionParams) (RefreshSession, error)
 	TouchRefreshSession(context.Context, int64, time.Time) error
 	RevokeRefreshSession(context.Context, RevokeRefreshSessionParams) error
+	UpdateUserLastLogin(context.Context, int64, time.Time) error
 }
 
 type TokenManager interface {
@@ -100,6 +102,7 @@ type StoredUser struct {
 	PasswordHash string
 	Role         Role
 	IsActive     bool
+	LastLoginAt  *time.Time
 	Created      time.Time
 	Updated      time.Time
 }
@@ -247,9 +250,7 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (LoginResult, err
 		return LoginResult{}, ErrInvalidCredentials
 	}
 
-	view := toUser(user)
-
-	token, expiresIn, err := s.tokens.Issue(view)
+	token, expiresIn, err := s.tokens.Issue(toUser(user))
 	if err != nil {
 		return LoginResult{}, fmt.Errorf("issue token: %w", err)
 	}
@@ -270,6 +271,10 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (LoginResult, err
 	}); err != nil {
 		return LoginResult{}, fmt.Errorf("create refresh session: %w", err)
 	}
+	if err := s.repo.UpdateUserLastLogin(ctx, user.ID, now); err != nil {
+		return LoginResult{}, fmt.Errorf("update last login: %w", err)
+	}
+	user.LastLoginAt = timePtr(now)
 
 	s.appendAudit(ctx, audit.Event{
 		Type:    audit.EventTypeAuthLogin,
@@ -293,7 +298,7 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (LoginResult, err
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    expiresIn,
-		User:         view,
+		User:         toUser(user),
 	}, nil
 }
 
@@ -536,12 +541,13 @@ func (s *Service) EnsureInitialUser(ctx context.Context, cfg BootstrapConfig) er
 
 func toUser(user StoredUser) User {
 	return User{
-		ID:       user.ID,
-		Login:    user.Login,
-		Role:     user.Role,
-		IsActive: user.IsActive,
-		Created:  user.Created,
-		Updated:  user.Updated,
+		ID:          user.ID,
+		Login:       user.Login,
+		Role:        user.Role,
+		IsActive:    user.IsActive,
+		LastLoginAt: user.LastLoginAt,
+		Created:     user.Created,
+		Updated:     user.Updated,
 	}
 }
 
@@ -558,5 +564,9 @@ func mustJSON(payload map[string]any) json.RawMessage {
 }
 
 func int64Ptr(value int64) *int64 {
+	return &value
+}
+
+func timePtr(value time.Time) *time.Time {
 	return &value
 }

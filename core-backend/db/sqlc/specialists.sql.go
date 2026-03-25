@@ -53,18 +53,74 @@ func (q *Queries) DeleteSpecialist(ctx context.Context, id int64) (int64, error)
 }
 
 const getSpecialistByID = `-- name: GetSpecialistByID :one
-SELECT id, full_name, personnel_number, created_at, updated_at
-FROM specialists
-WHERE id = $1
+SELECT
+    s.id,
+    s.full_name,
+    s.personnel_number,
+    COALESCE(exam_stats.examinations_count, 0)::BIGINT AS examinations_count,
+    COALESCE(last_exam.id, 0)::BIGINT AS last_examination_id,
+    COALESCE(last_exam.activity_at, 'epoch'::timestamptz) AS last_examination_at,
+    COALESCE(last_exam.status, '') AS last_examination_status,
+    profile.overall_score AS last_overall_score,
+    profile.overall_band AS last_overall_band,
+    COALESCE(baseline.baseline_exam_count, 0)::INTEGER AS baseline_exam_count,
+    baseline.refreshed_at AS baseline_refreshed_at,
+    s.created_at,
+    s.updated_at
+FROM specialists s
+LEFT JOIN (
+    SELECT
+        e.specialist_id,
+        COUNT(*)::BIGINT AS examinations_count
+    FROM examinations e
+    GROUP BY e.specialist_id
+) exam_stats ON exam_stats.specialist_id = s.id
+LEFT JOIN LATERAL (
+    SELECT
+        e.id,
+        COALESCE(e.finished_at, e.started_at, e.created_at) AS activity_at,
+        e.status
+    FROM examinations e
+    WHERE e.specialist_id = s.id
+    ORDER BY COALESCE(e.finished_at, e.started_at, e.created_at) DESC, e.id DESC
+    LIMIT 1
+) last_exam ON TRUE
+LEFT JOIN aggregated_examination_profiles profile ON profile.examination_id = last_exam.id
+LEFT JOIN specialist_baseline_states baseline ON baseline.specialist_id = s.id
+WHERE s.id = $1
 `
 
-func (q *Queries) GetSpecialistByID(ctx context.Context, id int64) (Specialist, error) {
+type GetSpecialistByIDRow struct {
+	ID                    int64
+	FullName              string
+	PersonnelNumber       pgtype.Text
+	ExaminationsCount     int64
+	LastExaminationID     int64
+	LastExaminationAt     pgtype.Timestamptz
+	LastExaminationStatus string
+	LastOverallScore      pgtype.Float8
+	LastOverallBand       pgtype.Text
+	BaselineExamCount     int32
+	BaselineRefreshedAt   pgtype.Timestamptz
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+}
+
+func (q *Queries) GetSpecialistByID(ctx context.Context, id int64) (GetSpecialistByIDRow, error) {
 	row := q.db.QueryRow(ctx, getSpecialistByID, id)
-	var i Specialist
+	var i GetSpecialistByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.FullName,
 		&i.PersonnelNumber,
+		&i.ExaminationsCount,
+		&i.LastExaminationID,
+		&i.LastExaminationAt,
+		&i.LastExaminationStatus,
+		&i.LastOverallScore,
+		&i.LastOverallBand,
+		&i.BaselineExamCount,
+		&i.BaselineRefreshedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -72,24 +128,80 @@ func (q *Queries) GetSpecialistByID(ctx context.Context, id int64) (Specialist, 
 }
 
 const listSpecialists = `-- name: ListSpecialists :many
-SELECT id, full_name, personnel_number, created_at, updated_at
-FROM specialists
-ORDER BY id DESC
+SELECT
+    s.id,
+    s.full_name,
+    s.personnel_number,
+    COALESCE(exam_stats.examinations_count, 0)::BIGINT AS examinations_count,
+    COALESCE(last_exam.id, 0)::BIGINT AS last_examination_id,
+    COALESCE(last_exam.activity_at, 'epoch'::timestamptz) AS last_examination_at,
+    COALESCE(last_exam.status, '') AS last_examination_status,
+    profile.overall_score AS last_overall_score,
+    profile.overall_band AS last_overall_band,
+    COALESCE(baseline.baseline_exam_count, 0)::INTEGER AS baseline_exam_count,
+    baseline.refreshed_at AS baseline_refreshed_at,
+    s.created_at,
+    s.updated_at
+FROM specialists s
+LEFT JOIN (
+    SELECT
+        e.specialist_id,
+        COUNT(*)::BIGINT AS examinations_count
+    FROM examinations e
+    GROUP BY e.specialist_id
+) exam_stats ON exam_stats.specialist_id = s.id
+LEFT JOIN LATERAL (
+    SELECT
+        e.id,
+        COALESCE(e.finished_at, e.started_at, e.created_at) AS activity_at,
+        e.status
+    FROM examinations e
+    WHERE e.specialist_id = s.id
+    ORDER BY COALESCE(e.finished_at, e.started_at, e.created_at) DESC, e.id DESC
+    LIMIT 1
+) last_exam ON TRUE
+LEFT JOIN aggregated_examination_profiles profile ON profile.examination_id = last_exam.id
+LEFT JOIN specialist_baseline_states baseline ON baseline.specialist_id = s.id
+ORDER BY s.id DESC
 `
 
-func (q *Queries) ListSpecialists(ctx context.Context) ([]Specialist, error) {
+type ListSpecialistsRow struct {
+	ID                    int64
+	FullName              string
+	PersonnelNumber       pgtype.Text
+	ExaminationsCount     int64
+	LastExaminationID     int64
+	LastExaminationAt     pgtype.Timestamptz
+	LastExaminationStatus string
+	LastOverallScore      pgtype.Float8
+	LastOverallBand       pgtype.Text
+	BaselineExamCount     int32
+	BaselineRefreshedAt   pgtype.Timestamptz
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+}
+
+func (q *Queries) ListSpecialists(ctx context.Context) ([]ListSpecialistsRow, error) {
 	rows, err := q.db.Query(ctx, listSpecialists)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Specialist
+	var items []ListSpecialistsRow
 	for rows.Next() {
-		var i Specialist
+		var i ListSpecialistsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.FullName,
 			&i.PersonnelNumber,
+			&i.ExaminationsCount,
+			&i.LastExaminationID,
+			&i.LastExaminationAt,
+			&i.LastExaminationStatus,
+			&i.LastOverallScore,
+			&i.LastOverallBand,
+			&i.BaselineExamCount,
+			&i.BaselineRefreshedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

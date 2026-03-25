@@ -243,12 +243,14 @@ type Question struct {
 }
 
 type Questionnaire struct {
-	ID          int64
-	Title       string
-	Description pgtype.Text
-	IsActive    bool
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID                 int64
+	Title              string
+	Description        pgtype.Text
+	IsActive           bool
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	LastEditedByUserID pgtype.Int8
+	LastEditedAt       pgtype.Timestamptz
 }
 
 type QuestionnaireQuestion struct {
@@ -298,6 +300,15 @@ type SpecialistBaselineState struct {
 	UpdatedAt         pgtype.Timestamptz
 }
 
+type SystemSetting struct {
+	Singleton             bool
+	AudioRetentionTtlDays int32
+	ProcessingMaxAttempts int32
+	KesmiMaxRetries       int32
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+}
+
 type User struct {
 	ID           int64
 	Login        string
@@ -306,4 +317,5 @@ type User struct {
 	IsActive     bool
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	LastLoginAt  pgtype.Timestamptz
 }

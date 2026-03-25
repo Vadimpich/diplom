@@ -3,6 +3,7 @@ package questionnaires
 import (
 	"context"
 	"errors"
+	"time"
 
 	sqlcdb "diplom/db/sqlc"
 	"diplom/internal/repository"
@@ -47,9 +48,10 @@ func (r *SQLCRepository) Create(ctx context.Context, input CreateInput) (Questio
 
 	queries := sqlcdb.New(tx)
 	item, err := queries.CreateQuestionnaire(ctx, sqlcdb.CreateQuestionnaireParams{
-		Title:       input.Title,
-		Description: textValue(input.Description),
-		IsActive:    input.IsActive,
+		Title:              input.Title,
+		Description:        textValue(input.Description),
+		IsActive:           input.IsActive,
+		LastEditedByUserID: int64Value(input.EditorUserID),
 	})
 	if err != nil {
 		return Questionnaire{}, err
@@ -87,10 +89,11 @@ func (r *SQLCRepository) Update(ctx context.Context, input UpdateInput) (Questio
 	}
 
 	if _, err := queries.UpdateQuestionnaire(ctx, sqlcdb.UpdateQuestionnaireParams{
-		ID:          input.ID,
-		Title:       input.Title,
-		Description: textValue(input.Description),
-		IsActive:    input.IsActive,
+		ID:                 input.ID,
+		Title:              input.Title,
+		Description:        textValue(input.Description),
+		IsActive:           input.IsActive,
+		LastEditedByUserID: int64Value(input.EditorUserID),
 	}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Questionnaire{}, repository.ErrNotFound
@@ -145,13 +148,17 @@ func mapQuestionnaireRows(rows []sqlcdb.ListQuestionnaireDetailsRow) []Questionn
 		idx, exists := indexByID[row.ID]
 		if !exists {
 			result = append(result, Questionnaire{
-				ID:          row.ID,
-				Title:       row.Title,
-				Description: nullableText(row.Description),
-				IsActive:    row.IsActive,
-				Questions:   make([]Question, 0),
-				CreatedAt:   row.CreatedAt.Time,
-				UpdatedAt:   row.UpdatedAt.Time,
+				ID:           row.ID,
+				Title:        row.Title,
+				Description:  nullableText(row.Description),
+				IsActive:     row.IsActive,
+				UsageCount:   row.UsageCount,
+				LastUsedAt:   nullableAnyTimeOrEpoch(row.LastUsedAt),
+				LastEditedAt: row.LastEditedAt.Time,
+				LastEditor:   mapQuestionnaireEditor(row.LastEditorUserID, row.LastEditorLogin),
+				Questions:    make([]Question, 0),
+				CreatedAt:    row.CreatedAt.Time,
+				UpdatedAt:    row.UpdatedAt.Time,
 			})
 			idx = len(result) - 1
 			indexByID[row.ID] = idx
@@ -177,13 +184,17 @@ func mapQuestionnaireDetailsRows(rows []sqlcdb.GetQuestionnaireDetailsByIDRow) [
 		idx, exists := indexByID[row.ID]
 		if !exists {
 			result = append(result, Questionnaire{
-				ID:          row.ID,
-				Title:       row.Title,
-				Description: nullableText(row.Description),
-				IsActive:    row.IsActive,
-				Questions:   make([]Question, 0),
-				CreatedAt:   row.CreatedAt.Time,
-				UpdatedAt:   row.UpdatedAt.Time,
+				ID:           row.ID,
+				Title:        row.Title,
+				Description:  nullableText(row.Description),
+				IsActive:     row.IsActive,
+				UsageCount:   row.UsageCount,
+				LastUsedAt:   nullableAnyTimeOrEpoch(row.LastUsedAt),
+				LastEditedAt: row.LastEditedAt.Time,
+				LastEditor:   mapQuestionnaireEditor(row.LastEditorUserID, row.LastEditorLogin),
+				Questions:    make([]Question, 0),
+				CreatedAt:    row.CreatedAt.Time,
+				UpdatedAt:    row.UpdatedAt.Time,
 			})
 			idx = len(result) - 1
 			indexByID[row.ID] = idx
@@ -214,4 +225,52 @@ func nullableText(value pgtype.Text) *string {
 	}
 	result := value.String
 	return &result
+}
+
+func nullableTime(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Time
+	return &result
+}
+
+func nullableTimeOrEpoch(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid || value.Time.Equal(time.Unix(0, 0).UTC()) {
+		return nil
+	}
+	result := value.Time
+	return &result
+}
+
+func nullableAnyTimeOrEpoch(value any) *time.Time {
+	switch typed := value.(type) {
+	case time.Time:
+		if typed.Equal(time.Unix(0, 0).UTC()) {
+			return nil
+		}
+		result := typed
+		return &result
+	case pgtype.Timestamptz:
+		return nullableTimeOrEpoch(typed)
+	default:
+		return nil
+	}
+}
+
+func int64Value(value int64) pgtype.Int8 {
+	if value <= 0 {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: value, Valid: true}
+}
+
+func mapQuestionnaireEditor(userID pgtype.Int8, login pgtype.Text) *QuestionnaireEditor {
+	if !userID.Valid || !login.Valid {
+		return nil
+	}
+	return &QuestionnaireEditor{
+		ID:    userID.Int64,
+		Login: login.String,
+	}
 }

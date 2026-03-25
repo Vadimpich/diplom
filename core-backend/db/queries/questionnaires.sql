@@ -2,11 +2,13 @@
 INSERT INTO questionnaires (
     title,
     description,
-    is_active
+    is_active,
+    last_edited_by_user_id,
+    last_edited_at
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4, NOW()
 )
-RETURNING id, title, description, is_active, created_at, updated_at;
+RETURNING id, title, description, is_active, last_edited_by_user_id, last_edited_at, created_at, updated_at;
 
 -- name: UpdateQuestionnaire :one
 UPDATE questionnaires
@@ -14,12 +16,14 @@ SET
     title = $2,
     description = $3,
     is_active = $4,
+    last_edited_by_user_id = $5,
+    last_edited_at = NOW(),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, title, description, is_active, created_at, updated_at;
+RETURNING id, title, description, is_active, last_edited_by_user_id, last_edited_at, created_at, updated_at;
 
 -- name: GetQuestionnaireByID :one
-SELECT id, title, description, is_active, created_at, updated_at
+SELECT id, title, description, is_active, last_edited_by_user_id, last_edited_at, created_at, updated_at
 FROM questionnaires
 WHERE id = $1;
 
@@ -29,12 +33,27 @@ SELECT
     q.title,
     q.description,
     q.is_active,
+    usage_stats.usage_count,
+    COALESCE(usage_stats.last_used_at, 'epoch'::timestamptz) AS last_used_at,
+    q.last_edited_at,
+    editor.id AS last_editor_user_id,
+    editor.login AS last_editor_login,
     q.created_at,
     q.updated_at,
     qq.question_id,
     ques.text AS question_text,
     qq.position
 FROM questionnaires q
+LEFT JOIN (
+    SELECT
+        e.questionnaire_id,
+        COUNT(*)::BIGINT AS usage_count,
+        MAX(COALESCE(e.finished_at, e.started_at, e.created_at)) AS last_used_at
+    FROM examinations e
+    WHERE e.questionnaire_id IS NOT NULL
+    GROUP BY e.questionnaire_id
+) usage_stats ON usage_stats.questionnaire_id = q.id
+LEFT JOIN users editor ON editor.id = q.last_edited_by_user_id
 LEFT JOIN questionnaire_questions qq ON qq.questionnaire_id = q.id
 LEFT JOIN questions ques ON ques.id = qq.question_id
 ORDER BY q.id DESC, qq.position ASC;
@@ -45,12 +64,27 @@ SELECT
     q.title,
     q.description,
     q.is_active,
+    usage_stats.usage_count,
+    COALESCE(usage_stats.last_used_at, 'epoch'::timestamptz) AS last_used_at,
+    q.last_edited_at,
+    editor.id AS last_editor_user_id,
+    editor.login AS last_editor_login,
     q.created_at,
     q.updated_at,
     qq.question_id,
     ques.text AS question_text,
     qq.position
 FROM questionnaires q
+LEFT JOIN (
+    SELECT
+        e.questionnaire_id,
+        COUNT(*)::BIGINT AS usage_count,
+        MAX(COALESCE(e.finished_at, e.started_at, e.created_at)) AS last_used_at
+    FROM examinations e
+    WHERE e.questionnaire_id IS NOT NULL
+    GROUP BY e.questionnaire_id
+) usage_stats ON usage_stats.questionnaire_id = q.id
+LEFT JOIN users editor ON editor.id = q.last_edited_by_user_id
 LEFT JOIN questionnaire_questions qq ON qq.questionnaire_id = q.id
 LEFT JOIN questions ques ON ques.id = qq.question_id
 WHERE q.id = $1

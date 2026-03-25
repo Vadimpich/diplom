@@ -39,6 +39,13 @@ func TestLogin(t *testing.T) {
 	if payload["refresh_token"] == "" {
 		t.Fatal("expected refresh_token in response")
 	}
+	userPayload, ok := payload["user"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected nested user payload, got %#v", payload["user"])
+	}
+	if userPayload["last_login_at"] == nil || userPayload["last_login_at"] == "" {
+		t.Fatalf("expected last_login_at in login response, got %#v", userPayload["last_login_at"])
+	}
 }
 
 func TestLogoutRevokesSession(t *testing.T) {
@@ -284,4 +291,15 @@ func (r *httpAuthRepoStub) RevokeRefreshSession(_ context.Context, params auth.R
 		}
 	}
 	return repository.ErrNotFound
+}
+
+func (r *httpAuthRepoStub) UpdateUserLastLogin(_ context.Context, userID int64, loggedAt time.Time) error {
+	user, ok := r.usersByID[userID]
+	if !ok {
+		return repository.ErrNotFound
+	}
+	user.LastLoginAt = &loggedAt
+	r.usersByID[userID] = user
+	r.usersByLogin[user.Login] = user
+	return nil
 }

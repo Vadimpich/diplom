@@ -37,6 +37,12 @@ func (h QuestionnairesHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h QuestionnairesHandler) Create(w http.ResponseWriter, r *http.Request) {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	var request questionnaireRequest
 	if err := decodeJSON(r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -44,10 +50,11 @@ func (h QuestionnairesHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	item, err := h.service.Create(r.Context(), questionnaires.CreateInput{
-		Title:       request.Title,
-		Description: request.Description,
-		IsActive:    request.IsActive,
-		Questions:   mapQuestionInputs(request.Questions),
+		Title:        request.Title,
+		Description:  request.Description,
+		IsActive:     request.IsActive,
+		Questions:    mapQuestionInputs(request.Questions),
+		EditorUserID: claims.UserID,
 	})
 	if err != nil {
 		status, message := mapDomainError(err)
@@ -76,6 +83,12 @@ func (h QuestionnairesHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h QuestionnairesHandler) Update(w http.ResponseWriter, r *http.Request) {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	id, err := parseInt64Param(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid questionnaire id")
@@ -89,11 +102,12 @@ func (h QuestionnairesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	item, err := h.service.Update(r.Context(), questionnaires.UpdateInput{
-		ID:          id,
-		Title:       request.Title,
-		Description: request.Description,
-		IsActive:    request.IsActive,
-		Questions:   mapQuestionInputs(request.Questions),
+		ID:           id,
+		Title:        request.Title,
+		Description:  request.Description,
+		IsActive:     request.IsActive,
+		Questions:    mapQuestionInputs(request.Questions),
+		EditorUserID: claims.UserID,
 	})
 	if err != nil {
 		status, message := mapDomainError(err)

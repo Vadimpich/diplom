@@ -219,6 +219,13 @@ func (r *SQLCRepository) RevokeRefreshSession(ctx context.Context, params Revoke
 	})
 }
 
+func (r *SQLCRepository) UpdateUserLastLogin(ctx context.Context, userID int64, loggedAt time.Time) error {
+	return r.queries.UpdateUserLastLogin(ctx, sqlcdb.UpdateUserLastLoginParams{
+		ID:          userID,
+		LastLoginAt: pgtype.Timestamptz{Time: loggedAt, Valid: true},
+	})
+}
+
 func isConflict(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
@@ -230,6 +237,7 @@ func mapStoredUserByLogin(row sqlcdb.GetUserByLoginRow) StoredUser {
 		Login:        row.Login,
 		PasswordHash: row.PasswordHash,
 		IsActive:     row.IsActive,
+		LastLoginAt:  nullableTime(row.LastLoginAt),
 		Created:      row.CreatedAt.Time,
 		Updated:      row.UpdatedAt.Time,
 		Role: Role{
@@ -246,6 +254,7 @@ func mapStoredUserByID(row sqlcdb.GetUserByIDRow) StoredUser {
 		Login:        row.Login,
 		PasswordHash: row.PasswordHash,
 		IsActive:     row.IsActive,
+		LastLoginAt:  nullableTime(row.LastLoginAt),
 		Created:      row.CreatedAt.Time,
 		Updated:      row.UpdatedAt.Time,
 		Role: Role{
@@ -262,6 +271,7 @@ func mapStoredUserByList(row sqlcdb.ListUsersRow) StoredUser {
 		Login:        row.Login,
 		PasswordHash: row.PasswordHash,
 		IsActive:     row.IsActive,
+		LastLoginAt:  nullableTime(row.LastLoginAt),
 		Created:      row.CreatedAt.Time,
 		Updated:      row.UpdatedAt.Time,
 		Role: Role{

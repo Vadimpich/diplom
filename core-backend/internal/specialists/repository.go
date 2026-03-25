@@ -3,6 +3,7 @@ package specialists
 import (
 	"context"
 	"errors"
+	"time"
 
 	sqlcdb "diplom/db/sqlc"
 	"diplom/internal/repository"
@@ -42,7 +43,7 @@ func (r *SQLCRepository) List(ctx context.Context) ([]Specialist, error) {
 
 	result := make([]Specialist, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, mapSpecialist(row))
+		result = append(result, mapListedSpecialist(row))
 	}
 
 	return result, nil
@@ -57,7 +58,7 @@ func (r *SQLCRepository) GetByID(ctx context.Context, id int64) (Specialist, err
 		return Specialist{}, err
 	}
 
-	return mapSpecialist(row), nil
+	return mapDetailedSpecialist(row), nil
 }
 
 func (r *SQLCRepository) Update(ctx context.Context, input UpdateInput) (Specialist, error) {
@@ -96,11 +97,48 @@ func (r *SQLCRepository) Delete(ctx context.Context, id int64) error {
 
 func mapSpecialist(row sqlcdb.Specialist) Specialist {
 	return Specialist{
-		ID:              row.ID,
-		FullName:        row.FullName,
-		PersonnelNumber: nullableText(row.PersonnelNumber),
-		CreatedAt:       row.CreatedAt.Time,
-		UpdatedAt:       row.UpdatedAt.Time,
+		ID:                row.ID,
+		FullName:          row.FullName,
+		PersonnelNumber:   nullableText(row.PersonnelNumber),
+		CreatedAt:         row.CreatedAt.Time,
+		UpdatedAt:         row.UpdatedAt.Time,
+		BaselineExamCount: 0,
+	}
+}
+
+func mapListedSpecialist(row sqlcdb.ListSpecialistsRow) Specialist {
+	return Specialist{
+		ID:                    row.ID,
+		FullName:              row.FullName,
+		PersonnelNumber:       nullableText(row.PersonnelNumber),
+		ExaminationsCount:     row.ExaminationsCount,
+		LastExaminationID:     nullableInt64OrZero(row.LastExaminationID),
+		LastExaminationAt:     nullableTimeOrEpoch(row.LastExaminationAt),
+		LastExaminationStatus: nullableStringOrEmpty(row.LastExaminationStatus),
+		LastOverallScore:      nullableFloat64(row.LastOverallScore),
+		LastOverallBand:       nullableText(row.LastOverallBand),
+		BaselineExamCount:     row.BaselineExamCount,
+		BaselineRefreshedAt:   nullableTime(row.BaselineRefreshedAt),
+		CreatedAt:             row.CreatedAt.Time,
+		UpdatedAt:             row.UpdatedAt.Time,
+	}
+}
+
+func mapDetailedSpecialist(row sqlcdb.GetSpecialistByIDRow) Specialist {
+	return Specialist{
+		ID:                    row.ID,
+		FullName:              row.FullName,
+		PersonnelNumber:       nullableText(row.PersonnelNumber),
+		ExaminationsCount:     row.ExaminationsCount,
+		LastExaminationID:     nullableInt64OrZero(row.LastExaminationID),
+		LastExaminationAt:     nullableTimeOrEpoch(row.LastExaminationAt),
+		LastExaminationStatus: nullableStringOrEmpty(row.LastExaminationStatus),
+		LastOverallScore:      nullableFloat64(row.LastOverallScore),
+		LastOverallBand:       nullableText(row.LastOverallBand),
+		BaselineExamCount:     row.BaselineExamCount,
+		BaselineRefreshedAt:   nullableTime(row.BaselineRefreshedAt),
+		CreatedAt:             row.CreatedAt.Time,
+		UpdatedAt:             row.UpdatedAt.Time,
 	}
 }
 
@@ -116,6 +154,54 @@ func nullableText(value pgtype.Text) *string {
 		return nil
 	}
 	result := value.String
+	return &result
+}
+
+func nullableTime(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Time
+	return &result
+}
+
+func nullableInt64(value pgtype.Int8) *int64 {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Int64
+	return &result
+}
+
+func nullableFloat64(value pgtype.Float8) *float64 {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Float64
+	return &result
+}
+
+func nullableInt64OrZero(value int64) *int64 {
+	if value == 0 {
+		return nil
+	}
+	result := value
+	return &result
+}
+
+func nullableTimeOrEpoch(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid || value.Time.Equal(time.Unix(0, 0).UTC()) {
+		return nil
+	}
+	result := value.Time
+	return &result
+}
+
+func nullableStringOrEmpty(value string) *string {
+	if value == "" {
+		return nil
+	}
+	result := value
 	return &result
 }
 

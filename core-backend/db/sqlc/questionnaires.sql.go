@@ -57,27 +57,48 @@ const createQuestionnaire = `-- name: CreateQuestionnaire :one
 INSERT INTO questionnaires (
     title,
     description,
-    is_active
+    is_active,
+    last_edited_by_user_id,
+    last_edited_at
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4, NOW()
 )
-RETURNING id, title, description, is_active, created_at, updated_at
+RETURNING id, title, description, is_active, last_edited_by_user_id, last_edited_at, created_at, updated_at
 `
 
 type CreateQuestionnaireParams struct {
-	Title       string
-	Description pgtype.Text
-	IsActive    bool
+	Title              string
+	Description        pgtype.Text
+	IsActive           bool
+	LastEditedByUserID pgtype.Int8
 }
 
-func (q *Queries) CreateQuestionnaire(ctx context.Context, arg CreateQuestionnaireParams) (Questionnaire, error) {
-	row := q.db.QueryRow(ctx, createQuestionnaire, arg.Title, arg.Description, arg.IsActive)
-	var i Questionnaire
+type CreateQuestionnaireRow struct {
+	ID                 int64
+	Title              string
+	Description        pgtype.Text
+	IsActive           bool
+	LastEditedByUserID pgtype.Int8
+	LastEditedAt       pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
+func (q *Queries) CreateQuestionnaire(ctx context.Context, arg CreateQuestionnaireParams) (CreateQuestionnaireRow, error) {
+	row := q.db.QueryRow(ctx, createQuestionnaire,
+		arg.Title,
+		arg.Description,
+		arg.IsActive,
+		arg.LastEditedByUserID,
+	)
+	var i CreateQuestionnaireRow
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.Description,
 		&i.IsActive,
+		&i.LastEditedByUserID,
+		&i.LastEditedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -109,19 +130,32 @@ func (q *Queries) DeleteQuestionnaireQuestions(ctx context.Context, questionnair
 }
 
 const getQuestionnaireByID = `-- name: GetQuestionnaireByID :one
-SELECT id, title, description, is_active, created_at, updated_at
+SELECT id, title, description, is_active, last_edited_by_user_id, last_edited_at, created_at, updated_at
 FROM questionnaires
 WHERE id = $1
 `
 
-func (q *Queries) GetQuestionnaireByID(ctx context.Context, id int64) (Questionnaire, error) {
+type GetQuestionnaireByIDRow struct {
+	ID                 int64
+	Title              string
+	Description        pgtype.Text
+	IsActive           bool
+	LastEditedByUserID pgtype.Int8
+	LastEditedAt       pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
+func (q *Queries) GetQuestionnaireByID(ctx context.Context, id int64) (GetQuestionnaireByIDRow, error) {
 	row := q.db.QueryRow(ctx, getQuestionnaireByID, id)
-	var i Questionnaire
+	var i GetQuestionnaireByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.Description,
 		&i.IsActive,
+		&i.LastEditedByUserID,
+		&i.LastEditedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -134,12 +168,27 @@ SELECT
     q.title,
     q.description,
     q.is_active,
+    usage_stats.usage_count,
+    COALESCE(usage_stats.last_used_at, 'epoch'::timestamptz) AS last_used_at,
+    q.last_edited_at,
+    editor.id AS last_editor_user_id,
+    editor.login AS last_editor_login,
     q.created_at,
     q.updated_at,
     qq.question_id,
     ques.text AS question_text,
     qq.position
 FROM questionnaires q
+LEFT JOIN (
+    SELECT
+        e.questionnaire_id,
+        COUNT(*)::BIGINT AS usage_count,
+        MAX(COALESCE(e.finished_at, e.started_at, e.created_at)) AS last_used_at
+    FROM examinations e
+    WHERE e.questionnaire_id IS NOT NULL
+    GROUP BY e.questionnaire_id
+) usage_stats ON usage_stats.questionnaire_id = q.id
+LEFT JOIN users editor ON editor.id = q.last_edited_by_user_id
 LEFT JOIN questionnaire_questions qq ON qq.questionnaire_id = q.id
 LEFT JOIN questions ques ON ques.id = qq.question_id
 WHERE q.id = $1
@@ -147,15 +196,20 @@ ORDER BY qq.position ASC
 `
 
 type GetQuestionnaireDetailsByIDRow struct {
-	ID           int64
-	Title        string
-	Description  pgtype.Text
-	IsActive     bool
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-	QuestionID   pgtype.Int8
-	QuestionText pgtype.Text
-	Position     pgtype.Int4
+	ID               int64
+	Title            string
+	Description      pgtype.Text
+	IsActive         bool
+	UsageCount       int64
+	LastUsedAt       interface{}
+	LastEditedAt     pgtype.Timestamptz
+	LastEditorUserID pgtype.Int8
+	LastEditorLogin  pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	QuestionID       pgtype.Int8
+	QuestionText     pgtype.Text
+	Position         pgtype.Int4
 }
 
 func (q *Queries) GetQuestionnaireDetailsByID(ctx context.Context, id int64) ([]GetQuestionnaireDetailsByIDRow, error) {
@@ -172,6 +226,11 @@ func (q *Queries) GetQuestionnaireDetailsByID(ctx context.Context, id int64) ([]
 			&i.Title,
 			&i.Description,
 			&i.IsActive,
+			&i.UsageCount,
+			&i.LastUsedAt,
+			&i.LastEditedAt,
+			&i.LastEditorUserID,
+			&i.LastEditorLogin,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.QuestionID,
@@ -194,27 +253,47 @@ SELECT
     q.title,
     q.description,
     q.is_active,
+    usage_stats.usage_count,
+    COALESCE(usage_stats.last_used_at, 'epoch'::timestamptz) AS last_used_at,
+    q.last_edited_at,
+    editor.id AS last_editor_user_id,
+    editor.login AS last_editor_login,
     q.created_at,
     q.updated_at,
     qq.question_id,
     ques.text AS question_text,
     qq.position
 FROM questionnaires q
+LEFT JOIN (
+    SELECT
+        e.questionnaire_id,
+        COUNT(*)::BIGINT AS usage_count,
+        MAX(COALESCE(e.finished_at, e.started_at, e.created_at)) AS last_used_at
+    FROM examinations e
+    WHERE e.questionnaire_id IS NOT NULL
+    GROUP BY e.questionnaire_id
+) usage_stats ON usage_stats.questionnaire_id = q.id
+LEFT JOIN users editor ON editor.id = q.last_edited_by_user_id
 LEFT JOIN questionnaire_questions qq ON qq.questionnaire_id = q.id
 LEFT JOIN questions ques ON ques.id = qq.question_id
 ORDER BY q.id DESC, qq.position ASC
 `
 
 type ListQuestionnaireDetailsRow struct {
-	ID           int64
-	Title        string
-	Description  pgtype.Text
-	IsActive     bool
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-	QuestionID   pgtype.Int8
-	QuestionText pgtype.Text
-	Position     pgtype.Int4
+	ID               int64
+	Title            string
+	Description      pgtype.Text
+	IsActive         bool
+	UsageCount       int64
+	LastUsedAt       interface{}
+	LastEditedAt     pgtype.Timestamptz
+	LastEditorUserID pgtype.Int8
+	LastEditorLogin  pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	QuestionID       pgtype.Int8
+	QuestionText     pgtype.Text
+	Position         pgtype.Int4
 }
 
 func (q *Queries) ListQuestionnaireDetails(ctx context.Context) ([]ListQuestionnaireDetailsRow, error) {
@@ -231,6 +310,11 @@ func (q *Queries) ListQuestionnaireDetails(ctx context.Context) ([]ListQuestionn
 			&i.Title,
 			&i.Description,
 			&i.IsActive,
+			&i.UsageCount,
+			&i.LastUsedAt,
+			&i.LastEditedAt,
+			&i.LastEditorUserID,
+			&i.LastEditorLogin,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.QuestionID,
@@ -253,31 +337,48 @@ SET
     title = $2,
     description = $3,
     is_active = $4,
+    last_edited_by_user_id = $5,
+    last_edited_at = NOW(),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, title, description, is_active, created_at, updated_at
+RETURNING id, title, description, is_active, last_edited_by_user_id, last_edited_at, created_at, updated_at
 `
 
 type UpdateQuestionnaireParams struct {
-	ID          int64
-	Title       string
-	Description pgtype.Text
-	IsActive    bool
+	ID                 int64
+	Title              string
+	Description        pgtype.Text
+	IsActive           bool
+	LastEditedByUserID pgtype.Int8
 }
 
-func (q *Queries) UpdateQuestionnaire(ctx context.Context, arg UpdateQuestionnaireParams) (Questionnaire, error) {
+type UpdateQuestionnaireRow struct {
+	ID                 int64
+	Title              string
+	Description        pgtype.Text
+	IsActive           bool
+	LastEditedByUserID pgtype.Int8
+	LastEditedAt       pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateQuestionnaire(ctx context.Context, arg UpdateQuestionnaireParams) (UpdateQuestionnaireRow, error) {
 	row := q.db.QueryRow(ctx, updateQuestionnaire,
 		arg.ID,
 		arg.Title,
 		arg.Description,
 		arg.IsActive,
+		arg.LastEditedByUserID,
 	)
-	var i Questionnaire
+	var i UpdateQuestionnaireRow
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.Description,
 		&i.IsActive,
+		&i.LastEditedByUserID,
+		&i.LastEditedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

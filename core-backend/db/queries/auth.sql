@@ -4,6 +4,7 @@ SELECT
     u.login,
     u.password_hash,
     u.is_active,
+    u.last_login_at,
     u.created_at,
     u.updated_at,
     r.id AS role_id,
@@ -20,6 +21,7 @@ SELECT
     u.login,
     u.password_hash,
     u.is_active,
+    u.last_login_at,
     u.created_at,
     u.updated_at,
     r.id AS role_id,
@@ -36,6 +38,7 @@ SELECT
     u.login,
     u.password_hash,
     u.is_active,
+    u.last_login_at,
     u.created_at,
     u.updated_at,
     r.id AS role_id,
@@ -136,4 +139,11 @@ WHERE id = $1;
 UPDATE refresh_sessions
 SET
     revoked_at = $2
+WHERE id = $1;
+
+-- name: UpdateUserLastLogin :exec
+UPDATE users
+SET
+    last_login_at = $2,
+    updated_at = NOW()
 WHERE id = $1;

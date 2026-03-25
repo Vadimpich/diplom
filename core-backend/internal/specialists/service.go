@@ -10,11 +10,19 @@ import (
 var ErrInvalidInput = errors.New("specialists: invalid input")
 
 type Specialist struct {
-	ID              int64     `json:"id"`
-	FullName        string    `json:"full_name"`
-	PersonnelNumber *string   `json:"personnel_number,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                    int64      `json:"id"`
+	FullName              string     `json:"full_name"`
+	PersonnelNumber       *string    `json:"personnel_number,omitempty"`
+	ExaminationsCount     int64      `json:"examinations_count"`
+	LastExaminationID     *int64     `json:"last_examination_id"`
+	LastExaminationAt     *time.Time `json:"last_examination_at"`
+	LastExaminationStatus *string    `json:"last_examination_status"`
+	LastOverallScore      *float64   `json:"last_overall_score"`
+	LastOverallBand       *string    `json:"last_overall_band"`
+	BaselineExamCount     int32      `json:"baseline_exam_count"`
+	BaselineRefreshedAt   *time.Time `json:"baseline_refreshed_at"`
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
 type CreateInput struct {

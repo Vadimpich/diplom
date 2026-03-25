@@ -11,20 +11,28 @@ import (
 func TestQuestionnaireMutationWritesAuditEvent(t *testing.T) {
 	repo := &questionnaireRepoStub{
 		createResult: Questionnaire{
-			ID:        7,
-			Title:     "Q1",
-			IsActive:  true,
-			Questions: []Question{{ID: 1, Text: "How?", Position: 1}},
-			CreatedAt: time.Unix(10, 0).UTC(),
-			UpdatedAt: time.Unix(10, 0).UTC(),
+			ID:           7,
+			Title:        "Q1",
+			IsActive:     true,
+			UsageCount:   0,
+			LastUsedAt:   nil,
+			LastEditedAt: time.Unix(10, 0).UTC(),
+			LastEditor:   &QuestionnaireEditor{ID: 1, Login: "admin"},
+			Questions:    []Question{{ID: 1, Text: "How?", Position: 1}},
+			CreatedAt:    time.Unix(10, 0).UTC(),
+			UpdatedAt:    time.Unix(10, 0).UTC(),
 		},
 		updateResult: Questionnaire{
-			ID:        7,
-			Title:     "Q1 updated",
-			IsActive:  false,
-			Questions: []Question{{ID: 1, Text: "How?", Position: 1}},
-			CreatedAt: time.Unix(10, 0).UTC(),
-			UpdatedAt: time.Unix(20, 0).UTC(),
+			ID:           7,
+			Title:        "Q1 updated",
+			IsActive:     false,
+			UsageCount:   4,
+			LastUsedAt:   timePtr(time.Unix(15, 0).UTC()),
+			LastEditedAt: time.Unix(20, 0).UTC(),
+			LastEditor:   &QuestionnaireEditor{ID: 2, Login: "chief-admin"},
+			Questions:    []Question{{ID: 1, Text: "How?", Position: 1}},
+			CreatedAt:    time.Unix(10, 0).UTC(),
+			UpdatedAt:    time.Unix(20, 0).UTC(),
 		},
 	}
 	auditRepo := &questionnaireAuditRepoStub{}
@@ -53,17 +61,75 @@ func TestQuestionnaireMutationWritesAuditEvent(t *testing.T) {
 	}
 }
 
+func TestQuestionnaireReadModelsExposeUsageAndEditorMetadata(t *testing.T) {
+	lastUsedAt := time.Unix(30, 0).UTC()
+	lastEditedAt := time.Unix(40, 0).UTC()
+	repo := &questionnaireRepoStub{
+		listResult: []Questionnaire{
+			{
+				ID:           5,
+				Title:        "Shift survey",
+				IsActive:     true,
+				UsageCount:   8,
+				LastUsedAt:   &lastUsedAt,
+				LastEditedAt: lastEditedAt,
+				LastEditor:   &QuestionnaireEditor{ID: 3, Login: "admin"},
+				Questions:    []Question{{ID: 1, Text: "How?", Position: 1}},
+			},
+		},
+		getByIDResult: Questionnaire{
+			ID:           5,
+			Title:        "Shift survey",
+			IsActive:     true,
+			UsageCount:   8,
+			LastUsedAt:   &lastUsedAt,
+			LastEditedAt: lastEditedAt,
+			LastEditor:   &QuestionnaireEditor{ID: 3, Login: "admin"},
+			Questions:    []Question{{ID: 1, Text: "How?", Position: 1}},
+		},
+	}
+
+	service := NewService(repo)
+
+	items, err := service.List(context.Background())
+	if err != nil {
+		t.Fatalf("list questionnaires: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected one questionnaire, got %d", len(items))
+	}
+	if items[0].UsageCount != 8 {
+		t.Fatalf("expected usage count 8, got %d", items[0].UsageCount)
+	}
+	if items[0].LastEditor == nil || items[0].LastEditor.Login != "admin" {
+		t.Fatalf("expected last editor admin, got %#v", items[0].LastEditor)
+	}
+
+	item, err := service.GetByID(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("get questionnaire: %v", err)
+	}
+	if item.LastUsedAt == nil || !item.LastUsedAt.Equal(lastUsedAt) {
+		t.Fatalf("expected last used at %s, got %#v", lastUsedAt.Format(time.RFC3339), item.LastUsedAt)
+	}
+	if !item.LastEditedAt.Equal(lastEditedAt) {
+		t.Fatalf("expected last edited at %s, got %s", lastEditedAt.Format(time.RFC3339), item.LastEditedAt.Format(time.RFC3339))
+	}
+}
+
 type questionnaireRepoStub struct {
-	createResult Questionnaire
-	updateResult Questionnaire
+	createResult  Questionnaire
+	updateResult  Questionnaire
+	listResult    []Questionnaire
+	getByIDResult Questionnaire
 }
 
 func (s *questionnaireRepoStub) List(context.Context) ([]Questionnaire, error) {
-	return nil, nil
+	return s.listResult, nil
 }
 
 func (s *questionnaireRepoStub) GetByID(context.Context, int64) (Questionnaire, error) {
-	return Questionnaire{}, nil
+	return s.getByIDResult, nil
 }
 
 func (s *questionnaireRepoStub) Create(context.Context, CreateInput) (Questionnaire, error) {
@@ -85,4 +151,8 @@ func (s *questionnaireAuditRepoStub) Append(_ context.Context, event audit.Event
 
 func (s *questionnaireAuditRepoStub) List(context.Context, audit.ListFilter) ([]audit.Event, error) {
 	return append([]audit.Event(nil), s.events...), nil
+}
+
+func timePtr(value time.Time) *time.Time {
+	return &value
 }

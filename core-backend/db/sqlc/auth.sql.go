@@ -77,9 +77,19 @@ type CreateUserParams struct {
 	RoleID       int64
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+type CreateUserRow struct {
+	ID           int64
+	Login        string
+	PasswordHash string
+	RoleID       int64
+	IsActive     bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Login, arg.PasswordHash, arg.RoleID)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Login,
@@ -151,6 +161,7 @@ SELECT
     u.login,
     u.password_hash,
     u.is_active,
+    u.last_login_at,
     u.created_at,
     u.updated_at,
     r.id AS role_id,
@@ -167,6 +178,7 @@ type GetUserByIDRow struct {
 	Login         string
 	PasswordHash  string
 	IsActive      bool
+	LastLoginAt   pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	RoleID        int64
@@ -183,6 +195,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, er
 		&i.Login,
 		&i.PasswordHash,
 		&i.IsActive,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RoleID,
@@ -199,6 +212,7 @@ SELECT
     u.login,
     u.password_hash,
     u.is_active,
+    u.last_login_at,
     u.created_at,
     u.updated_at,
     r.id AS role_id,
@@ -215,6 +229,7 @@ type GetUserByLoginRow struct {
 	Login         string
 	PasswordHash  string
 	IsActive      bool
+	LastLoginAt   pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	RoleID        int64
@@ -231,6 +246,7 @@ func (q *Queries) GetUserByLogin(ctx context.Context, login string) (GetUserByLo
 		&i.Login,
 		&i.PasswordHash,
 		&i.IsActive,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RoleID,
@@ -247,6 +263,7 @@ SELECT
     u.login,
     u.password_hash,
     u.is_active,
+    u.last_login_at,
     u.created_at,
     u.updated_at,
     r.id AS role_id,
@@ -263,6 +280,7 @@ type ListUsersRow struct {
 	Login         string
 	PasswordHash  string
 	IsActive      bool
+	LastLoginAt   pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	RoleID        int64
@@ -285,6 +303,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
 			&i.Login,
 			&i.PasswordHash,
 			&i.IsActive,
+			&i.LastLoginAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.RoleID,
@@ -380,14 +399,24 @@ type UpdateUserParams struct {
 	IsActive bool
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+type UpdateUserRow struct {
+	ID           int64
+	Login        string
+	PasswordHash string
+	RoleID       int64
+	IsActive     bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
 	row := q.db.QueryRow(ctx, updateUser,
 		arg.ID,
 		arg.Login,
 		arg.RoleID,
 		arg.IsActive,
 	)
-	var i User
+	var i UpdateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Login,
@@ -398,6 +427,24 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateUserLastLogin = `-- name: UpdateUserLastLogin :exec
+UPDATE users
+SET
+    last_login_at = $2,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserLastLoginParams struct {
+	ID          int64
+	LastLoginAt pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateUserLastLogin(ctx context.Context, arg UpdateUserLastLoginParams) error {
+	_, err := q.db.Exec(ctx, updateUserLastLogin, arg.ID, arg.LastLoginAt)
+	return err
 }
 
 const upsertUser = `-- name: UpsertUser :one
@@ -424,9 +471,19 @@ type UpsertUserParams struct {
 	RoleID       int64
 }
 
-func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error) {
+type UpsertUserRow struct {
+	ID           int64
+	Login        string
+	PasswordHash string
+	RoleID       int64
+	IsActive     bool
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (UpsertUserRow, error) {
 	row := q.db.QueryRow(ctx, upsertUser, arg.Login, arg.PasswordHash, arg.RoleID)
-	var i User
+	var i UpsertUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Login,
