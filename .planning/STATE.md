@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: UI & Admin Completion
 status: Ready to execute
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-24T19:08:19.022Z"
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-25T08:20:19.472Z"
 progress:
-  total_phases: 4
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 4
+  total_phases: 5
+  completed_phases: 4
+  total_plans: 24
+  completed_plans: 18
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-03-24)
 
 **Core value:** Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
-**Current focus:** Phase 09 — admin-users-questionnaires
+**Current focus:** Phase 12 — ui
 
 ## Current Position
 
-Phase: 09 (admin-users-questionnaires) — EXECUTING
-Plan: 2 of 3
+Phase: 12 (ui) — EXECUTING
+Plan: 2 of 7
 
 ## Performance Metrics
 
@@ -40,7 +40,10 @@ Plan: 2 of 3
 |-------|-------|-------|----------|
 | 01-07 (v1.0 shipped) | 36 | historical | historical |
 | Phase 08 | 3 | in progress milestone | 20 min |
-| 09-11 (v1.1 planned) | 0 | - | - |
+| Phase 09 | 3 | complete | 15 min |
+| Phase 10 | 4 | complete | 18 min |
+| Phase 11 | 7 | complete | 14 min |
+| Phase 12 | 0 | planned | - |
 
 **Recent Trend:**
 
@@ -51,6 +54,9 @@ Plan: 2 of 3
 | Phase 08 P02 | 15 min | 2 tasks | 11 files |
 | Phase 08 P03 | 45 min | 3 tasks | 21 files |
 | Phase 09 P01 | 10min | 2 tasks | 8 files |
+| Phase 09 P02 | 20 min | 2 tasks | 6 files |
+| Phase 09 P03 | skipped runtime | 2 tasks | 8 files |
+| Phase 12 P01 | 4 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -69,19 +75,26 @@ Recent decisions affecting current work:
 - [Phase 08]: Browser-side frontend traffic and server-side Next handlers must use different backend base URLs in Compose. — The browser needs a host-reachable backend URL (`localhost:18080`), while frontend server handlers and readiness probes must keep using the internal compose address (`core-backend:8080`).
 - [Phase 09]: Phase 9 users workflow stays contract-first on existing user DTOs; frontend completion uses shared user-list/user-form components instead of new endpoints or client-side permission rules.
 - [Phase 09]: admin.user_updated audit emission is bound only to UpdateUser; GetUserByID remains audit-neutral so admin navigation does not pollute mutation history.
+- [Phase 09]: Questionnaire authoring stays on the existing full-replacement questions array contract; ordering is made explicit in the UI via move controls and confirm-before-remove, not via new backend APIs.
+- [Phase 09]: Final runtime/manual verification was intentionally skipped on direct user instruction; phase closure rests on code review, automated checks, and updated planning evidence.
+- [Phase 12]: Kept the existing AppShell split and auth redirect flow, changing only copy and density to stay inside Phase 12 scope.
+- [Phase 12]: Preserved loading, validation, error, and logout behaviors while removing developer-facing and decorative UI copy.
+
+### Roadmap Evolution
+
+- Phase 12 added: Улучшение UI и закрытие замечаний аудита
+- Phase 12 planned: 7 execute plans across 4 waves
 
 ### Pending Todos
 
-- Execute Phase 09 plan 01: users CRUD completion and audit read-path fix.
-- Execute Phase 09 plan 02: questionnaire builder completion.
-- Execute Phase 09 plan 03: phase-level polish and runtime verification.
+- None.
 
 ### Blockers/Concerns
 
-- No roadmap blockers. Contract changes discovered during execution must be reflected in `docs/01_contract.md`.
+- No roadmap blockers. Contract changes discovered during future execution must be reflected in `docs/01_contract.md`.
 
 ## Session Continuity
 
-Last session: 2026-03-24T19:08:19.021Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-03-25T08:20:19.470Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
