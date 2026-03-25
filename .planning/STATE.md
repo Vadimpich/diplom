@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: UI & Admin Completion
-status: Ready to execute
-stopped_at: Completed 12-05-PLAN.md
-last_updated: "2026-03-25T09:06:25.840Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 12-07-PLAN.md
+last_updated: "2026-03-25T09:12:51.084Z"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -62,6 +62,7 @@ Plan: 7 of 7
 | Phase 12-ui P03 | 12 min | 3 tasks | 7 files |
 | Phase 12 P06 | 8min | 3 tasks | 7 files |
 | Phase 12-ui P05 | 13 min | 3 tasks | 8 files |
+| Phase 12-ui P07 | 7 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work:
 - [Phase 12-ui]: Specialist detail remains contract-backed from existing specialist, examination history, and result-history queries only.
 - [Phase 12-ui]: Examination intake preserves prior confirm/toast and honest disabled-state behavior while strengthening progress and saved-answer context.
 - [Phase 12-ui]: Result DTO keys are translated through existing metric labels before reaching the operator reading path.
+- [Phase 12-ui]: Phase 12 regression is frozen as one canonical suite combining frontend lint/build/typecheck with backend registry-support tests from 12-02.
+- [Phase 12-ui]: Plan 12-07 uses the canonical summary filename 12-07-SUMMARY.md to match repository naming and the explicit user instruction.
 
 ### Roadmap Evolution
 
@@ -111,6 +114,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-25T09:06:25.838Z
-Stopped at: Completed 12-05-PLAN.md
+Last session: 2026-03-25T09:12:51.082Z
+Stopped at: Completed 12-07-PLAN.md
 Resume file: None

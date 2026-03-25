@@ -19,7 +19,7 @@ Milestone `v1.1` closes the remaining frontend and admin gaps on top of the ship
 - [x] **Phase 9: Admin Users & Questionnaires** - Deliver core admin CRUD workflows for users, roles, and questionnaire management.
 - [x] **Phase 10: Admin Control Surfaces** - Deliver admin settings, system monitoring, and audit visibility from the UI.
 - [x] **Phase 11: Operator UX & Visual Completion** - Bring operator workflows and primary screens to production-level feedback and finish quality.
-- [ ] **Phase 12: Улучшение UI и закрытие замечаний аудита** - Convert the shipped frontend from “implemented” to dense, enterprise-style operational UI and close the remaining audit findings.
+- [x] **Phase 12: Улучшение UI и закрытие замечаний аудита** - Convert the shipped frontend from “implemented” to dense, enterprise-style operational UI and close the remaining audit findings. (completed 2026-03-25)
 
 ## Phase Details
 
@@ -106,7 +106,7 @@ Plans:
 **Goal:** Operator and admin interfaces read as dense operational work surfaces with contract-backed registries, stronger task priority, and no developer-facing copy on the main screens.
 **Requirements**: DSGN-02, OPRX-02, OPRX-03, OPRX-04, ADMN-01, ADMN-02, QSTR-01, QSTR-02, STNG-02, MONR-01, RICH-01, AMON-01
 **Depends on:** Phase 11
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 12-01-PLAN.md — Tighten login and shared contour chrome into compact enterprise entry surfaces.
@@ -115,4 +115,4 @@ Plans:
 - [x] 12-04-PLAN.md — Reframe admin home, registries, and monitoring as compact control surfaces.
 - [x] 12-05-PLAN.md — Densify operator specialist detail and examination workflow surfaces.
 - [x] 12-06-PLAN.md — Tighten admin user, questionnaire, and settings editor surfaces.
-- [ ] 12-07-PLAN.md — Sync implementation log and validation artifacts after the UI pass lands.
+- [x] 12-07-PLAN.md — Sync implementation log and validation artifacts after the UI pass lands.
