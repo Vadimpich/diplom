@@ -4,21 +4,16 @@
 
 Self-hosted система для проведения обследований специалистов критических областей на основе записи речевых ответов и их мультимодального анализа. Продукт используется внутри организации оператором и администратором, чтобы проводить обследования, получать интерпретируемый результат и передавать агрегированный профиль состояния во внешнюю систему поддержки принятия решений о допуске к профессиональной деятельности.
 
-По состоянию на milestone `v1.0` система уже покрывает полный опорный контур из дипломного scope: защищённый operator/admin доступ, intake обследований, асинхронную обработку через обязательные каналы `text` / `acoustic` / `paralinguistic`, baseline-aware aggregation, delivery в WiMi/KЭСМИ boundary, operator-facing result surface, audit trail, readiness/metrics и verification evidence для milestone closure.
+По состоянию после архивации milestone `v1.1` система уже покрывает полный опорный контур из дипломного scope и имеет отдельные operator/admin интерфейсы, административные control surfaces и уплотнённый рабочий UI. При этом `v1.1` закрыт с принятыми audit gaps: пользовательский слой в коде существенно продвинут, но formal verification evidence для фаз `8-12` и повторная live-проверка части post-closure runtime fixes остаются отдельным техдолгом.
 
 ## Core Value
 
 Система должна давать оператору надёжный, интерпретируемый и воспроизводимый результат обследования специалиста, основанный на полном мультимодальном анализе речевых ответов, а не на ручной субъективной оценке.
 
-## Current Milestone: v1.1 UI & Admin Completion
+## Current Milestone: None
 
-**Goal:** довести пользовательский слой системы до production-уровня через завершённые operator/admin интерфейсы, полноценную административную панель и целостный frontend design-system без изменения ML-логики и decision layer.
-
-**Target features:**
-- Полное разделение `operator` и `admin` как двух независимых UI-контуров.
-- Полноценная admin panel: пользователи и роли, конструктор опросов, системные настройки, базовый мониторинг, техстатистика и audit log.
-- Production-level operator UX: читаемый results screen, качественный feedback, корректные loading/empty/error состояния.
-- Единая профессиональная design-system для всего frontend без заглушек и черновых элементов.
+**Last archived milestone:** `v1.1 UI & Admin Completion` on 2026-03-25  
+**Archive status:** accepted with audit gaps
 
 ## Requirements
 
@@ -35,10 +30,9 @@ Self-hosted система для проведения обследований 
 
 ### Active
 
-- [ ] Завершить разделение operator/admin интерфейсов в два независимых UI-контура с отдельными UX-приоритетами
-- [ ] Реализовать полноценную административную панель поверх существующей архитектуры и без добавления новых сервисов
-- [ ] Довести операторский UX до production-уровня: result screen, feedback, ошибки и состояния
-- [ ] Привести весь frontend к единой профессиональной design-system и убрать временные/черновые UI-элементы
+- [ ] Закрыть verification debt milestone `v1.1`: добавить `VERIFICATION.md` для фаз `8-12` и повторно прогнать milestone audit на актуальном коде
+- [ ] Повторно проверить live runtime пути operator auth/examination save/processing/result после post-closure fixes
+- [ ] Определить scope следующего milestone поверх уже shipped платформы и UI/admin baseline
 
 ### Out of Scope
 
@@ -53,22 +47,23 @@ Self-hosted система для проведения обследований 
 - Контракты API и интеграций фиксируются в `docs/01_contract.md`, а история реализации — в `docs/02_implementation.md`
 - Текущий shipped baseline включает `frontend/` на Next.js App Router, `core-backend/` на Go, PostgreSQL, RabbitMQ, MinIO, Python ML services, `ml-baseline`, WiMi/KЭСМИ runtime и Prometheus-backed observability surfaces
 - Milestone `v1.0` закрыт с passed audit: `30/30 requirements`, `7/7 phases`, `6/6 integration`, `6/6 flows`
+- Milestone `v1.1` архивирован 2026-03-25 по прямому решению пользователя, но с сохранённым `gaps_found` audit и accepted verification debt
 - Архитектура дипломного проекта по-прежнему предполагает отдельные ML-сервисы, baseline service, integration boundary с КЭСМИ и идемпотентные source-of-truth переходы workflow
 - На текущем этапе всё ещё допускается отсутствие финальных ML- и KЭСМИ-моделей: это уже не архитектурный blocker, а следующее предметное расширение поверх стабилизированной orchestration-платформы
 
 ## Current State
 
 - Milestone `v1.0 MVP` shipped and archived on 2026-03-24
-- 7 phases completed, 36 plans completed, 25 milestone tasks recorded by archival workflow
-- Approximate codebase size in shipped stack: `80,821` lines across Go, TypeScript/TSX, and Python sources
-- Git planning range used for milestone traceability: `1f61843` -> `2b2ff47`
-- Milestone `v1.1 UI & Admin Completion` is being defined as a frontend-first follow-up without scope expansion into ML or decision-model work
+- Milestone `v1.1 UI & Admin Completion` archived on 2026-03-25 with accepted audit gaps
+- Latest archived UI/admin milestone delivered 5 phases, 24 plans, and a denser operator/admin control surface on top of the `v1.0` platform
+- Approximate codebase size across Go, TypeScript/TSX, and Python sources: `28,816` lines in the current working tree estimate
+- Current planning state has no active milestone; the next step is either verification-debt closure or next-milestone definition
 
 ## Next Milestone Goals
 
-- Завершить user-facing слой системы до уровня цельного production UI для оператора и администратора
-- Реализовать ключевые admin возможности, уже ожидаемые `docs/00_project.md`: роли, опросы, настройки, мониторинг, аудит
-- Закрыть UX-долги shipped frontend: states, feedback, errors, result readability, visual consistency
+- Решить, превращается ли archived `v1.1` verification debt в отдельный cleanup milestone или принимается как исторически зафиксированный риск
+- При необходимости формально довести UI/admin milestone до auditable состояния через `VERIFICATION.md` и live revalidation
+- После этого определить следующий product milestone поверх уже shipped orchestration и UI/admin foundation
 
 ## Constraints
 
@@ -90,6 +85,7 @@ Self-hosted система для проведения обследований 
 | Инициализировать workflow с commit tracking и полным набором quality agents | Проект high-stakes, многосервисный и интеграционный; дешёвые shortcuts здесь повышают риск неверного плана | ✓ Good |
 | Сфокусировать milestone `v1.1` на frontend/admin completion, а не на ML или decision expansion | Пользовательский слой уже является главным видимым gap после закрытия v1 orchestration-platform | ✓ Good |
 | Ограничить backend-изменения точечными API-доработками под UI/admin нужды | Это сохраняет архитектурную стабильность и не раздувает milestone за пределы UI-first scope | ✓ Good |
+| Архивировать `v1.1` с сохранённым failed audit по прямому решению пользователя | Пользователь предпочёл зафиксировать milestone как завершённый организационно, не скрывая verification debt | ⚠ Revisit |
 
 ## Evolution
 
@@ -109,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after starting milestone v1.1 UI & Admin Completion*
+*Last updated: 2026-03-25 after archiving milestone v1.1 UI & Admin Completion*

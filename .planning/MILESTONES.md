@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.1 UI & Admin Completion (Archived: 2026-03-25)
+
+**Archive status:** accepted with audit gaps  
+**Phases completed:** 5 phases, 24 plans  
+**Archive files:** [v1.1-ROADMAP.md](/home/vadim/diplom/.planning/milestones/v1.1-ROADMAP.md), [v1.1-REQUIREMENTS.md](/home/vadim/diplom/.planning/milestones/v1.1-REQUIREMENTS.md), [v1.1-MILESTONE-AUDIT.md](/home/vadim/diplom/.planning/milestones/v1.1-MILESTONE-AUDIT.md)
+
+**Key accomplishments:**
+
+- Dedicated operator/admin contours and shared design foundation replaced the old mixed frontend shell.
+- Admin users, questionnaires, audit, monitoring, and persisted settings became real internal control surfaces.
+- Operator result reading, confirmations, feedback, and empty/error handling were materially tightened.
+- Phase 12 converted sparse, developer-facing UI into denser operational screens across both contours.
+
+**Known gaps accepted at archive time:**
+
+- Milestone audit stayed `gaps_found`; phases 8-12 have no `VERIFICATION.md`.
+- Phase 9 skipped runtime/manual verification during execution.
+- Post-closure fixes for auth, answer-save, processing-status, and result-path behavior were not rolled through a fresh milestone audit before archival.
+
 ## v1.0 MVP (Shipped: 2026-03-24)
 
 **Phases completed:** 7 phases, 36 plans, 25 tasks
