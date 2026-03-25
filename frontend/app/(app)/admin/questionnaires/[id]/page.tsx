@@ -1,34 +1,46 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiClient, ApiError } from "@/lib/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  QuestionnaireBuilder,
+  type QuestionnaireFormValues,
+} from "@/components/admin/questionnaire-builder";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateTime } from "@/lib/utils";
 
 const questionnaireSchema = z.object({
-  title: z.string().min(3),
+  title: z.string().min(3, "Минимум 3 символа"),
   description: z.string().optional(),
   is_active: z.boolean(),
-  questions: z.array(z.object({ text: z.string().min(3) })).min(1),
+  questions: z.array(z.object({ text: z.string().min(3, "Минимум 3 символа") })).min(1, "Добавьте хотя бы один вопрос"),
 });
-
-type QuestionnaireValues = z.infer<typeof questionnaireSchema>;
 
 export default function AdminQuestionnaireEditPage() {
   const params = useParams<{ id: string }>();
   const questionnaireId = Number(params.id);
   const queryClient = useQueryClient();
-  const form = useForm<QuestionnaireValues>({
+  const form = useForm<QuestionnaireFormValues>({
     resolver: zodResolver(questionnaireSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      is_active: false,
+      questions: [{ text: "" }],
+    },
   });
   const fieldArray = useFieldArray({
     control: form.control,
@@ -38,6 +50,7 @@ export default function AdminQuestionnaireEditPage() {
   const questionnaireQuery = useQuery({
     queryKey: ["questionnaire", questionnaireId],
     queryFn: () => apiClient.getQuestionnaire(questionnaireId),
+    enabled: Number.isFinite(questionnaireId) && questionnaireId > 0,
   });
 
   useEffect(() => {
@@ -52,62 +65,146 @@ export default function AdminQuestionnaireEditPage() {
   }, [form, questionnaireQuery.data]);
 
   const updateMutation = useMutation({
-    mutationFn: (values: QuestionnaireValues) => apiClient.updateQuestionnaire(questionnaireId, values),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["questionnaires"] });
-      void queryClient.invalidateQueries({ queryKey: ["questionnaire", questionnaireId] });
+    mutationFn: (values: QuestionnaireFormValues) => apiClient.updateQuestionnaire(questionnaireId, values),
+    onSuccess: async (questionnaire) => {
+      form.reset({
+        title: questionnaire.title,
+        description: questionnaire.description ?? "",
+        is_active: questionnaire.is_active,
+        questions: questionnaire.questions.map((question) => ({ text: question.text })),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["questionnaires"] });
+      await queryClient.invalidateQueries({ queryKey: ["questionnaire", questionnaireId] });
+      toast.success("Опросник обновлён", {
+        description: `Сохранён порядок и состояние публикации для «${questionnaire.title}».`,
+      });
     },
   });
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={questionnaireQuery.data?.title ?? "Редактирование опросника"}
-        description="Полное обновление состава вопросов и метаданных."
+  if (!Number.isFinite(questionnaireId) || questionnaireId <= 0) {
+    return (
+      <EmptyState
+        title="Некорректный идентификатор опросника"
+        description="Откройте опросник из списка, чтобы избежать ошибки адреса."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/admin/questionnaires">К списку опросников</Link>
+          </Button>
+        }
       />
-      <Card className="max-w-3xl">
-        <CardHeader>
-          <CardTitle>Состав опросника</CardTitle>
-          <CardDescription>Порядок вопросов сохраняется по позиции элементов массива.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-5" onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}>
-            <div className="space-y-2">
-              <Label htmlFor="title">Название</Label>
-              <Input id="title" {...form.register("title")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Описание</Label>
-              <Input id="description" {...form.register("description")} />
-            </div>
-            <label className="flex items-center gap-3 rounded-2xl border border-border/70 p-4 text-sm">
-              <input type="checkbox" className="h-4 w-4" {...form.register("is_active")} />
-              Опросник активен
-            </label>
+    );
+  }
+
+  if (questionnaireQuery.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-72" />
+          <Skeleton className="h-6 w-[32rem]" />
+        </div>
+        <Card className="max-w-4xl">
+          <CardHeader>
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-5 w-full max-w-xl" />
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (questionnaireQuery.isError || !questionnaireQuery.data) {
+    return (
+      <EmptyState
+        title="Не удалось открыть опросник"
+        description="Запись недоступна или была удалена. Вернитесь к списку и выберите другой опросник."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/admin/questionnaires">К списку опросников</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  const questionnaire = questionnaireQuery.data;
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title={questionnaire.title}
+        description="Поддерживайте актуальный состав вопросов, публикацию и историю использования опросника."
+      />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <QuestionnaireBuilder
+          mode="edit"
+          form={form}
+          fieldArray={fieldArray}
+          onSubmit={(values) => updateMutation.mutate(values)}
+          isPending={updateMutation.isPending}
+          errorMessage={updateMutation.isError ? (updateMutation.error as ApiError).message : undefined}
+          successMessage={updateMutation.isSuccess ? "Изменения сохранены и синхронизированы со списком опросников." : undefined}
+        />
+
+        <Card className="h-fit">
+          <CardHeader className="gap-1.5 pb-4">
+            <CardTitle>Сводка по опроснику</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5 text-sm">
             <div className="space-y-3">
-              {fieldArray.fields.map((field, index) => (
-                <div key={field.id} className="flex gap-3">
-                  <Input placeholder={`Вопрос ${index + 1}`} {...form.register(`questions.${index}.text`)} />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fieldArray.remove(index)}
-                    disabled={fieldArray.fields.length === 1}
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={() => fieldArray.append({ text: "" })}>
-                Добавить вопрос
-              </Button>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Публикация</p>
+                <Badge variant={questionnaire.is_active ? "success" : "warning"}>
+                  {questionnaire.is_active ? "Опубликован" : "Черновик"}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Количество вопросов</p>
+                <p className="font-medium text-foreground">{questionnaire.questions.length}</p>
+              </div>
             </div>
-            {updateMutation.isError ? <Alert variant="danger">{(updateMutation.error as ApiError).message}</Alert> : null}
-            {updateMutation.isSuccess ? <Alert variant="success">Изменения сохранены.</Alert> : null}
-            <Button type="submit">Сохранить опросник</Button>
-          </form>
-        </CardContent>
-      </Card>
+
+            <div className="space-y-3 rounded-2xl border border-border/70 bg-surface/50 px-4 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Использований</p>
+                <p className="mt-1 font-medium text-foreground">{questionnaire.usage_count}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последнее применение</p>
+                <p className="mt-1 text-muted-foreground">
+                  {questionnaire.last_used_at ? formatDateTime(questionnaire.last_used_at) : "Опросник ещё не использовался"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последний редактор</p>
+                <p className="mt-1 text-muted-foreground">
+                  {questionnaire.last_editor ? questionnaire.last_editor.login : "Изменений после создания пока нет"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Создан</p>
+                <p className="mt-1 text-muted-foreground">{formatDateTime(questionnaire.created_at)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последнее изменение</p>
+                <p className="mt-1 text-muted-foreground">{formatDateTime(questionnaire.updated_at)}</p>
+              </div>
+            </div>
+            <Alert variant="default">
+              Сначала сохраните изменения, затем переходите к другим разделам. Несохранённые правки не попадут в рабочий опросник.
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
