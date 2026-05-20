@@ -58,7 +58,23 @@ export function UserForm({
                 <p className="text-sm text-danger">{form.formState.errors.password.message}</p>
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Новый пароль</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Оставьте пустым, чтобы не менять"
+                {...form.register("password")}
+              />
+              {form.formState.errors.password ? (
+                <p className="text-sm text-danger">{form.formState.errors.password.message}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Если поле пустое, текущий пароль сохранится.</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="role">Роль</Label>

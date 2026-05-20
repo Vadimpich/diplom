@@ -71,6 +71,7 @@ SET
     login = $2,
     role_id = $3,
     is_active = $4,
+    password_hash = COALESCE($5, password_hash),
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, login, password_hash, role_id, is_active, created_at, updated_at;

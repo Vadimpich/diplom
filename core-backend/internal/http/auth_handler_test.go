@@ -108,6 +108,30 @@ func TestMe(t *testing.T) {
 	}
 }
 
+func TestUpdateUserAcceptsPassword(t *testing.T) {
+	fixture := newAuthHandlerForTest(t)
+
+	body := bytes.NewBufferString(`{"login":"operator-2","password":"new-secret","role":"operator","is_active":true}`)
+	req := httptest.NewRequest(nethttp.MethodPut, "/users/1", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = withURLParam(req, "id", "1")
+	rec := httptest.NewRecorder()
+
+	fixture.handler.UpdateUser(rec, req)
+
+	if rec.Code != nethttp.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	updated := fixture.repo.usersByID[1]
+	if updated.Login != "operator-2" {
+		t.Fatalf("expected updated login, got %q", updated.Login)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(updated.PasswordHash), []byte("new-secret")); err != nil {
+		t.Fatalf("expected password to be updated: %v", err)
+	}
+}
+
 type authHandlerFixture struct {
 	handler AuthHandler
 	service *auth.Service
@@ -222,8 +246,21 @@ func (r *httpAuthRepoStub) CreateUser(context.Context, auth.CreateUserParams) (a
 	return auth.StoredUser{}, nil
 }
 
-func (r *httpAuthRepoStub) UpdateUser(context.Context, auth.UpdateUserParams) (auth.StoredUser, error) {
-	return auth.StoredUser{}, nil
+func (r *httpAuthRepoStub) UpdateUser(_ context.Context, params auth.UpdateUserParams) (auth.StoredUser, error) {
+	user, ok := r.usersByID[params.ID]
+	if !ok {
+		return auth.StoredUser{}, repository.ErrNotFound
+	}
+	user.Login = params.Login
+	user.IsActive = params.IsActive
+	if params.PasswordHash != nil {
+		user.PasswordHash = *params.PasswordHash
+	}
+	user.Role = auth.Role{ID: params.RoleID, Slug: "operator", Name: "Operator"}
+	user.Updated = user.Updated.Add(time.Hour)
+	r.usersByID[user.ID] = user
+	r.usersByLogin[user.Login] = user
+	return user, nil
 }
 
 func (r *httpAuthRepoStub) UpsertUser(context.Context, auth.UpsertUserParams) (auth.StoredUser, error) {

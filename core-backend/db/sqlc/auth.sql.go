@@ -387,16 +387,18 @@ SET
     login = $2,
     role_id = $3,
     is_active = $4,
+    password_hash = COALESCE($5, password_hash),
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, login, password_hash, role_id, is_active, created_at, updated_at
 `
 
 type UpdateUserParams struct {
-	ID       int64
-	Login    string
-	RoleID   int64
-	IsActive bool
+	ID           int64
+	Login        string
+	RoleID       int64
+	IsActive     bool
+	PasswordHash pgtype.Text
 }
 
 type UpdateUserRow struct {
@@ -415,6 +417,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateU
 		arg.Login,
 		arg.RoleID,
 		arg.IsActive,
+		arg.PasswordHash,
 	)
 	var i UpdateUserRow
 	err := row.Scan(

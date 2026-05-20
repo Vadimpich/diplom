@@ -20,7 +20,10 @@ import { formatDateTime } from "@/lib/utils";
 
 const updateUserSchema = z.object({
   login: z.string().min(3, "Минимум 3 символа"),
-  password: z.string().optional(),
+  password: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.trim().length >= 6, "Минимум 6 символов"),
   role: z.enum(["admin", "operator"]),
   is_active: z.boolean(),
 });
@@ -49,6 +52,7 @@ export default function AdminUserEditPage() {
     if (userQuery.data) {
       form.reset({
         login: userQuery.data.login,
+        password: "",
         role: userQuery.data.role.slug,
         is_active: userQuery.data.is_active,
       });
@@ -56,11 +60,12 @@ export default function AdminUserEditPage() {
   }, [form, userQuery.data]);
 
   const updateMutation = useMutation({
-    mutationFn: (values: { login: string; role: "admin" | "operator"; is_active: boolean }) =>
+    mutationFn: (values: { login: string; password?: string; role: "admin" | "operator"; is_active: boolean }) =>
       apiClient.updateUser(userId, values),
     onSuccess: async (user) => {
       form.reset({
         login: user.login,
+        password: "",
         role: user.role.slug,
         is_active: user.is_active,
       });
@@ -146,6 +151,7 @@ export default function AdminUserEditPage() {
         onSubmit={(values) =>
           updateMutation.mutate({
             login: values.login,
+            password: values.password?.trim() ? values.password.trim() : undefined,
             role: values.role,
             is_active: values.is_active ?? false,
           })

@@ -59,7 +59,7 @@ export default function NewExaminationPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       <PageHeader title="Новое обследование" />
 
       <Card>
@@ -161,10 +161,6 @@ export default function NewExaminationPage() {
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="info">3</Badge>
-              <p className="text-sm font-medium text-muted-foreground">Переход к записи ответов</p>
-            </div>
             <Button disabled={!selectedId || !selectedQuestionnaireId || createMutation.isPending} onClick={() => createMutation.mutate()}>
               {createMutation.isPending ? (
                 <>

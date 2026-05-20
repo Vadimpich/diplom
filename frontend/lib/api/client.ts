@@ -290,7 +290,7 @@ export const apiClient = {
   },
   updateUser(
     id: number,
-    payload: { login: string; role: "admin" | "operator"; is_active: boolean },
+    payload: { login: string; password?: string; role: "admin" | "operator"; is_active: boolean },
   ) {
     return request<User>(`/users/${id}`, {
       method: "PUT",

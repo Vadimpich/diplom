@@ -1325,7 +1325,7 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 ### PUT /users/{id}
 
 Назначение:
-- обновление логина, роли и статуса активности пользователя.
+- обновление логина, роли, статуса активности пользователя и, при необходимости, его пароля.
 
 Аутентификация:
 - `Authorization: Bearer <jwt>`.
@@ -1335,6 +1335,7 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 ```json
 {
   "login": "operator2",
+  "password": "new-secret",
   "role": "operator",
   "is_active": true
 }
@@ -1342,6 +1343,7 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 
 Поля:
 - `login`: обязательное, уникальное;
+- `password`: необязательное; если передано непустым, заменяет текущий пароль пользователя;
 - `role`: обязательное, допустимые значения текущего этапа: `admin`, `operator`;
 - `is_active`: обязательное.
 
@@ -2416,6 +2418,10 @@ Compatibility proxy-поля `text_total_characters`, `text_non_empty_answers`, 
 
 Bootstrap initial user:
 - если заданы одновременно `INITIAL_USER_LOGIN` и `INITIAL_USER_PASSWORD`, backend при старте создаёт или обновляет начального пользователя;
+- migration `000014_seed_basic_questionnaire` при инициализации пустой БД создаёт стартовый опубликованный опросник `Базовый опрос` с 3 вопросами:
+  - `Расскажите кратко о своем текущем состоянии.`
+  - `Как вы спали и отдыхали в последние сутки?`
+  - `Есть ли что-то, что мешает вам сосредоточиться на работе?`
 - `INITIAL_USER_ROLE` должен ссылаться на существующую роль (`admin` или `operator`).
 
 Migrations bootstrap:

@@ -28,6 +28,7 @@ type createUserRequest struct {
 
 type updateUserRequest struct {
 	Login    string `json:"login"`
+	Password string `json:"password"`
 	Role     string `json:"role"`
 	IsActive bool   `json:"is_active"`
 }
@@ -187,6 +188,7 @@ func (h AuthHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.UpdateUser(r.Context(), auth.UpdateUserInput{
 		ID:       id,
 		Login:    request.Login,
+		Password: request.Password,
 		RoleSlug: request.Role,
 		IsActive: request.IsActive,
 	})

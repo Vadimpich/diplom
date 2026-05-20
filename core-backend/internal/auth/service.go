@@ -72,6 +72,7 @@ type CreateUserInput struct {
 type UpdateUserInput struct {
 	ID       int64
 	Login    string
+	Password string
 	RoleSlug string
 	IsActive bool
 }
@@ -123,6 +124,7 @@ type CreateUserParams struct {
 type UpdateUserParams struct {
 	ID       int64
 	Login    string
+	PasswordHash *string
 	RoleID   int64
 	IsActive bool
 }
@@ -472,8 +474,12 @@ func (s *Service) GetUserByID(ctx context.Context, id int64) (User, error) {
 
 func (s *Service) UpdateUser(ctx context.Context, input UpdateUserInput) (User, error) {
 	input.Login = strings.TrimSpace(input.Login)
+	input.Password = strings.TrimSpace(input.Password)
 	input.RoleSlug = strings.TrimSpace(input.RoleSlug)
 	if input.ID <= 0 || input.Login == "" || input.RoleSlug == "" {
+		return User{}, ErrInvalidInput
+	}
+	if input.Password != "" && len(input.Password) < 6 {
 		return User{}, ErrInvalidInput
 	}
 
@@ -482,11 +488,22 @@ func (s *Service) UpdateUser(ctx context.Context, input UpdateUserInput) (User, 
 		return User{}, err
 	}
 
+	var passwordHash *string
+	if input.Password != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return User{}, fmt.Errorf("hash password: %w", err)
+		}
+		hash := string(hashed)
+		passwordHash = &hash
+	}
+
 	user, err := s.repo.UpdateUser(ctx, UpdateUserParams{
-		ID:       input.ID,
-		Login:    input.Login,
-		RoleID:   role.ID,
-		IsActive: input.IsActive,
+		ID:           input.ID,
+		Login:        input.Login,
+		PasswordHash: passwordHash,
+		RoleID:       role.ID,
+		IsActive:     input.IsActive,
 	})
 	if err != nil {
 		return User{}, err
@@ -501,9 +518,10 @@ func (s *Service) UpdateUser(ctx context.Context, input UpdateUserInput) (User, 
 			ID:   user.ID,
 		},
 		Payload: mustJSON(map[string]any{
-			"login":     user.Login,
-			"role_slug": user.Role.Slug,
-			"is_active": user.IsActive,
+			"login":            user.Login,
+			"role_slug":        user.Role.Slug,
+			"is_active":        user.IsActive,
+			"password_changed": passwordHash != nil,
 		}),
 	})
 

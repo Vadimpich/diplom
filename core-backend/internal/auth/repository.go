@@ -95,11 +95,17 @@ func (r *SQLCRepository) CreateUser(ctx context.Context, params CreateUserParams
 }
 
 func (r *SQLCRepository) UpdateUser(ctx context.Context, params UpdateUserParams) (StoredUser, error) {
+	passwordHash := pgtype.Text{}
+	if params.PasswordHash != nil {
+		passwordHash = textValue(*params.PasswordHash)
+	}
+
 	row, err := r.queries.UpdateUser(ctx, sqlcdb.UpdateUserParams{
-		ID:       params.ID,
-		Login:    params.Login,
-		RoleID:   params.RoleID,
-		IsActive: params.IsActive,
+		ID:           params.ID,
+		Login:        params.Login,
+		RoleID:       params.RoleID,
+		IsActive:     params.IsActive,
+		PasswordHash: passwordHash,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -239,6 +239,32 @@ func TestUpdateUserIsOnlyPathThatWritesUserUpdatedAuditEvent(t *testing.T) {
 	}
 }
 
+func TestUpdateUserCanChangePassword(t *testing.T) {
+	now := time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	service := NewService(repo, &stubTokenManager{})
+
+	before := repo.usersByID[1].PasswordHash
+	_, err := service.UpdateUser(context.Background(), UpdateUserInput{
+		ID:       1,
+		Login:    "operator",
+		Password: "new-secret",
+		RoleSlug: "operator",
+		IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("update user returned error: %v", err)
+	}
+
+	after := repo.usersByID[1].PasswordHash
+	if after == before {
+		t.Fatalf("expected password hash to change")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(after), []byte("new-secret")); err != nil {
+		t.Fatalf("expected updated password to match hash: %v", err)
+	}
+}
+
 func TestListUsersIncludesLastLoginTimestamp(t *testing.T) {
 	now := time.Date(2026, 3, 25, 8, 0, 0, 0, time.UTC)
 	repo := newAuthRepoStub(now)
@@ -405,6 +431,9 @@ func (r *authRepoStub) UpdateUser(_ context.Context, params UpdateUserParams) (S
 	user.Login = params.Login
 	user.Role = role
 	user.IsActive = params.IsActive
+	if params.PasswordHash != nil {
+		user.PasswordHash = *params.PasswordHash
+	}
 	user.Updated = time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
 	r.usersByID[user.ID] = user
 	r.usersByLogin[user.Login] = user
