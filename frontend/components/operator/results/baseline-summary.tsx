@@ -1,6 +1,6 @@
-import { Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ExaminationResult } from "@/lib/api/types";
+import { Activity } from "lucide-react";
 import { formatDelta, getBaselineDescription, getBaselineHeadline } from "./helpers";
 
 export function BaselineSummary({ result }: { result: ExaminationResult }) {
@@ -36,7 +36,7 @@ export function BaselineSummary({ result }: { result: ExaminationResult }) {
               {personalAvailable ? "Личное отклонение" : "Личная норма"}
             </p>
             <p className="mt-2 text-2xl font-semibold text-foreground">
-              {personalAvailable ? formatDelta(result.baseline_snapshot.personal.delta) : "Формируется"}
+              {personalAvailable ? formatDelta(result.baseline_snapshot.personal.delta) : "Нет"}
             </p>
           </div>
           <div className="rounded-2xl border border-border/70 p-4">
