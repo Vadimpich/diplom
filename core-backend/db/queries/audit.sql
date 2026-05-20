@@ -37,6 +37,7 @@ FROM audit_logs
 WHERE
     (sqlc.narg(event_type)::text IS NULL OR event_type = sqlc.narg(event_type)::text)
     AND (sqlc.narg(resource_kind)::text IS NULL OR resource_kind = sqlc.narg(resource_kind)::text)
+    AND (sqlc.narg(resource_id)::bigint IS NULL OR resource_id = sqlc.narg(resource_id)::bigint)
     AND (sqlc.narg(actor_user_id)::bigint IS NULL OR actor_user_id = sqlc.narg(actor_user_id)::bigint)
     AND (sqlc.narg(examination_id)::bigint IS NULL OR examination_id = sqlc.narg(examination_id)::bigint)
     AND happened_at >= sqlc.arg(from_at)

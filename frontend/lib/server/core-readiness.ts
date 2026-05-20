@@ -8,7 +8,7 @@ export interface CoreBackendReadinessProbe {
 }
 
 function coreUrl(path: string) {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://core-backend:8080";
+  const base = process.env.INTERNAL_API_BASE_URL ?? "http://localhost:18080";
   return `${base.replace(/\/$/, "")}${path}`;
 }
 

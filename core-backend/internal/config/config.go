@@ -9,55 +9,57 @@ import (
 )
 
 type Config struct {
-	HTTPAddr            string
-	LogLevel            string
-	AllowedOrigins      []string
-	DatabaseURL         string
-	RabbitMQURL         string
-	BaselineBaseURL     string
-	BaselineTimeout     time.Duration
-	BaselineAlgorithm   string
-	BaselineReference   string
-	KESMIBaseURL        string
-	KESMITimeout        time.Duration
-	KESMIModelID        string
-	KESMIMaxRetries     int32
-	KESMIRetryBackoff   time.Duration
-	MigrationsDir       string
-	JWTIssuer           string
-	JWTAccessSecret     string
-	JWTAccessTTL        time.Duration
-	InitialUserLogin    string
-	InitialUserPassword string
-	InitialUserRole     string
-	S3Endpoint          string
-	S3AccessKeyID       string
-	S3SecretAccessKey   string
-	S3Bucket            string
-	S3UseSSL            bool
-	MaxUploadSizeBytes  int64
-	OutboxPollInterval  time.Duration
-	OutboxMaxAttempts   int32
+	HTTPAddr              string
+	LogLevel              string
+	AllowedOrigins        []string
+	DatabaseURL           string
+	RabbitMQURL           string
+	BaselineBaseURL       string
+	BaselineTimeout       time.Duration
+	BaselineAlgorithm     string
+	BaselineReference     string
+	KESMIBaseURL          string
+	KESMITimeout          time.Duration
+	KESMIModelID          string
+	KESMIMaxRetries       int32
+	KESMIRetryBackoff     time.Duration
+	MigrationsDir         string
+	JWTIssuer             string
+	JWTAccessSecret       string
+	JWTAccessTTL          time.Duration
+	InitialUserLogin      string
+	InitialUserPassword   string
+	InitialUserRole       string
+	S3Endpoint            string
+	S3AccessKeyID         string
+	S3SecretAccessKey     string
+	S3Bucket              string
+	S3UseSSL              bool
+	MaxUploadSizeBytes    int64
+	OutboxPollInterval    time.Duration
+	OutboxMaxAttempts     int32
+	AudioRetentionTTLDays int32
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		HTTPAddr:           envOrDefault("HTTP_ADDR", ":8080"),
-		LogLevel:           envOrDefault("LOG_LEVEL", "INFO"),
-		AllowedOrigins:     envCSVOrDefault("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://127.0.0.1:3000"}),
-		MigrationsDir:      envOrDefault("MIGRATIONS_DIR", "migrations"),
-		JWTIssuer:          envOrDefault("JWT_ISSUER", "core-backend"),
-		InitialUserRole:    envOrDefault("INITIAL_USER_ROLE", "operator"),
-		S3UseSSL:           envBoolOrDefault("MINIO_USE_SSL", false),
-		MaxUploadSizeBytes: envInt64OrDefault("MAX_UPLOAD_SIZE_BYTES", 25<<20),
-		RabbitMQURL:        envOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		BaselineBaseURL:    envOrDefault("BASELINE_SERVICE_URL", "http://ml-baseline:8080"),
-		BaselineAlgorithm:  envOrDefault("BASELINE_ALGORITHM_VERSION", "baseline-v1"),
-		BaselineReference:  envOrDefault("BASELINE_GENERAL_REFERENCE_VERSION", "general-v1"),
-		KESMIBaseURL:       envOrDefault("KESMI_BASE_URL", "http://wimi:8081"),
-		KESMIModelID:       envOrDefault("KESMI_MODEL_ID", "placeholder-model"),
-		KESMIMaxRetries:    int32(envInt64OrDefault("KESMI_MAX_RETRIES", 2)),
-		OutboxMaxAttempts:  int32(envInt64OrDefault("PROCESSING_OUTBOX_MAX_ATTEMPTS", 3)),
+		HTTPAddr:              envOrDefault("HTTP_ADDR", ":8080"),
+		LogLevel:              envOrDefault("LOG_LEVEL", "INFO"),
+		AllowedOrigins:        envCSVOrDefault("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://127.0.0.1:3000"}),
+		MigrationsDir:         envOrDefault("MIGRATIONS_DIR", "migrations"),
+		JWTIssuer:             envOrDefault("JWT_ISSUER", "core-backend"),
+		InitialUserRole:       envOrDefault("INITIAL_USER_ROLE", "operator"),
+		S3UseSSL:              envBoolOrDefault("MINIO_USE_SSL", false),
+		MaxUploadSizeBytes:    envInt64OrDefault("MAX_UPLOAD_SIZE_BYTES", 25<<20),
+		RabbitMQURL:           envOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		BaselineBaseURL:       envOrDefault("BASELINE_SERVICE_URL", "http://ml-baseline:8080"),
+		BaselineAlgorithm:     envOrDefault("BASELINE_ALGORITHM_VERSION", "baseline-v1"),
+		BaselineReference:     envOrDefault("BASELINE_GENERAL_REFERENCE_VERSION", "general-v1"),
+		KESMIBaseURL:          envOrDefault("KESMI_BASE_URL", "http://wimi:8081"),
+		KESMIModelID:          envOrDefault("KESMI_MODEL_ID", "placeholder-model"),
+		KESMIMaxRetries:       int32(envInt64OrDefault("KESMI_MAX_RETRIES", 2)),
+		OutboxMaxAttempts:     int32(envInt64OrDefault("PROCESSING_OUTBOX_MAX_ATTEMPTS", 3)),
+		AudioRetentionTTLDays: int32(envInt64OrDefault("AUDIO_RETENTION_TTL_DAYS", 30)),
 	}
 
 	cfg.DatabaseURL = os.Getenv("DATABASE_URL")
@@ -112,6 +114,9 @@ func Load() (Config, error) {
 	}
 	if cfg.KESMIMaxRetries <= 0 {
 		return Config{}, fmt.Errorf("KESMI_MAX_RETRIES must be positive")
+	}
+	if cfg.AudioRetentionTTLDays <= 0 {
+		return Config{}, fmt.Errorf("AUDIO_RETENTION_TTL_DAYS must be positive")
 	}
 
 	return cfg, nil

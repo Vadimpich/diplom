@@ -67,6 +67,8 @@ export type ProcessingChannelStatus =
   | "succeeded"
   | "failed_temporary"
   | "failed_fatal"
+  | "temporary_error"
+  | "fatal_error"
   | "exhausted"
   | "retry_scheduled";
 
@@ -75,11 +77,22 @@ export interface Examination {
   specialist_id: number;
   created_by_user_id: number;
   questionnaire_id: number | null;
+  questions?: ExaminationQuestionSnapshot[];
   status: ExaminationStatus;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
   updated_at: string;
+}
+
+export interface ExaminationQuestionSnapshot {
+  id: number;
+  examination_id: number;
+  specialist_id: number;
+  questionnaire_id: number;
+  source_question_id?: number | null;
+  position: number;
+  text: string;
 }
 
 export interface ExaminationsResponse {
@@ -105,7 +118,7 @@ export interface ExaminationProcessingStatus {
   examination_id: number;
   status: Extract<
     ExaminationStatus,
-    "ready_for_processing" | "processing" | "aggregating" | "aggregated" | "failed"
+    "ready_for_processing" | "processing" | "aggregating" | "aggregated" | "decision_pending" | "completed" | "failed"
   >;
   message_version: number;
   channels_total: number;
@@ -211,8 +224,8 @@ export interface AuditEvent {
   traceparent: string;
   tracestate: string;
   correlation_id: string;
-  actor: AuditActor;
-  resource: AuditResourceRef;
+  actor: AuditActor | null;
+  resource: AuditResourceRef | null;
   domain_refs: AuditDomainRefs;
   payload: Record<string, unknown>;
 }
@@ -267,6 +280,20 @@ export interface ResultChannelContribution {
   evidence_keys: string[];
 }
 
+export interface ResultChannelReportScore {
+  key: string;
+  label: string;
+  value: number;
+}
+
+export interface ResultChannelReport {
+  channel: ProcessingChannelName;
+  model_version: string;
+  quality_flags: string[] | null;
+  evidence: string[] | null;
+  scores: ResultChannelReportScore[];
+}
+
 export interface ResultExplanation {
   position: number;
   kind: string;
@@ -276,9 +303,12 @@ export interface ResultExplanation {
 export interface ResultBaselineDeviation {
   delta: number;
   band: string;
+  baseline_available?: boolean;
+  baseline_source?: string;
   reference_population_version?: string;
   baseline_exam_count?: number;
   update_eligible?: boolean;
+  data_reliability?: number;
 }
 
 export interface ExaminationResult {
@@ -291,6 +321,7 @@ export interface ExaminationResult {
   summary: ResultSummary;
   metrics: ResultMetric[];
   channel_contributions: ResultChannelContribution[];
+  channel_reports: ResultChannelReport[];
   explanations: ResultExplanation[];
   baseline_snapshot: {
     algorithm_version: string;
@@ -302,6 +333,9 @@ export interface ExaminationResult {
     state: "pending" | "succeeded" | "transport_exhausted" | "business_error";
     recommendation: "unavailable" | "allowed" | "risk" | "denied";
     message: string;
+    decision_code?: "allow" | "monitoring" | "extended_check" | "no_access";
+    risk_class?: string;
+    patterns?: string[];
     correlation_id: string;
     attempt_count: number;
     max_attempts: number;

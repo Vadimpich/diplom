@@ -28,6 +28,7 @@ import (
 	"diplom/internal/processing"
 	"diplom/internal/questionnaires"
 	"diplom/internal/results"
+	"diplom/internal/settings"
 	"diplom/internal/specialists"
 	"diplom/internal/storage"
 )
@@ -85,11 +86,21 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	processingRepository := processing.NewRepository(db.Pool(), cfg.S3Bucket)
 	processingService := processing.NewService(processingRepository, auditService)
 	baselineService := baselineclient.New(cfg.BaselineBaseURL, cfg.BaselineTimeout)
+	settingsService := settings.NewService(settings.NewRepository(db.Pool()), settings.Defaults{
+		AudioRetentionTTLDays: cfg.AudioRetentionTTLDays,
+		ProcessingMaxAttempts: cfg.OutboxMaxAttempts,
+		KESMIMaxRetries:       cfg.KESMIMaxRetries,
+	}, auditService)
+	if _, err := settingsService.EnsureDefaults(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ensure system settings: %w", err)
+	}
+	processingRepository = processing.NewRepository(db.Pool(), cfg.S3Bucket, settingsService)
 	decisionRepository := decision.NewRepository(db.Pool())
 	kesmiClient := kesmi.NewClient(cfg.KESMIBaseURL, cfg.KESMIModelID, cfg.KESMITimeout)
 	decisionService := decision.NewService(decisionRepository, kesmiClient, decision.Config{
 		MaxAttempts: cfg.KESMIMaxRetries,
-	}, auditService)
+	}, auditService).WithMaxAttemptsProvider(settingsService)
 	decisionRelay := decision.NewRelay(decisionRepository, decisionService, cfg.KESMIRetryBackoff)
 	aggregationRepository := aggregation.NewRepository(db.Pool())
 	aggregationService := aggregation.NewService(
@@ -123,6 +134,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Results:        resultsService,
 		Questionnaires: questionnairesService,
 		Answers:        answersService,
+		Audit:          auditService,
+		Settings:       settingsService,
 		AllowedOrigins: cfg.AllowedOrigins,
 		MaxUploadSize:  cfg.MaxUploadSizeBytes,
 		Logger:         logger,

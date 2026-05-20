@@ -90,6 +90,33 @@ func TestCreateAnswerRejectsDuplicateQuestionAnswer(t *testing.T) {
 	}
 }
 
+func TestCreateAnswerAllowsAudioOnlyPayload(t *testing.T) {
+	repo := &answerRepoStub{
+		exam: examinations.Examination{ID: 10, SpecialistID: 7, Status: examinations.StatusCollectingAnswers},
+		question: examinations.ExaminationQuestion{ID: 22, ExaminationID: 10, SpecialistID: 7},
+		createResult: Answer{ID: 55, ExaminationID: 10, ExaminationQuestionID: 22, SpecialistID: 7},
+	}
+	service := NewService(repo, &answerStorageStub{})
+
+	answer, err := service.Create(context.Background(), CreateInput{
+		ExaminationID:         10,
+		ExaminationQuestionID: 22,
+		SpecialistID:          7,
+		CreatedByUserID:       3,
+		Text:                  "",
+		FileName:              "audio.webm",
+		ContentType:           "audio/webm",
+		Size:                  4,
+		Content:               bytes.NewReader([]byte("test")),
+	})
+	if err != nil {
+		t.Fatalf("create audio-only answer: %v", err)
+	}
+	if answer.Text != "" {
+		t.Fatalf("expected empty text for audio-only answer, got %q", answer.Text)
+	}
+}
+
 type answerRepoStub struct {
 	exam        examinations.Examination
 	question    examinations.ExaminationQuestion

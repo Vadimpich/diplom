@@ -1,27 +1,31 @@
 package aggregation
 
-import "time"
+import (
+	"time"
+
+	"diplom/internal/processing"
+)
 
 const (
 	SchemaVersionV1          = 1
 	AggregationVersionV1     = "agg-v1"
 	BaselineAlgorithmVersion = "baseline-v1"
 
-	MetricKeyOverallProxyIndex    = "overall_proxy_index"
-	MetricKeyTextProxySignal      = "text_proxy_signal"
-	MetricKeyAcousticProxySignal  = "acoustic_proxy_signal"
-	MetricKeyParalinguisticSignal = "paralinguistic_proxy_signal"
-	MetricKeySpeechStabilityProxy = "speech_stability_proxy"
+	MetricKeyOverallDeviationIndex  = "overall_deviation_index"
+	MetricKeyTextRiskSignal         = "text_risk_signal"
+	MetricKeyAcousticStressSignal   = "acoustic_stress_signal"
+	MetricKeyParalinguisticBehavior = "paralinguistic_behavior_signal"
+	MetricKeySpeechStabilityScore   = "speech_stability_score"
 
 	ExplanationKindSummary = "summary"
 )
 
 var StableMetricKeys = []string{
-	MetricKeyOverallProxyIndex,
-	MetricKeyTextProxySignal,
-	MetricKeyAcousticProxySignal,
-	MetricKeyParalinguisticSignal,
-	MetricKeySpeechStabilityProxy,
+	MetricKeyOverallDeviationIndex,
+	MetricKeyTextRiskSignal,
+	MetricKeyAcousticStressSignal,
+	MetricKeyParalinguisticBehavior,
+	MetricKeySpeechStabilityScore,
 }
 
 type ProfileSummary struct {
@@ -54,11 +58,15 @@ type Explanation struct {
 }
 
 type BaselineDeviation struct {
-	Delta                      float64 `json:"delta"`
-	Band                       string  `json:"band"`
-	ReferencePopulationVersion string  `json:"reference_population_version,omitempty"`
-	BaselineExamCount          int     `json:"baseline_exam_count,omitempty"`
-	UpdateEligible             bool    `json:"update_eligible,omitempty"`
+	Delta                      float64  `json:"delta"`
+	Band                       string   `json:"band"`
+	BaselineAvailable          bool     `json:"baseline_available,omitempty"`
+	BaselineSource             string   `json:"baseline_source,omitempty"`
+	ReferencePopulationVersion string   `json:"reference_population_version,omitempty"`
+	BaselineExamCount          int      `json:"baseline_exam_count,omitempty"`
+	UpdateEligible             bool     `json:"update_eligible,omitempty"`
+	DataReliability            float64  `json:"data_reliability,omitempty"`
+	SignificantDeviations      []string `json:"significant_deviations,omitempty"`
 }
 
 type BaselineSnapshot struct {
@@ -82,6 +90,36 @@ type AggregatedProfile struct {
 	BaselineSnapshot     BaselineSnapshot      `json:"baseline_snapshot"`
 }
 
+type DecisionChannel struct {
+	Scores       map[string]float64 `json:"scores"`
+	QualityFlags []string           `json:"quality_flags"`
+}
+
+type DecisionBaseline struct {
+	Source                 string             `json:"source"`
+	Available              bool               `json:"available"`
+	BaselineDeviationIndex float64            `json:"baseline_deviation_index"`
+	SignificantDeviations  []string           `json:"significant_deviations"`
+	ZScores                map[string]float64 `json:"z_scores"`
+}
+
+type DecisionDerivedIndicators struct {
+	SemanticStressIndex        float64 `json:"semantic_stress_index"`
+	AcousticActivationIndex    float64 `json:"acoustic_activation_index"`
+	SpeechDisorganizationIndex float64 `json:"speech_disorganization_index"`
+	BaselineShiftIndex         float64 `json:"baseline_shift_index"`
+}
+
+type DecisionPayload struct {
+	ExaminationID     int64                      `json:"examination_id"`
+	SpecialistID      int64                      `json:"specialist_id"`
+	DataReliability   float64                    `json:"data_reliability"`
+	Channels          map[string]DecisionChannel `json:"channels"`
+	Baseline          DecisionBaseline           `json:"baseline"`
+	DerivedIndicators DecisionDerivedIndicators  `json:"derived_indicators"`
+	Evidence          []string                   `json:"evidence"`
+}
+
 type BaselineMetricValue struct {
 	Key   string  `json:"key"`
 	Value float64 `json:"value"`
@@ -98,38 +136,72 @@ type BaselineHistory struct {
 	MetricVectors     []BaselineHistoryVector `json:"metric_vectors"`
 }
 
+type ExistingBaselineMetric struct {
+	BaselineMean  float64    `json:"baseline_mean"`
+	BaselineStd   float64    `json:"baseline_std"`
+	SampleCount   int        `json:"sample_count"`
+	LastUpdatedAt *time.Time `json:"last_updated_at,omitempty"`
+	Method        string     `json:"method"`
+}
+
+type ExistingBaselinePayload struct {
+	BaselineAvailable bool                              `json:"baseline_available"`
+	Metrics           map[string]ExistingBaselineMetric `json:"metrics"`
+}
+
+type BaselineContext struct {
+	AllChannelsDone      bool     `json:"all_channels_done"`
+	CriticalQualityFlags []string `json:"critical_quality_flags"`
+	DataReliability      float64  `json:"data_reliability"`
+	OverallBand          string   `json:"overall_band"`
+}
+
 type BaselineRequest struct {
-	SchemaVersion                     int                   `json:"schema_version"`
-	AlgorithmVersion                  string                `json:"algorithm_version"`
-	SpecialistID                      int64                 `json:"specialist_id"`
-	ExaminationID                     int64                 `json:"examination_id"`
-	GeneratedAt                       time.Time             `json:"generated_at"`
-	Metrics                           []BaselineMetricValue `json:"metrics"`
-	History                           BaselineHistory       `json:"history"`
-	GeneralReferencePopulationVersion string                `json:"general_reference_population_version"`
+	SchemaVersion                     int                     `json:"schema_version"`
+	AlgorithmVersion                  string                  `json:"algorithm_version"`
+	SpecialistID                      int64                   `json:"specialist_id"`
+	ExaminationID                     int64                   `json:"examination_id"`
+	GeneratedAt                       time.Time               `json:"generated_at"`
+	Metrics                           []BaselineMetricValue   `json:"metrics"`
+	History                           BaselineHistory         `json:"history"`
+	ExistingBaseline                  ExistingBaselinePayload `json:"existing_baseline"`
+	Context                           BaselineContext         `json:"context"`
+	GeneralReferencePopulationVersion string                  `json:"general_reference_population_version"`
 }
 
 type BaselineScore struct {
-	Score        float64                        `json:"score"`
-	Band         string                         `json:"band"`
-	MetricScores map[string]BaselineMetricScore `json:"metric_scores,omitempty"`
+	Score                 float64                        `json:"score"`
+	Band                  string                         `json:"band"`
+	BaselineAvailable     bool                           `json:"baseline_available"`
+	BaselineSource        string                         `json:"baseline_source"`
+	SignificantDeviations []string                       `json:"significant_deviations,omitempty"`
+	MetricScores          map[string]BaselineMetricScore `json:"metric_scores,omitempty"`
 }
 
 type BaselineUpdateEligibility struct {
-	Eligible                     bool   `json:"eligible"`
-	Reason                       string `json:"reason"`
-	BaselineExamCountAfterUpdate int    `json:"baseline_exam_count_after_update"`
+	Eligible                     bool    `json:"eligible"`
+	Reason                       string  `json:"reason"`
+	BaselineExamCountAfterUpdate int     `json:"baseline_exam_count_after_update"`
+	DataReliability              float64 `json:"data_reliability"`
 }
 
 type BaselineMetricScore struct {
-	Delta float64 `json:"delta"`
-	Band  string  `json:"band"`
+	BaselineAvailable bool    `json:"baseline_available"`
+	BaselineSource    string  `json:"baseline_source"`
+	BaselineMean      float64 `json:"baseline_mean"`
+	BaselineStd       float64 `json:"baseline_std"`
+	SampleCount       int     `json:"sample_count"`
+	Method            string  `json:"method"`
+	Delta             float64 `json:"delta"`
+	ZScore            float64 `json:"z_score"`
+	DeviationLevel    string  `json:"deviation_level"`
 }
 
 type NextBaseline struct {
-	ExamCount int                `json:"exam_count"`
-	Centers   map[string]float64 `json:"centers"`
-	Scales    map[string]float64 `json:"scales"`
+	ExamCount         int                               `json:"exam_count"`
+	BaselineAvailable bool                              `json:"baseline_available"`
+	Metrics           map[string]ExistingBaselineMetric `json:"metrics"`
+	RefreshedAt       time.Time                         `json:"refreshed_at"`
 }
 
 type BaselineResponse struct {
@@ -141,3 +213,5 @@ type BaselineResponse struct {
 	UpdateEligibility BaselineUpdateEligibility `json:"update_eligibility"`
 	NextBaseline      NextBaseline              `json:"next_baseline"`
 }
+
+type ChannelPayloadMap map[string]processing.CanonicalChannelPayload

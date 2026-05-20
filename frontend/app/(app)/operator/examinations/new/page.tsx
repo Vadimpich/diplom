@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { apiClient, ApiError } from "@/lib/api/client";
 import { saveExaminationDraft } from "@/lib/examination-drafts";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -21,6 +22,7 @@ export default function NewExaminationPage() {
     searchParams.get("specialistId") ? Number(searchParams.get("specialistId")) : null,
   );
   const [selectedQuestionnaireId, setSelectedQuestionnaireId] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
 
   const specialistsQuery = useQuery({
     queryKey: ["specialists"],
@@ -31,11 +33,24 @@ export default function NewExaminationPage() {
     queryFn: apiClient.getQuestionnaires,
   });
 
+  const filteredSpecialists = useMemo(() => {
+    const items = specialistsQuery.data?.items ?? [];
+    if (!query.trim()) {
+      return items;
+    }
+    const normalized = query.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.full_name.toLowerCase().includes(normalized) ||
+        item.personnel_number?.toLowerCase().includes(normalized),
+    );
+  }, [query, specialistsQuery.data?.items]);
+
   const createMutation = useMutation({
     mutationFn: () =>
       apiClient.createExamination({
         specialist_id: selectedId as number,
-        questionnaire_id: selectedQuestionnaireId || undefined,
+        questionnaire_id: selectedQuestionnaireId as number,
       }),
     onSuccess: (examination) => {
       saveExaminationDraft(examination);
@@ -45,25 +60,29 @@ export default function NewExaminationPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Новое обследование" description="Создание обследования и привязка опросника." />
+      <PageHeader title="Новое обследование" />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Выбор специалиста</CardTitle>
-          <CardDescription>Выберите специалиста и при необходимости активный опросник.</CardDescription>
-        </CardHeader>
         <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge variant="info">1</Badge>
+              <h2 className="text-lg font-semibold">Специалист</h2>
+            </div>
+            <Input placeholder="Найти специалиста" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </div>
+
           {specialistsQuery.data?.items.length ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {specialistsQuery.data.items.map((specialist) => {
+              {filteredSpecialists.map((specialist) => {
                 const active = selectedId === specialist.id;
                 return (
                   <button
                     key={specialist.id}
                     type="button"
-                    className={`rounded-2xl border p-4 text-left transition ${
+                    className={`rounded-2xl border p-3.5 text-left transition ${
                       active
-                        ? "border-primary bg-primary text-primary-foreground"
+                        ? "border-primary bg-primary/8 ring-1 ring-primary/25"
                         : "border-border bg-card hover:bg-secondary/50"
                     }`}
                     onClick={() => setSelectedId(specialist.id)}
@@ -71,11 +90,11 @@ export default function NewExaminationPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-medium">{specialist.full_name}</p>
-                        <p className={`mt-1 text-sm ${active ? "text-white/70" : "text-muted-foreground"}`}>
+                        <p className="mt-1 text-sm text-muted-foreground">
                           {specialist.personnel_number || "Без табельного номера"}
                         </p>
                       </div>
-                      {active ? <Badge>Выбран</Badge> : null}
+                      {active ? <Badge variant="info">Выбран</Badge> : null}
                     </div>
                   </button>
                 );
@@ -94,54 +113,59 @@ export default function NewExaminationPage() {
           )}
 
           <div className="space-y-3">
-            <p className="text-sm font-medium">Опросник</p>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <button
-                type="button"
-                className={`rounded-2xl border p-4 text-left transition ${
-                  selectedQuestionnaireId === null
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:bg-secondary/50"
-                }`}
-                onClick={() => setSelectedQuestionnaireId(null)}
-              >
-                <p className="font-medium">Без опросника</p>
-                <p className="mt-1 text-sm text-muted-foreground">Интервью по локальному сценарию оператора</p>
-              </button>
-              {(questionnairesQuery.data?.items ?? []).map((questionnaire) => {
-                const active = selectedQuestionnaireId === questionnaire.id;
-                return (
-                  <button
-                    key={questionnaire.id}
-                    type="button"
-                    className={`rounded-2xl border p-4 text-left transition ${
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card hover:bg-secondary/50"
-                    }`}
-                    onClick={() => setSelectedQuestionnaireId(questionnaire.id)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{questionnaire.title}</p>
-                        <p className={`mt-1 text-sm ${active ? "text-white/70" : "text-muted-foreground"}`}>
-                          {questionnaire.questions.length} вопросов
-                        </p>
-                      </div>
-                      {questionnaire.is_active ? <Badge variant="success">Активен</Badge> : <Badge>Черновик</Badge>}
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              <Badge variant="info">2</Badge>
+              <h2 className="text-lg font-semibold">Опросник</h2>
             </div>
+            {questionnairesQuery.data?.items?.length ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {questionnairesQuery.data.items.map((questionnaire) => {
+                  const active = selectedQuestionnaireId === questionnaire.id;
+                  return (
+                    <button
+                      key={questionnaire.id}
+                      type="button"
+                      className={`rounded-2xl border p-3.5 text-left transition ${
+                        active
+                          ? "border-primary bg-primary/8 ring-1 ring-primary/25"
+                          : "border-border bg-card hover:bg-secondary/50"
+                      }`}
+                      onClick={() => setSelectedQuestionnaireId(questionnaire.id)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{questionnaire.title}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{questionnaire.questions.length} вопросов</p>
+                        </div>
+                        {active ? <Badge variant="info">Выбран</Badge> : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                title="Нет опросников"
+                description="Сначала создайте опросник в панели администратора."
+                action={
+                  <Button asChild variant="outline">
+                    <Link href="/operator">Назад</Link>
+                  </Button>
+                }
+              />
+            )}
           </div>
 
           {createMutation.isError ? (
             <Alert variant="danger">{(createMutation.error as ApiError).message}</Alert>
           ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Button disabled={!selectedId || createMutation.isPending} onClick={() => createMutation.mutate()}>
+          <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="info">3</Badge>
+              <p className="text-sm font-medium text-muted-foreground">Переход к записи ответов</p>
+            </div>
+            <Button disabled={!selectedId || !selectedQuestionnaireId || createMutation.isPending} onClick={() => createMutation.mutate()}>
               {createMutation.isPending ? (
                 <>
                   <Spinner />

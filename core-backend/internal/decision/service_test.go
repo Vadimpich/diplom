@@ -12,9 +12,9 @@ import (
 func TestCreateDecisionInput(t *testing.T) {
 	profile := sampleAggregatedProfile()
 
-	input := NewDecisionInput(profile, DecisionServiceMetadata{
+	input := NewDecisionInput(profile, sampleDecisionPayload(), DecisionServiceMetadata{
 		TargetSystem: "kesmi",
-		DeliveryMode: "placeholder",
+		DeliveryMode: "canonical_kesmi_payload",
 		Message:      PlaceholderMessage,
 	})
 
@@ -30,14 +30,14 @@ func TestCreateDecisionInput(t *testing.T) {
 	if input.ExaminationID != profile.ExaminationID || input.SpecialistID != profile.SpecialistID {
 		t.Fatalf("expected identifiers from aggregated profile, got examination=%d specialist=%d", input.ExaminationID, input.SpecialistID)
 	}
-	if input.Summary.PrimaryMetricKey != aggregation.MetricKeyOverallProxyIndex {
-		t.Fatalf("expected primary metric key to propagate, got %q", input.Summary.PrimaryMetricKey)
+	if input.Channels["text"].Scores["text_anxiety_score"] != 0.34 {
+		t.Fatalf("expected text channel scores to propagate, got %#v", input.Channels["text"].Scores)
 	}
-	if len(input.Metrics) != 1 || len(input.ChannelContributions) != 1 {
-		t.Fatalf("expected metrics and contributions to propagate, got metrics=%d contributions=%d", len(input.Metrics), len(input.ChannelContributions))
+	if input.Baseline.BaselineDeviationIndex != 0.37 {
+		t.Fatalf("expected baseline deviation to propagate, got %.2f", input.Baseline.BaselineDeviationIndex)
 	}
-	if input.BaselineSnapshot.Personal.BaselineExamCount != 4 {
-		t.Fatalf("expected personal baseline exam count=4, got %d", input.BaselineSnapshot.Personal.BaselineExamCount)
+	if input.DerivedIndicators.SemanticStressIndex == 0 {
+		t.Fatal("expected derived indicators to be populated")
 	}
 	if input.ServiceMetadata.TargetSystem != "kesmi" {
 		t.Fatalf("expected service metadata target system to propagate, got %q", input.ServiceMetadata.TargetSystem)
@@ -77,7 +77,7 @@ func TestDecisionSuccessMarksCompleted(t *testing.T) {
 		MaxAttempts:        2,
 	}}
 	service := NewService(repo, decisionExecutorStub{
-		response: ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"ok":true}`)},
+		response: ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"requiredExploredParameters":[{"id":"p32","value":"monitoring"},{"id":"p33","value":"risk=medium; decision=monitoring; patterns=emotional_cross;contradictory_profile;"}]}`)},
 	}, Config{MaxAttempts: 2})
 
 	if err := service.DeliverPending(context.Background(), repo.pending[0]); err != nil {
@@ -92,11 +92,44 @@ func TestDecisionSuccessMarksCompleted(t *testing.T) {
 	if repo.lastFinalize.State != DecisionStateSucceeded {
 		t.Fatalf("expected decision state=%q, got %q", DecisionStateSucceeded, repo.lastFinalize.State)
 	}
-	if repo.lastFinalize.Recommendation != DecisionRecommendationUnavailable {
-		t.Fatalf("expected placeholder recommendation=%q, got %q", DecisionRecommendationUnavailable, repo.lastFinalize.Recommendation)
+	if repo.lastFinalize.Recommendation != DecisionRecommendationRisk {
+		t.Fatalf("expected normalized recommendation=%q, got %q", DecisionRecommendationRisk, repo.lastFinalize.Recommendation)
 	}
-	if repo.lastFinalize.Message != PlaceholderMessage {
-		t.Fatalf("expected message=%q, got %q", PlaceholderMessage, repo.lastFinalize.Message)
+	if repo.lastFinalize.Message != "risk=medium; decision=monitoring; patterns=emotional_cross;contradictory_profile;" {
+		t.Fatalf("unexpected message=%q", repo.lastFinalize.Message)
+	}
+	if repo.lastFinalize.DecisionCode != DecisionCodeMonitoring {
+		t.Fatalf("expected decision code=%q, got %q", DecisionCodeMonitoring, repo.lastFinalize.DecisionCode)
+	}
+	if repo.lastFinalize.RiskClass != "medium" {
+		t.Fatalf("expected risk class medium, got %q", repo.lastFinalize.RiskClass)
+	}
+	if len(repo.lastFinalize.Patterns) != 2 || repo.lastFinalize.Patterns[0] != "emotional_cross" {
+		t.Fatalf("unexpected patterns: %#v", repo.lastFinalize.Patterns)
+	}
+}
+
+func TestDecisionInvalidKESMIResponseMarksBusinessError(t *testing.T) {
+	repo := newDecisionRepoStub()
+	snapshot := Snapshot{ID: 1, ExaminationID: 101, SpecialistID: 55, State: DecisionStatePending, PayloadVersion: PayloadVersionV1, AggregationVersion: "agg-v1", MaxAttempts: 2}
+	service := NewService(repo, decisionExecutorStub{
+		response: ExecutionResponse{
+			HTTPStatus:  200,
+			RawResponse: []byte(`{"requiredExploredParameters":[{"id":"p32","value":"allow"}]}`),
+		},
+	}, Config{MaxAttempts: 2})
+
+	if err := service.DeliverPending(context.Background(), snapshot); err != nil {
+		t.Fatalf("deliver pending decision: %v", err)
+	}
+	if repo.markedFailed != 1 {
+		t.Fatalf("expected invalid response to be recorded as failure, got %d", repo.markedFailed)
+	}
+	if repo.lastFinalize.State != DecisionStateBusinessError {
+		t.Fatalf("expected state=%q, got %q", DecisionStateBusinessError, repo.lastFinalize.State)
+	}
+	if repo.lastFinalize.Recommendation != DecisionRecommendationUnavailable {
+		t.Fatalf("expected recommendation unavailable, got %q", repo.lastFinalize.Recommendation)
 	}
 }
 
@@ -159,7 +192,7 @@ func TestDecisionTerminalStateWritesAuditEvent(t *testing.T) {
 	repo := newDecisionRepoStub()
 	auditRepo := &decisionAuditRepoStub{}
 	service := NewService(repo, decisionExecutorStub{
-		response: ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"ok":true}`)},
+		response: ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"requiredExploredParameters":[{"id":"p32","value":"allow"},{"id":"p33","value":"risk=low; decision=allow; patterns=none"}]}`)},
 	}, Config{MaxAttempts: 2}, audit.NewService(auditRepo))
 
 	snapshot := Snapshot{ID: 1, ExaminationID: 101, SpecialistID: 55, State: DecisionStatePending, PayloadVersion: PayloadVersionV1, AggregationVersion: "agg-v1", MaxAttempts: 2}
@@ -200,9 +233,9 @@ type decisionRepoStub struct {
 
 func newDecisionRepoStub() *decisionRepoStub {
 	return &decisionRepoStub{
-		input: NewDecisionInput(sampleAggregatedProfile(), DecisionServiceMetadata{
+		input: NewDecisionInput(sampleAggregatedProfile(), sampleDecisionPayload(), DecisionServiceMetadata{
 			TargetSystem: "kesmi",
-			DeliveryMode: "placeholder",
+			DeliveryMode: "canonical_kesmi_payload",
 			Message:      PlaceholderMessage,
 		}),
 	}
@@ -269,35 +302,91 @@ func sampleAggregatedProfile() aggregation.AggregatedProfile {
 		Summary: aggregation.ProfileSummary{
 			OverallScore:     0.58,
 			OverallBand:      "elevated",
-			PrimaryMetricKey: aggregation.MetricKeyOverallProxyIndex,
+			PrimaryMetricKey: aggregation.MetricKeyOverallDeviationIndex,
 		},
 		Metrics: []aggregation.Metric{{
-			Key:       aggregation.MetricKeyOverallProxyIndex,
-			Label:     "Сводный прокси-индекс",
+			Key:       aggregation.MetricKeyOverallDeviationIndex,
+			Label:     "Сводный индекс отклонения",
 			Value:     0.58,
 			Scale:     "0..1",
 			Direction: "higher_means_more_deviation",
 		}},
 		ChannelContributions: []aggregation.ChannelContribution{{
 			Channel:      "text",
-			MetricKey:    aggregation.MetricKeyOverallProxyIndex,
+			MetricKey:    aggregation.MetricKeyOverallDeviationIndex,
 			Weight:       0.33,
 			Contribution: 0.17,
-			EvidenceKeys: []string{"text_proxy_signal"},
+			EvidenceKeys: []string{aggregation.MetricKeyTextRiskSignal},
 		}},
 		BaselineSnapshot: aggregation.BaselineSnapshot{
 			AlgorithmVersion: aggregation.BaselineAlgorithmVersion,
 			General: aggregation.BaselineDeviation{
-				Delta: 0.21,
-				Band:  "mild",
+				Delta:             0.21,
+				Band:              "mild",
+				BaselineAvailable: true,
+				BaselineSource:    "general",
 			},
 			Personal: aggregation.BaselineDeviation{
-				Delta:             0.37,
-				Band:              "moderate",
-				BaselineExamCount: 4,
-				UpdateEligible:    false,
+				Delta:                 0.37,
+				Band:                  "moderate",
+				BaselineAvailable:     false,
+				BaselineSource:        "general",
+				BaselineExamCount:     4,
+				UpdateEligible:        false,
+				DataReliability:       0.91,
+				SignificantDeviations: []string{aggregation.MetricKeyOverallDeviationIndex},
 			},
 		},
+	}
+}
+
+func sampleDecisionPayload() aggregation.DecisionPayload {
+	return aggregation.DecisionPayload{
+		ExaminationID:   101,
+		SpecialistID:    55,
+		DataReliability: 0.91,
+		Channels: map[string]aggregation.DecisionChannel{
+			"text": {
+				Scores: map[string]float64{
+					"text_negativity_score": 0.28,
+					"text_anxiety_score":    0.34,
+					"text_confidence_score": 0.72,
+					"text_coherence_score":  0.82,
+				},
+				QualityFlags: []string{},
+			},
+			"acoustic": {
+				Scores: map[string]float64{
+					"acoustic_stress_score":       0.46,
+					"voice_stability_score":       0.62,
+					"intensity_variability_score": 0.31,
+				},
+				QualityFlags: []string{},
+			},
+			"paralinguistic": {
+				Scores: map[string]float64{
+					"hesitation_score":             0.33,
+					"speech_disorganization_score": 0.22,
+				},
+				QualityFlags: []string{},
+			},
+		},
+		Baseline: aggregation.DecisionBaseline{
+			Source:                 "general",
+			Available:              false,
+			BaselineDeviationIndex: 0.37,
+			SignificantDeviations:  []string{aggregation.MetricKeyOverallDeviationIndex},
+			ZScores: map[string]float64{
+				aggregation.MetricKeyOverallDeviationIndex: 1.5,
+			},
+		},
+		DerivedIndicators: aggregation.DecisionDerivedIndicators{
+			SemanticStressIndex:        0.32,
+			AcousticActivationIndex:    0.41,
+			SpeechDisorganizationIndex: 0.28,
+			BaselineShiftIndex:         0.39,
+		},
+		Evidence: []string{"Агрегатор передает explainable channel scores и baseline deviations без итогового решения."},
 	}
 }
 

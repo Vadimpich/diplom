@@ -21,7 +21,7 @@ func TestDecisionRelayResumesPendingSnapshots(t *testing.T) {
 	}}
 
 	service := NewService(repo, decisionExecutorStub{
-		response: ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"ok":true}`)},
+		response: ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"requiredExploredParameters":[{"id":"p32","value":"allow"},{"id":"p33","value":"risk=low; decision=allow; patterns=none"}]}`)},
 	}, Config{MaxAttempts: 2})
 	relay := NewRelay(repo, service, 0)
 
@@ -57,7 +57,7 @@ func TestDecisionRelayPreservesTraceContext(t *testing.T) {
 		execute: func(_ context.Context, _ DecisionInput, _ string) (ExecutionResponse, error) {
 			gotRequestID = repo.pending[0].RequestID
 			gotTraceParent = repo.pending[0].TraceParent
-			return ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"ok":true}`)}, nil
+			return ExecutionResponse{HTTPStatus: 200, RawResponse: []byte(`{"requiredExploredParameters":[{"id":"p32","value":"allow"},{"id":"p33","value":"risk=low; decision=allow; patterns=none"}]}`)}, nil
 		},
 	}, Config{MaxAttempts: 2})
 	relay := NewRelay(repo, service, 0)

@@ -1,9 +1,9 @@
 import asyncio
-import hashlib
 import json
 import logging
 import os
 import signal
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,11 +17,11 @@ from fastapi.responses import JSONResponse
 from minio import Minio
 from minio.error import S3Error
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from app.analysis import MODEL_VERSION, analyze_audio_bytes
 from app.telemetry import metrics_payload, ready_payload, test_mode
 
 
 CHANNEL = "acoustic"
-MODEL_VERSION = "acoustic-stub-0.1.0"
 COMMAND_QUEUE = os.getenv("WORKER_QUEUE_NAME", "qq.processing.acoustic")
 COMMAND_ROUTING_KEY = os.getenv("WORKER_COMMAND_ROUTING_KEY", "processing.command.acoustic")
 
@@ -225,7 +225,7 @@ class WorkerState:
                         "audio_s3_key": answer.audio_s3_key,
                         "answer_text": answer.answer_text,
                         "bytes": len(content),
-                        "sha256": hashlib.sha256(content).hexdigest(),
+                        "content": content,
                     }
                 )
             except S3Error as exc:
@@ -340,18 +340,112 @@ class WorkerState:
 
 
 def build_payload(command: ProcessingCommandEnvelope, fetched_objects: list[dict[str, Any]]) -> dict[str, Any]:
-    total_bytes = sum(item["bytes"] for item in fetched_objects)
-    average_bytes = total_bytes / len(fetched_objects)
-    fingerprint = hashlib.sha256("".join(item["sha256"] for item in fetched_objects).encode("utf-8")).hexdigest()
-    return {
-        "summary": "acoustic worker stub result",
-        "answers_processed": len(fetched_objects),
-        "audio_total_bytes": total_bytes,
-        "audio_average_bytes": round(average_bytes, 2),
-        "audio_energy_proxy": round(total_bytes / max(len(command.answers), 1), 2),
-        "artifact_digest": fingerprint[:16],
-        "requested_at": command.requested_at.isoformat(),
+    started_at = time.perf_counter()
+    answer_results = []
+    for item in fetched_objects:
+        result = analyze_audio_bytes(item["content"])
+        answer_results.append(
+            {
+                "answer_id": item["answer_id"],
+                "question_id": item["question_id"],
+                "audio_s3_key": item["audio_s3_key"],
+                "bytes": item["bytes"],
+                "result": result,
+            }
+        )
+
+    payload = aggregate_answer_results(answer_results)
+    payload["examination_id"] = command.examination_id
+    payload["answer_id"] = answer_results[0]["answer_id"] if len(answer_results) == 1 else None
+    payload["processing_time_ms"] = int(round((time.perf_counter() - started_at) * 1000))
+    payload["error"] = None
+    return payload
+
+
+def aggregate_answer_results(answer_results: list[dict[str, Any]]) -> dict[str, Any]:
+    if not answer_results:
+        return analyze_audio_bytes(b"")
+
+    results = [item["result"] for item in answer_results]
+    features_list = [item["features"] for item in results]
+    scores_list = [item["scores"] for item in results]
+    emotion_list = [item.get("emotion_probs", {}) for item in results]
+    total_duration = sum(item["duration_ms"] for item in features_list)
+    quality_flags = sorted({flag for result in results for flag in result["quality_flags"]})
+
+    features = {
+        "duration_ms": total_duration,
+        "sample_rate": max((int(item.get("sample_rate") or 0) for item in features_list), default=0),
+        "rms_energy_mean": weighted_mean(features_list, "rms_energy_mean"),
     }
+    scores = {
+        "acoustic_stress_score": round(sum(item["acoustic_stress_score"] for item in scores_list) / len(scores_list), 4),
+        "voice_stability_score": round(sum(item["voice_stability_score"] for item in scores_list) / len(scores_list), 4),
+        "intensity_variability_score": round(
+            sum(item["intensity_variability_score"] for item in scores_list) / len(scores_list),
+            4,
+        ),
+    }
+    emotion_probs = weighted_emotion_probs(features_list, emotion_list)
+    dominant_emotion = max(emotion_probs.items(), key=lambda item: item[1])[0] if emotion_probs else "neutral"
+    evidence = [
+        f"Доминирующая эмоция: {dominant_emotion}.",
+        f"Средняя энергия RMS: {features['rms_energy_mean']}.",
+        f"Обработано аудиоответов: {len(answer_results)}.",
+        f"Индекс акустического напряжения: {scores['acoustic_stress_score']}.",
+    ]
+    if quality_flags:
+        evidence.append(f"Флаги качества: {', '.join(quality_flags)}.")
+
+    return {
+        "channel": CHANNEL,
+        "status": "done",
+        "examination_id": None,
+        "answer_id": None,
+        "features": features,
+        "scores": scores,
+        "emotion_probs": emotion_probs,
+        "dominant_emotion": dominant_emotion,
+        "quality_flags": quality_flags,
+        "evidence": evidence,
+        "model_version": MODEL_VERSION,
+        "processing_time_ms": 0,
+        "error": None,
+        "answers": answer_results,
+    }
+
+
+def weighted_mean(items: list[dict[str, Any]], key: str) -> float:
+    weighted_sum = 0.0
+    total_weight = 0
+    for item in items:
+        value = item.get(key)
+        if value is None:
+            continue
+        weight = max(int(item.get("duration_ms") or 0), 1)
+        weighted_sum += float(value) * weight
+        total_weight += weight
+    return round(weighted_sum / total_weight, 6) if total_weight > 0 else 0.0
+
+
+def weighted_emotion_probs(features_list: list[dict[str, Any]], emotion_list: list[dict[str, Any]]) -> dict[str, float]:
+    if not emotion_list:
+        return {}
+
+    all_keys = sorted({key for emotion in emotion_list for key in emotion.keys()})
+    result: dict[str, float] = {}
+    for key in all_keys:
+        weighted_sum = 0.0
+        total_weight = 0
+        for features, emotion in zip(features_list, emotion_list, strict=False):
+            value = emotion.get(key)
+            if value is None:
+                continue
+            weight = max(int(features.get("duration_ms") or 0), 1)
+            weighted_sum += float(value) * weight
+            total_weight += weight
+        result[key] = round(weighted_sum / total_weight, 4) if total_weight > 0 else 0.0
+    return result
 
 
 logging.basicConfig(

@@ -11,6 +11,7 @@ RUN (dpkg -i /tmp/WiMi-0.1.7.deb || (apt-get update && apt-get install -f -y)) \
     && rm -f /tmp/WiMi-0.1.7.deb \
     && rm -rf /var/lib/apt/lists/*
 
+COPY models /opt/wimi-models
 COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -18,5 +19,6 @@ WORKDIR /usr/local/bin/WiMi
 
 ENV LD_LIBRARY_PATH=/usr/local/bin/WiMi/libs
 ENV LD_PRELOAD=/usr/local/bin/WiMi/libs/libjemalloc.so.2
+ENV WIMI_AUTOLOAD_MODEL_PATH=/opt/wimi-models/specialists_model_v2_decision.xml
 
 ENTRYPOINT ["/entrypoint.sh"]

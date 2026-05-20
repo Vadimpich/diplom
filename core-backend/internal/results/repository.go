@@ -4,12 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"slices"
+	"sort"
 	"time"
 
+	"diplom/internal/decision"
+	"diplom/internal/processing"
 	"diplom/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var scoreLabelByKey = map[string]string{
+	"text_negativity_score":        "Негативная окраска текста",
+	"text_anxiety_score":           "Тревожность текста",
+	"text_confidence_score":        "Уверенность ответа",
+	"text_coherence_score":         "Связность ответа",
+	"text_evasion_score":           "Уклончивость ответа",
+	"acoustic_stress_score":        "Акустическое напряжение",
+	"voice_stability_score":        "Стабильность голоса",
+	"intensity_variability_score":  "Вариативность интенсивности",
+	"hesitation_score":             "Выраженность пауз и колебаний",
+	"speech_disorganization_score": "Речевая дезорганизация",
+}
+
+var channelOrder = map[string]int{
+	"text":           0,
+	"acoustic":       1,
+	"paralinguistic": 2,
+}
 
 type SQLRepository struct {
 	pool *pgxpool.Pool
@@ -36,10 +60,15 @@ SELECT
 	b.refreshed_at,
 	b.general_delta,
 	b.general_band,
+	b.general_baseline_available,
+	b.general_baseline_source,
 	b.general_reference_population_version,
 	b.personal_delta,
 	b.personal_band,
+	b.personal_baseline_available,
+	b.personal_baseline_source,
 	b.baseline_exam_count,
+	b.data_reliability,
 	b.update_eligible,
 	ds.status,
 	ds.recommendation,
@@ -49,6 +78,7 @@ SELECT
 	ds.max_attempts,
 	ds.last_attempt_at,
 	ds.diagnostics_json,
+	ds.raw_response_json,
 	(ds.raw_response_json IS NOT NULL) AS raw_response_available
 FROM aggregated_examination_profiles p
 JOIN examinations e
@@ -61,16 +91,21 @@ WHERE p.examination_id = $1
   AND e.status IN ('decision_pending', 'completed')`
 
 	var result ExaminationResultResponse
+	var generatedAt time.Time
 	var refreshedAt *time.Time
 	var generalRef *string
 	var generalDelta, personalDelta *float64
 	var generalBand, personalBand *string
+	var generalAvailable, personalAvailable *bool
+	var generalSource, personalSource *string
 	var baselineExamCount *int
+	var dataReliability *float64
 	var updateEligible *bool
 	var decisionState, decisionRecommendation, decisionMessage, decisionCorrelation *string
 	var decisionAttemptCount, decisionMaxAttempts *int32
 	var lastAttemptAt *time.Time
 	var diagnosticsJSON []byte
+	var rawResponseJSON []byte
 	var rawResponseAvailable bool
 	err := r.pool.QueryRow(ctx, profileQuery, examinationID).Scan(
 		&result.ExaminationID,
@@ -78,7 +113,7 @@ WHERE p.examination_id = $1
 		&result.SchemaVersion,
 		&result.AggregationVersion,
 		&result.Status,
-		&result.GeneratedAt,
+		&generatedAt,
 		&result.Summary.OverallScore,
 		&result.Summary.OverallBand,
 		&result.Summary.PrimaryMetricKey,
@@ -87,10 +122,15 @@ WHERE p.examination_id = $1
 		&refreshedAt,
 		&generalDelta,
 		&generalBand,
+		&generalAvailable,
+		&generalSource,
 		&generalRef,
 		&personalDelta,
 		&personalBand,
+		&personalAvailable,
+		&personalSource,
 		&baselineExamCount,
+		&dataReliability,
 		&updateEligible,
 		&decisionState,
 		&decisionRecommendation,
@@ -100,6 +140,7 @@ WHERE p.examination_id = $1
 		&decisionMaxAttempts,
 		&lastAttemptAt,
 		&diagnosticsJSON,
+		&rawResponseJSON,
 		&rawResponseAvailable,
 	)
 	if err != nil {
@@ -108,6 +149,8 @@ WHERE p.examination_id = $1
 		}
 		return ExaminationResultResponse{}, err
 	}
+
+	result.GeneratedAt = generatedAt.UTC().Format(time.RFC3339)
 
 	if refreshedAt != nil {
 		result.BaselineSnapshot.RefreshedAt = refreshedAt.UTC().Format(time.RFC3339)
@@ -118,6 +161,12 @@ WHERE p.examination_id = $1
 	if generalBand != nil {
 		result.BaselineSnapshot.General.Band = *generalBand
 	}
+	if generalAvailable != nil {
+		result.BaselineSnapshot.General.BaselineAvailable = *generalAvailable
+	}
+	if generalSource != nil {
+		result.BaselineSnapshot.General.BaselineSource = *generalSource
+	}
 	if generalRef != nil {
 		result.BaselineSnapshot.General.ReferencePopulationVersion = *generalRef
 	}
@@ -127,8 +176,17 @@ WHERE p.examination_id = $1
 	if personalBand != nil {
 		result.BaselineSnapshot.Personal.Band = *personalBand
 	}
+	if personalAvailable != nil {
+		result.BaselineSnapshot.Personal.BaselineAvailable = *personalAvailable
+	}
+	if personalSource != nil {
+		result.BaselineSnapshot.Personal.BaselineSource = *personalSource
+	}
 	if baselineExamCount != nil {
 		result.BaselineSnapshot.Personal.BaselineExamCount = *baselineExamCount
+	}
+	if dataReliability != nil {
+		result.BaselineSnapshot.Personal.DataReliability = *dataReliability
 	}
 	if updateEligible != nil {
 		result.BaselineSnapshot.Personal.UpdateEligible = *updateEligible
@@ -162,6 +220,13 @@ WHERE p.examination_id = $1
 			return ExaminationResultResponse{}, err
 		}
 	}
+	if result.Decision.State == decision.DecisionStateSucceeded && len(rawResponseJSON) > 0 {
+		if parsed, err := decision.ParseResultForView(rawResponseJSON); err == nil {
+			result.Decision.DecisionCode = parsed.DecisionCode
+			result.Decision.RiskClass = parsed.RiskClass
+			result.Decision.Patterns = append([]string(nil), parsed.Patterns...)
+		}
+	}
 
 	metrics, err := r.loadMetrics(ctx, examinationID)
 	if err != nil {
@@ -173,6 +238,11 @@ WHERE p.examination_id = $1
 		return ExaminationResultResponse{}, err
 	}
 	result.ChannelContributions = contributions
+	channelReports, err := r.loadChannelReports(ctx, examinationID)
+	if err != nil {
+		return ExaminationResultResponse{}, err
+	}
+	result.ChannelReports = channelReports
 	explanations, err := r.loadExplanations(ctx, examinationID)
 	if err != nil {
 		return ExaminationResultResponse{}, err
@@ -180,6 +250,122 @@ WHERE p.examination_id = $1
 	result.Explanations = explanations
 
 	return result, nil
+}
+
+func (r *SQLRepository) loadChannelReports(ctx context.Context, examinationID int64) ([]ChannelReport, error) {
+	const query = `
+SELECT channel, payload
+FROM channel_results
+WHERE examination_id = $1
+  AND status = 'succeeded'
+ORDER BY completed_at DESC`
+
+	rows, err := r.pool.Query(ctx, query, examinationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reportByChannel := map[string]ChannelReport{}
+	for rows.Next() {
+		var channel string
+		var raw []byte
+		if err := rows.Scan(&channel, &raw); err != nil {
+			return nil, err
+		}
+		if _, exists := reportByChannel[channel]; exists {
+			continue
+		}
+		var payload processing.CanonicalChannelPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			return nil, fmt.Errorf("decode channel report payload %s: %w", channel, err)
+		}
+		reportByChannel[channel] = buildChannelReport(payload)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	items := make([]ChannelReport, 0, len(reportByChannel))
+	for _, item := range reportByChannel {
+		items = append(items, item)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		left, leftKnown := channelOrder[items[i].Channel]
+		right, rightKnown := channelOrder[items[j].Channel]
+		switch {
+		case leftKnown && rightKnown:
+			return left < right
+		case leftKnown:
+			return true
+		case rightKnown:
+			return false
+		default:
+			return items[i].Channel < items[j].Channel
+		}
+	})
+	return items, nil
+}
+
+func buildChannelReport(payload processing.CanonicalChannelPayload) ChannelReport {
+	scoreKeys := make([]string, 0, len(payload.Scores))
+	for key := range payload.Scores {
+		scoreKeys = append(scoreKeys, key)
+	}
+	sort.Slice(scoreKeys, func(i, j int) bool {
+		return scoreSortOrder(scoreKeys[i]) < scoreSortOrder(scoreKeys[j])
+	})
+
+	scores := make([]ChannelReportScore, 0, len(scoreKeys))
+	for _, key := range scoreKeys {
+		value, ok := payload.Scores[key].(float64)
+		if !ok {
+			continue
+		}
+		scores = append(scores, ChannelReportScore{
+			Key:   key,
+			Label: scoreLabel(key),
+			Value: value,
+		})
+	}
+
+	return ChannelReport{
+		Channel:      payload.Channel,
+		ModelVersion: payload.ModelVersion,
+		QualityFlags: append([]string(nil), payload.QualityFlags...),
+		Evidence:     append([]string(nil), payload.Evidence...),
+		Scores:       scores,
+	}
+}
+
+func scoreLabel(key string) string {
+	if label, ok := scoreLabelByKey[key]; ok {
+		return label
+	}
+	return key
+}
+
+func scoreSortOrder(key string) int {
+	order := []string{
+		"text_negativity_score",
+		"text_anxiety_score",
+		"text_confidence_score",
+		"text_coherence_score",
+		"text_evasion_score",
+		"acoustic_stress_score",
+		"voice_stability_score",
+		"intensity_variability_score",
+		"hesitation_score",
+		"speech_disorganization_score",
+	}
+	index := slices.Index(order, key)
+	if index >= 0 {
+		return index
+	}
+	if key == "" {
+		return len(order)
+	}
+	return len(order) + int(key[0])
 }
 
 func (r *SQLRepository) GetSpecialistHistory(ctx context.Context, specialistID int64) (SpecialistHistoryResponse, error) {

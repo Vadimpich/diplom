@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AUTH_REFRESH_COOKIE, AUTH_TOKEN_COOKIE, API_BASE_URL } from "@/lib/constants";
+import { AUTH_REFRESH_COOKIE, AUTH_TOKEN_COOKIE, INTERNAL_API_BASE_URL } from "@/lib/constants";
 import { clearAuthCookies, setAuthCookies } from "@/lib/auth";
 import type { LoginResponse, User } from "@/lib/api/types";
 
@@ -9,7 +9,7 @@ export async function GET() {
   const accessToken = cookieStore.get(AUTH_TOKEN_COOKIE)?.value;
 
   if (accessToken) {
-    const meResponse = await fetch(`${API_BASE_URL}/me`, {
+    const meResponse = await fetch(`${INTERNAL_API_BASE_URL}/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
     });
@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: "missing session" }, { status: 401 });
   }
 
-  const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+  const refreshResponse = await fetch(`${INTERNAL_API_BASE_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),

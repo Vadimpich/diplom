@@ -24,8 +24,8 @@ func TestIndependentChannelCompletion(t *testing.T) {
 		Attempt:        1,
 		Status:         processing.ResultStatusSucceeded,
 		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
-		ModelVersion:   "text-stub-0.1.0",
-		Payload:        json.RawMessage(`{"summary":"ok"}`),
+		ModelVersion:   "rubert-cedr-v1",
+		Payload:        canonicalPayload(processing.ChannelText, 100),
 	})
 	if err != nil {
 		t.Fatalf("apply successful result: %v", err)
@@ -61,7 +61,7 @@ func TestRetryBudget(t *testing.T) {
 		Attempt:        1,
 		Status:         processing.ResultStatusTemporaryError,
 		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
-		ModelVersion:   "text-stub-0.1.0",
+		ModelVersion:   "rubert-cedr-v1",
 		ErrorCode:      stringPtr("s3_unavailable"),
 		ErrorMessage:   stringPtr("temporary outage"),
 		Payload:        json.RawMessage(`{}`),
@@ -98,7 +98,7 @@ func TestFatalVsTemporaryError(t *testing.T) {
 		Attempt:        2,
 		Status:         processing.ResultStatusFatalError,
 		CompletedAt:    time.Unix(1_742_550_020, 0).UTC(),
-		ModelVersion:   "text-stub-0.1.0",
+		ModelVersion:   "rubert-cedr-v1",
 		ErrorCode:      stringPtr("invalid_payload"),
 		ErrorMessage:   stringPtr("unsupported document"),
 		Payload:        json.RawMessage(`{}`),
@@ -139,7 +139,7 @@ func TestMandatoryChannelExhaustionFailsExamination(t *testing.T) {
 		Attempt:        3,
 		Status:         processing.ResultStatusTemporaryError,
 		CompletedAt:    time.Unix(1_742_550_040, 0).UTC(),
-		ModelVersion:   "text-stub-0.1.0",
+		ModelVersion:   "rubert-cedr-v1",
 		ErrorCode:      stringPtr("timeout"),
 		ErrorMessage:   stringPtr("retry budget exhausted"),
 		Payload:        json.RawMessage(`{}`),
@@ -176,8 +176,8 @@ func TestResultsConsumerContinuesTrace(t *testing.T) {
 		Attempt:        1,
 		Status:         processing.ResultStatusSucceeded,
 		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
-		ModelVersion:   "text-stub-0.1.0",
-		Payload:        json.RawMessage(`{"summary":"ok"}`),
+		ModelVersion:   "rubert-cedr-v1",
+		Payload:        canonicalPayload(processing.ChannelText, 100),
 	})
 	if err != nil {
 		t.Fatalf("apply successful result: %v", err)
@@ -207,8 +207,8 @@ func TestResultReceiptWritesAuditEvent(t *testing.T) {
 		Attempt:        1,
 		Status:         processing.ResultStatusSucceeded,
 		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
-		ModelVersion:   "text-stub-0.1.0",
-		Payload:        json.RawMessage(`{"summary":"ok"}`),
+		ModelVersion:   "rubert-cedr-v1",
+		Payload:        canonicalPayload(processing.ChannelText, 100),
 	})
 	if err != nil {
 		t.Fatalf("apply result: %v", err)
@@ -221,11 +221,48 @@ func TestResultReceiptWritesAuditEvent(t *testing.T) {
 	}
 }
 
+func TestSucceededResultRequiresCanonicalPayload(t *testing.T) {
+	repo := newRepositoryStub()
+	service := channelresults.NewService(repo, nil)
+
+	err := service.ApplyResult(context.Background(), processing.ChannelResultEnvelope{
+		MessageVersion: processing.MessageVersionV1,
+		MessageID:      "msg-text-invalid",
+		CorrelationID:  "exam-100-text-v1",
+		ExaminationID:  100,
+		Channel:        processing.ChannelText,
+		Attempt:        1,
+		Status:         processing.ResultStatusSucceeded,
+		CompletedAt:    time.Unix(1_742_550_000, 0).UTC(),
+		ModelVersion:   "rubert-cedr-v1",
+		Payload:        json.RawMessage(`{"summary":"legacy"}`),
+	})
+	if err == nil {
+		t.Fatal("expected canonical payload validation error")
+	}
+}
+
 type repositoryStub struct {
 	runs              map[string]channelresults.ChannelRun
 	examinationStatus string
 	failedAt          *time.Time
 	savedResults      []channelresults.StoredResult
+}
+
+func canonicalPayload(channel string, examinationID int64) json.RawMessage {
+	data, _ := json.Marshal(processing.CanonicalChannelPayload{
+		Channel:          channel,
+		Status:           "done",
+		ExaminationID:    examinationID,
+		Features:         map[string]any{"feature": 1},
+		Scores:           map[string]any{"score": 0.5},
+		QualityFlags:     []string{},
+		Evidence:         []string{"ok"},
+		ModelVersion:     "test-v1",
+		ProcessingTimeMS: 10,
+		Error:            nil,
+	})
+	return data
 }
 
 func newRepositoryStub() *repositoryStub {

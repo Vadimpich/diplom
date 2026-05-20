@@ -98,6 +98,11 @@ func (s *Service) ApplyResult(ctx context.Context, envelope processing.ChannelRe
 	if err != nil {
 		return err
 	}
+	if envelope.Status == processing.ResultStatusSucceeded {
+		if err := validateCanonicalPayload(envelope); err != nil {
+			return err
+		}
+	}
 
 	stored := StoredResult{
 		ExaminationID:       envelope.ExaminationID,
@@ -157,6 +162,41 @@ func (s *Service) ApplyResult(ctx context.Context, envelope processing.ChannelRe
 		}
 	}
 	s.appendAudit(ctx, stored, run, envelope.Status)
+	return nil
+}
+
+func validateCanonicalPayload(envelope processing.ChannelResultEnvelope) error {
+	var payload processing.CanonicalChannelPayload
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return fmt.Errorf("decode canonical channel payload: %w", err)
+	}
+	if payload.Channel != envelope.Channel {
+		return fmt.Errorf("canonical channel payload mismatch: envelope=%s payload=%s", envelope.Channel, payload.Channel)
+	}
+	if payload.Status != "done" && payload.Status != "failed" {
+		return fmt.Errorf("unsupported canonical channel payload status %q", payload.Status)
+	}
+	if payload.ExaminationID != envelope.ExaminationID {
+		return fmt.Errorf("canonical examination_id mismatch: envelope=%d payload=%d", envelope.ExaminationID, payload.ExaminationID)
+	}
+	if payload.Features == nil {
+		return errors.New("canonical channel payload missing features")
+	}
+	if payload.Scores == nil {
+		return errors.New("canonical channel payload missing scores")
+	}
+	if payload.QualityFlags == nil {
+		return errors.New("canonical channel payload missing quality_flags")
+	}
+	if payload.Evidence == nil {
+		return errors.New("canonical channel payload missing evidence")
+	}
+	if payload.ModelVersion == "" {
+		return errors.New("canonical channel payload missing model_version")
+	}
+	if payload.ProcessingTimeMS < 0 {
+		return errors.New("canonical channel payload has negative processing_time_ms")
+	}
 	return nil
 }
 

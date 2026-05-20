@@ -131,17 +131,19 @@ FROM audit_logs
 WHERE
     ($1::text IS NULL OR event_type = $1::text)
     AND ($2::text IS NULL OR resource_kind = $2::text)
-    AND ($3::bigint IS NULL OR actor_user_id = $3::bigint)
-    AND ($4::bigint IS NULL OR examination_id = $4::bigint)
-    AND happened_at >= $5
-    AND happened_at <= $6
+    AND ($3::bigint IS NULL OR resource_id = $3::bigint)
+    AND ($4::bigint IS NULL OR actor_user_id = $4::bigint)
+    AND ($5::bigint IS NULL OR examination_id = $5::bigint)
+    AND happened_at >= $6
+    AND happened_at <= $7
 ORDER BY happened_at DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListAuditLogsParams struct {
 	EventType     pgtype.Text
 	ResourceKind  pgtype.Text
+	ResourceID    pgtype.Int8
 	ActorUserID   pgtype.Int8
 	ExaminationID pgtype.Int8
 	FromAt        pgtype.Timestamptz
@@ -153,6 +155,7 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([
 	rows, err := q.db.Query(ctx, listAuditLogs,
 		arg.EventType,
 		arg.ResourceKind,
+		arg.ResourceID,
 		arg.ActorUserID,
 		arg.ExaminationID,
 		arg.FromAt,

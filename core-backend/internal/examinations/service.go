@@ -31,6 +31,7 @@ type Examination struct {
 	SpecialistID    int64      `json:"specialist_id"`
 	CreatedByUserID int64      `json:"created_by_user_id"`
 	QuestionnaireID *int64     `json:"questionnaire_id,omitempty"`
+	Questions       []ExaminationQuestion `json:"questions,omitempty"`
 	Status          string     `json:"status"`
 	CreatedAt       time.Time  `json:"created_at"`
 	StartedAt       *time.Time `json:"started_at,omitempty"`
@@ -39,13 +40,13 @@ type Examination struct {
 }
 
 type ExaminationQuestion struct {
-	ID               int64
-	ExaminationID    int64
-	SpecialistID     int64
-	QuestionnaireID  int64
-	SourceQuestionID *int64
-	Position         int32
-	QuestionText     string
+	ID               int64  `json:"id"`
+	ExaminationID    int64  `json:"examination_id"`
+	SpecialistID     int64  `json:"specialist_id"`
+	QuestionnaireID  int64  `json:"questionnaire_id"`
+	SourceQuestionID *int64 `json:"source_question_id,omitempty"`
+	Position         int32  `json:"position"`
+	QuestionText     string `json:"text"`
 }
 
 type CreateInput struct {
@@ -58,6 +59,7 @@ type Repository interface {
 	Create(context.Context, CreateInput) (Examination, error)
 	List(context.Context) ([]Examination, error)
 	GetByID(context.Context, int64) (Examination, error)
+	ListQuestionsByExaminationID(context.Context, int64) ([]ExaminationQuestion, error)
 	ListBySpecialistID(context.Context, int64) ([]Examination, error)
 	UpdateStatus(context.Context, int64, string) (Examination, error)
 	Finish(context.Context, int64) (Examination, error)
@@ -143,7 +145,16 @@ func (s *Service) Start(ctx context.Context, id int64) (Examination, error) {
 }
 
 func (s *Service) GetByID(ctx context.Context, id int64) (Examination, error) {
-	return s.repo.GetByID(ctx, id)
+	exam, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return Examination{}, err
+	}
+	questions, err := s.repo.ListQuestionsByExaminationID(ctx, id)
+	if err != nil {
+		return Examination{}, err
+	}
+	exam.Questions = questions
+	return exam, nil
 }
 
 func (s *Service) ListBySpecialistID(ctx context.Context, specialistID int64) ([]Examination, error) {

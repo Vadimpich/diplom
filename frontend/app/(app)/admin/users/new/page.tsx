@@ -41,8 +41,8 @@ export default function NewUserPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Создать пользователя" description="Новая учётная запись для администратора или оператора." />
+    <div className="space-y-4">
+      <PageHeader title="Создать пользователя" />
 
       <UserForm
         mode="create"

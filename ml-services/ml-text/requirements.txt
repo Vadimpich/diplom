@@ -5,3 +5,5 @@ pydantic
 pytest
 httpx
 uvicorn
+faster-whisper
+transformers

@@ -105,6 +105,118 @@ func TestAggregationStartsDecisionDeliveryAfterFinalize(t *testing.T) {
 	}
 }
 
+func TestBuildDecisionPayloadHappyPath(t *testing.T) {
+	profile := newReadyAggregatedProfileForDecision()
+	payload, err := BuildDecisionPayload(profile, sampleChannelPayloads(), sampleBaselineMetricScores())
+	if err != nil {
+		t.Fatalf("build decision payload: %v", err)
+	}
+	if payload.DataReliability != 0.91 {
+		t.Fatalf("expected data reliability 0.91, got %.2f", payload.DataReliability)
+	}
+	if payload.Baseline.Source != "general" {
+		t.Fatalf("expected baseline source=general, got %q", payload.Baseline.Source)
+	}
+	if payload.DerivedIndicators.SemanticStressIndex <= 0 {
+		t.Fatal("expected semantic stress index to be derived")
+	}
+}
+
+func TestBuildDecisionPayloadFailsWhenMandatoryChannelMissing(t *testing.T) {
+	profile := newReadyAggregatedProfileForDecision()
+	payloads := sampleChannelPayloads()
+	delete(payloads, processing.ChannelText)
+
+	_, err := BuildDecisionPayload(profile, payloads, sampleBaselineMetricScores())
+	if err == nil {
+		t.Fatal("expected missing mandatory channel to fail aggregation payload build")
+	}
+}
+
+func TestBuildDecisionPayloadLowersReliabilityOnQualityFlags(t *testing.T) {
+	profile := newReadyAggregatedProfileForDecision()
+	profile.BaselineSnapshot.Personal.DataReliability = 0
+	payloads := sampleChannelPayloads()
+	payloads[processing.ChannelText] = processing.CanonicalChannelPayload{
+		Channel:      processing.ChannelText,
+		Status:       "done",
+		Scores:       payloads[processing.ChannelText].Scores,
+		QualityFlags: []string{"too_short_text", "empty_transcript"},
+	}
+
+	payload, err := BuildDecisionPayload(profile, payloads, sampleBaselineMetricScores())
+	if err != nil {
+		t.Fatalf("build decision payload: %v", err)
+	}
+	if payload.DataReliability >= 0.8 {
+		t.Fatalf("expected reduced reliability for low-quality data, got %.2f", payload.DataReliability)
+	}
+}
+
+func TestBuildDecisionPayloadFallsBackToGeneralBaseline(t *testing.T) {
+	profile := newReadyAggregatedProfileForDecision()
+	profile.BaselineSnapshot.Personal.BaselineAvailable = false
+	profile.BaselineSnapshot.Personal.BaselineSource = "general"
+	profile.BaselineSnapshot.Personal.BaselineExamCount = 2
+
+	payload, err := BuildDecisionPayload(profile, sampleChannelPayloads(), sampleBaselineMetricScores())
+	if err != nil {
+		t.Fatalf("build decision payload: %v", err)
+	}
+	if payload.Baseline.Available {
+		t.Fatal("expected personal baseline to be unavailable")
+	}
+	if payload.Baseline.Source != "general" {
+		t.Fatalf("expected general fallback source, got %q", payload.Baseline.Source)
+	}
+	if payload.Baseline.BaselineDeviationIndex != 0 {
+		t.Fatalf("expected immature general baseline to stay out of decision payload, got %.4f", payload.Baseline.BaselineDeviationIndex)
+	}
+	if payload.Baseline.ZScores[MetricKeyOverallDeviationIndex] != 0 {
+		t.Fatalf("expected immature baseline z-score to be suppressed, got %.4f", payload.Baseline.ZScores[MetricKeyOverallDeviationIndex])
+	}
+	if payload.DerivedIndicators.BaselineShiftIndex != 0 {
+		t.Fatalf("expected immature baseline shift to be suppressed, got %.4f", payload.DerivedIndicators.BaselineShiftIndex)
+	}
+}
+
+func TestBuildDecisionPayloadIncludesSignificantBaselineDeviation(t *testing.T) {
+	profile := newReadyAggregatedProfileForDecision()
+	profile.BaselineSnapshot.Personal.BaselineAvailable = true
+	profile.BaselineSnapshot.Personal.BaselineSource = "personal"
+	profile.BaselineSnapshot.Personal.SignificantDeviations = []string{MetricKeyOverallDeviationIndex, MetricKeyTextRiskSignal}
+
+	payload, err := BuildDecisionPayload(profile, sampleChannelPayloads(), sampleBaselineMetricScores())
+	if err != nil {
+		t.Fatalf("build decision payload: %v", err)
+	}
+	if len(payload.Baseline.SignificantDeviations) != 2 {
+		t.Fatalf("expected significant deviations to propagate, got %v", payload.Baseline.SignificantDeviations)
+	}
+	if payload.DerivedIndicators.BaselineShiftIndex <= 0 {
+		t.Fatal("expected positive baseline shift index")
+	}
+}
+
+func TestBuildDecisionPayloadKeepsPersonalBaselineStrength(t *testing.T) {
+	profile := newReadyAggregatedProfileForDecision()
+	profile.BaselineSnapshot.Personal.BaselineAvailable = true
+	profile.BaselineSnapshot.Personal.BaselineSource = "personal"
+	profile.BaselineSnapshot.Personal.Delta = 2.4
+	profile.BaselineSnapshot.Personal.BaselineExamCount = 5
+
+	payload, err := BuildDecisionPayload(profile, sampleChannelPayloads(), sampleBaselineMetricScores())
+	if err != nil {
+		t.Fatalf("build decision payload: %v", err)
+	}
+	if payload.Baseline.BaselineDeviationIndex < 0.5 {
+		t.Fatalf("expected mature personal baseline to keep strong signal, got %.4f", payload.Baseline.BaselineDeviationIndex)
+	}
+	if payload.Baseline.ZScores[MetricKeyOverallDeviationIndex] != 1.5 {
+		t.Fatalf("expected z-scores to remain unchanged for personal baseline, got %.4f", payload.Baseline.ZScores[MetricKeyOverallDeviationIndex])
+	}
+}
+
 type repositoryStub struct {
 	readiness Readiness
 	results   []PersistedChannelResult
@@ -144,24 +256,24 @@ func newReadyRepositoryStub() *repositoryStub {
 				ExaminationID: 101,
 				SpecialistID:  55,
 				Channel:       processing.ChannelText,
-				ModelVersion:  "text-stub-0.1.0",
-				Payload:       mustJSON(`{"text_total_characters":320,"text_non_empty_answers":4,"audio_total_bytes":16000}`),
+				ModelVersion:  "rubert-cedr-v1",
+				Payload:       mustJSON(`{"channel":"text","status":"done","examination_id":101,"answer_id":null,"features":{"word_count":42},"scores":{"text_negativity_score":0.28,"text_anxiety_score":0.34,"text_confidence_score":0.72,"text_coherence_score":0.82,"text_evasion_score":0.18},"quality_flags":[],"evidence":["text"],"model_version":"rubert-cedr-v1","processing_time_ms":120,"error":null}`),
 				CompletedAt:   time.Unix(1_742_550_008, 0).UTC(),
 			},
 			{
 				ExaminationID: 101,
 				SpecialistID:  55,
 				Channel:       processing.ChannelAcoustic,
-				ModelVersion:  "acoustic-stub-0.1.0",
-				Payload:       mustJSON(`{"audio_energy_proxy":14000,"audio_average_bytes":12000}`),
+				ModelVersion:  "acoustic-librosa-v1",
+				Payload:       mustJSON(`{"channel":"acoustic","status":"done","examination_id":101,"answer_id":null,"features":{"rms_energy_mean":0.14},"scores":{"acoustic_stress_score":0.46,"voice_stability_score":0.62,"intensity_variability_score":0.31},"quality_flags":[],"evidence":["acoustic"],"model_version":"acoustic-librosa-v1","processing_time_ms":90,"error":null}`),
 				CompletedAt:   time.Unix(1_742_550_009, 0).UTC(),
 			},
 			{
 				ExaminationID: 101,
 				SpecialistID:  55,
 				Channel:       processing.ChannelParalinguistic,
-				ModelVersion:  "paralinguistic-stub-0.1.0",
-				Payload:       mustJSON(`{"speech_rate_proxy":170,"prosody_variation_proxy":250}`),
+				ModelVersion:  "paralinguistic-vad-v1",
+				Payload:       mustJSON(`{"channel":"paralinguistic","status":"done","examination_id":101,"answer_id":null,"features":{"speech_ratio":0.57},"scores":{"hesitation_score":0.33,"speech_disorganization_score":0.22},"quality_flags":[],"evidence":["paralinguistic"],"model_version":"paralinguistic-vad-v1","processing_time_ms":70,"error":null}`),
 				CompletedAt:   time.Unix(1_742_550_010, 0).UTC(),
 			},
 		},
@@ -186,10 +298,94 @@ func (r *repositoryStub) LoadBaselineHistory(context.Context, int64, int64) (Bas
 	return BaselineHistory{}, nil
 }
 
+func (r *repositoryStub) LoadExistingBaseline(context.Context, int64) (ExistingBaselinePayload, error) {
+	return ExistingBaselinePayload{}, nil
+}
+
 func (r *repositoryStub) FinalizeAggregatedProfile(context.Context, FinalizeInput) error {
 	return nil
 }
 
 func mustJSON(value string) json.RawMessage {
 	return json.RawMessage(value)
+}
+
+func newReadyAggregatedProfileForDecision() AggregatedProfile {
+	return AggregatedProfile{
+		AggregationVersion: AggregationVersionV1,
+		ExaminationID:      101,
+		SpecialistID:       55,
+		GeneratedAt:        time.Unix(1_742_550_010, 0).UTC(),
+		Summary: ProfileSummary{
+			OverallScore:     0.39,
+			OverallBand:      "mild",
+			PrimaryMetricKey: MetricKeyOverallDeviationIndex,
+		},
+		BaselineSnapshot: BaselineSnapshot{
+			AlgorithmVersion: BaselineAlgorithmVersion,
+			General: BaselineDeviation{
+				Delta:             0.21,
+				Band:              "mild",
+				BaselineAvailable: true,
+				BaselineSource:    "general",
+			},
+			Personal: BaselineDeviation{
+				Delta:                 0.37,
+				Band:                  "moderate",
+				BaselineAvailable:     false,
+				BaselineSource:        "general",
+				DataReliability:       0.91,
+				SignificantDeviations: []string{MetricKeyOverallDeviationIndex},
+			},
+		},
+	}
+}
+
+func sampleChannelPayloads() ChannelPayloadMap {
+	return ChannelPayloadMap{
+		processing.ChannelText: {
+			Channel: processing.ChannelText,
+			Status:  "done",
+			Scores: map[string]any{
+				"text_negativity_score": 0.28,
+				"text_anxiety_score":    0.34,
+				"text_confidence_score": 0.72,
+				"text_coherence_score":  0.82,
+				"text_evasion_score":    0.18,
+			},
+			QualityFlags: []string{},
+		},
+		processing.ChannelAcoustic: {
+			Channel: processing.ChannelAcoustic,
+			Status:  "done",
+			Scores: map[string]any{
+				"acoustic_stress_score":       0.46,
+				"voice_stability_score":       0.62,
+				"intensity_variability_score": 0.31,
+			},
+			QualityFlags: []string{},
+		},
+		processing.ChannelParalinguistic: {
+			Channel: processing.ChannelParalinguistic,
+			Status:  "done",
+			Scores: map[string]any{
+				"hesitation_score":             0.33,
+				"speech_disorganization_score": 0.22,
+			},
+			QualityFlags: []string{},
+		},
+	}
+}
+
+func sampleBaselineMetricScores() map[string]BaselineMetricScore {
+	return map[string]BaselineMetricScore{
+		MetricKeyOverallDeviationIndex: {
+			ZScore:         1.5,
+			DeviationLevel: "mild",
+		},
+		MetricKeyTextRiskSignal: {
+			ZScore:         2.1,
+			DeviationLevel: "moderate",
+		},
+	}
 }

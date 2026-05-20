@@ -74,8 +74,15 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/20 px-4 py-10">
-      <Card className="w-full max-w-md border-border/80 shadow-panel">
-        <CardContent className="p-6">
+      <Card className="w-full max-w-md border-border/80 bg-white/90 shadow-panel">
+        <CardContent className="space-y-6 p-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-primary">Система оценки психоэмоционального состояния</p>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Вход в рабочее место</h1>
+              <p className="text-sm text-muted-foreground">Авторизуйтесь, чтобы продолжить работу.</p>
+            </div>
+          </div>
           <form className="space-y-4" onSubmit={form.handleSubmit((values) => loginMutation.mutate(values))}>
             <div className="space-y-2">
               <Label htmlFor="login">Логин</Label>
@@ -94,7 +101,7 @@ export default function LoginPage() {
             {loginMutation.isError ? (
               <Alert variant="danger">{(loginMutation.error as ApiError).message}</Alert>
             ) : null}
-            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+            <Button type="submit" className="h-11 w-full" disabled={loginMutation.isPending}>
               {loginMutation.isPending ? (
                 <>
                   <Spinner />

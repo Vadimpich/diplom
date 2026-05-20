@@ -1,18 +1,31 @@
-__pycache__/
-.pytest_cache/
 .DS_Store
+Thumbs.db
 
 # Editor and local tooling metadata
 .idea/
+.vscode/
 .codex/
 
 # Python caches anywhere in the repo
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 **/__pycache__/
 **/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.coverage
+coverage/
+htmlcov/
 
 # Frontend generated artifacts
 frontend/node_modules/
 frontend/.next/
+frontend/.turbo/
 frontend/tsconfig.tsbuildinfo
 
 # Common local env files
@@ -22,3 +35,23 @@ frontend/tsconfig.tsbuildinfo
 
 # Local virtual environments
 .venv/
+.venv*/
+
+# Local planning/debug output
+.planning/debug/
+output/
+tmp/
+*.log
+*.tmp
+*.swp
+
+# Downloaded ML model artifacts are prepared locally per machine.
+# Keep only directory placeholders in git.
+models/**
+!models/.gitkeep
+!models/stt/
+!models/stt/.gitkeep
+!models/text-emotion/
+!models/text-emotion/.gitkeep
+!models/acoustic-emotion/
+!models/acoustic-emotion/.gitkeep

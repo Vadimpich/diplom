@@ -85,11 +85,39 @@ func TestExaminationFinishWritesSingleAuditEvent(t *testing.T) {
 	}
 }
 
+func TestGetByIDReturnsSnapshotQuestions(t *testing.T) {
+	repo := &examRepoStub{
+		getByIDResult: Examination{
+			ID:           99,
+			SpecialistID: 3,
+			Status:       StatusCollectingAnswers,
+		},
+		listQuestionsResult: []ExaminationQuestion{
+			{ID: 501, ExaminationID: 99, SpecialistID: 3, Position: 1, QuestionText: "Первый вопрос"},
+			{ID: 502, ExaminationID: 99, SpecialistID: 3, Position: 2, QuestionText: "Второй вопрос"},
+		},
+	}
+	service := NewService(repo)
+
+	exam, err := service.GetByID(context.Background(), 99)
+	if err != nil {
+		t.Fatalf("get examination: %v", err)
+	}
+	if len(exam.Questions) != 2 {
+		t.Fatalf("expected 2 snapshot questions, got %d", len(exam.Questions))
+	}
+	if exam.Questions[0].ID != 501 || exam.Questions[1].ID != 502 {
+		t.Fatalf("unexpected question ids: %+v", exam.Questions)
+	}
+}
+
 type examRepoStub struct {
 	createInput  *CreateInput
 	createResult Examination
 	createErr    error
 	finishResult Examination
+	getByIDResult Examination
+	listQuestionsResult []ExaminationQuestion
 }
 
 func (s *examRepoStub) Create(_ context.Context, input CreateInput) (Examination, error) {
@@ -106,7 +134,11 @@ func (s *examRepoStub) List(context.Context) ([]Examination, error) {
 }
 
 func (s *examRepoStub) GetByID(context.Context, int64) (Examination, error) {
-	return Examination{}, nil
+	return s.getByIDResult, nil
+}
+
+func (s *examRepoStub) ListQuestionsByExaminationID(context.Context, int64) ([]ExaminationQuestion, error) {
+	return s.listQuestionsResult, nil
 }
 
 func (s *examRepoStub) ListBySpecialistID(context.Context, int64) ([]Examination, error) {

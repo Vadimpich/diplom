@@ -265,6 +265,41 @@ func (q *Queries) GetExaminationForUpdate(ctx context.Context, id int64) (GetExa
 	return i, err
 }
 
+const listExaminationQuestionsByExaminationID = `-- name: ListExaminationQuestionsByExaminationID :many
+SELECT id, examination_id, specialist_id, questionnaire_id, source_question_id, position, question_text
+FROM examination_questions
+WHERE examination_id = $1
+ORDER BY position, id
+`
+
+func (q *Queries) ListExaminationQuestionsByExaminationID(ctx context.Context, examinationID int64) ([]ExaminationQuestion, error) {
+	rows, err := q.db.Query(ctx, listExaminationQuestionsByExaminationID, examinationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExaminationQuestion
+	for rows.Next() {
+		var i ExaminationQuestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.ExaminationID,
+			&i.SpecialistID,
+			&i.QuestionnaireID,
+			&i.SourceQuestionID,
+			&i.Position,
+			&i.QuestionText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExaminations = `-- name: ListExaminations :many
 SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
 FROM examinations

@@ -30,12 +30,17 @@ type Config struct {
 	MaxAttempts int32
 }
 
+type MaxAttemptsProvider interface {
+	KESMIMaxRetries(context.Context) (int32, error)
+}
+
 type Service struct {
-	repo    Repository
-	exec    Executor
-	config  Config
-	auditor *audit.Service
-	nowFunc func() time.Time
+	repo                Repository
+	exec                Executor
+	config              Config
+	auditor             *audit.Service
+	nowFunc             func() time.Time
+	maxAttemptsProvider MaxAttemptsProvider
 }
 
 type Snapshot struct {
@@ -108,16 +113,31 @@ func NewService(repo Repository, exec Executor, cfg Config, auditors ...*audit.S
 	}
 }
 
+func (s *Service) WithMaxAttemptsProvider(provider MaxAttemptsProvider) *Service {
+	s.maxAttemptsProvider = provider
+	return s
+}
+
 func (s *Service) CreatePendingDecision(ctx context.Context, profile aggregation.AggregatedProfile) error {
 	if s.repo == nil {
 		return nil
 	}
-	input := NewDecisionInput(profile, DecisionServiceMetadata{
+	maxAttempts := s.config.MaxAttempts
+	if s.maxAttemptsProvider != nil {
+		value, err := s.maxAttemptsProvider.KESMIMaxRetries(ctx)
+		if err != nil {
+			return err
+		}
+		if value > 0 {
+			maxAttempts = value
+		}
+	}
+	input := NewDecisionInput(profile, aggregation.DecisionPayload{}, DecisionServiceMetadata{
 		TargetSystem: "kesmi",
 		DeliveryMode: "placeholder",
 		Message:      PlaceholderMessage,
 	})
-	_, err := s.repo.CreatePendingSnapshot(ctx, profile, input, s.config.MaxAttempts)
+	_, err := s.repo.CreatePendingSnapshot(ctx, profile, input, maxAttempts)
 	return err
 }
 
@@ -171,24 +191,41 @@ func (s *Service) DeliverPending(ctx context.Context, snapshot Snapshot) error {
 	diagnostics := diagnosticsFromExecution(response)
 
 	if response.State == "" {
-		finalize := FinalizeInput{
-			SnapshotID:     snapshot.ID,
-			ExaminationID:  snapshot.ExaminationID,
-			State:          DecisionStateSucceeded,
-			Recommendation: DecisionRecommendationUnavailable,
-			Message:        PlaceholderMessage,
-			CorrelationID:  correlationID,
-			AttemptCount:   attemptNumber,
-			LastAttemptAt:  finishedAt,
-			CompletedAt:    finishedAt,
-			Diagnostics:    diagnostics,
-			RawResponse:    response.RawResponse,
+		parsed, err := parseKESMIResult(response.RawResponse)
+		if err != nil {
+			response = ExecutionResponse{
+				State:        DecisionStateBusinessError,
+				ErrorClass:   "business",
+				ErrorCode:    "invalid_kesmi_response",
+				ErrorMessage: err.Error(),
+				HTTPStatus:   response.HTTPStatus,
+				Retryable:    false,
+				RawResponse:  response.RawResponse,
+			}
+			diagnostics = diagnosticsFromExecution(response)
+		} else {
+			finalize := FinalizeInput{
+				SnapshotID:     snapshot.ID,
+				ExaminationID:  snapshot.ExaminationID,
+				State:          DecisionStateSucceeded,
+				Recommendation: parsed.Recommendation,
+				Message:        parsed.Message,
+				DecisionCode:   parsed.DecisionCode,
+				RiskClass:      parsed.RiskClass,
+				Patterns:       append([]string(nil), parsed.Patterns...),
+				CorrelationID:  correlationID,
+				AttemptCount:   attemptNumber,
+				LastAttemptAt:  finishedAt,
+				CompletedAt:    finishedAt,
+				Diagnostics:    diagnostics,
+				RawResponse:    response.RawResponse,
+			}
+			if err := s.repo.MarkSucceeded(ctx, finalize); err != nil {
+				return err
+			}
+			s.appendAudit(ctx, snapshot, finalize)
+			return nil
 		}
-		if err := s.repo.MarkSucceeded(ctx, finalize); err != nil {
-			return err
-		}
-		s.appendAudit(ctx, snapshot, finalize)
-		return nil
 	}
 
 	if response.Retryable && attemptNumber < snapshot.MaxAttempts {
@@ -290,6 +327,8 @@ func (s *Service) appendAudit(ctx context.Context, snapshot Snapshot, finalize F
 			"state":          finalize.State,
 			"attempt_count":  finalize.AttemptCount,
 			"recommendation": finalize.Recommendation,
+			"decision_code":  finalize.DecisionCode,
+			"risk_class":     finalize.RiskClass,
 		}),
 	})
 }

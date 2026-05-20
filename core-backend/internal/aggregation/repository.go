@@ -8,8 +8,8 @@ import (
 
 	"diplom/internal/processing"
 	"diplom/internal/repository"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -209,10 +209,13 @@ SELECT
 	m.metric_key,
 	m.value
 FROM aggregated_examination_profiles p
+JOIN examination_baseline_snapshots baseline
+	ON baseline.examination_id = p.examination_id
 JOIN aggregated_profile_metrics m
 	ON m.profile_id = p.id
 WHERE p.specialist_id = $1
   AND p.status = 'aggregated'
+  AND baseline.update_eligible = TRUE
   AND p.examination_id <> $2
 ORDER BY p.generated_at ASC, p.id ASC, m.metric_key ASC`
 
@@ -254,6 +257,62 @@ ORDER BY p.generated_at ASC, p.id ASC, m.metric_key ASC`
 	}, nil
 }
 
+func (r *SQLRepository) LoadExistingBaseline(ctx context.Context, specialistID int64) (ExistingBaselinePayload, error) {
+	const query = `
+SELECT baseline_exam_count, metrics
+FROM specialist_baseline_states
+WHERE specialist_id = $1`
+
+	var examCount int
+	var raw []byte
+	err := r.queryRow(ctx, query, specialistID).Scan(&examCount, &raw)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ExistingBaselinePayload{BaselineAvailable: false, Metrics: map[string]ExistingBaselineMetric{}}, nil
+		}
+		return ExistingBaselinePayload{}, err
+	}
+	metrics, err := decodeExistingBaselineMetrics(raw)
+	if err != nil {
+		return ExistingBaselinePayload{}, err
+	}
+	baselineAvailable := false
+	for _, item := range metrics {
+		if item.SampleCount >= 5 {
+			baselineAvailable = true
+			break
+		}
+	}
+	return ExistingBaselinePayload{
+		BaselineAvailable: baselineAvailable || examCount >= 5,
+		Metrics:           metrics,
+	}, nil
+}
+
+func decodeExistingBaselineMetrics(raw []byte) (map[string]ExistingBaselineMetric, error) {
+	metrics := map[string]ExistingBaselineMetric{}
+	if len(raw) == 0 || string(raw) == "null" {
+		return metrics, nil
+	}
+	if err := json.Unmarshal(raw, &metrics); err == nil {
+		return metrics, nil
+	}
+
+	// Older baseline states stored proxy-era centers/scales payloads. They are no
+	// longer compatible with the current stable-metrics baseline and should be
+	// treated as absent instead of poisoning the processing.results consumer.
+	var legacy struct {
+		Centers   map[string]float64 `json:"centers"`
+		Scales    map[string]float64 `json:"scales"`
+		ExamCount int                `json:"exam_count"`
+	}
+	if err := json.Unmarshal(raw, &legacy); err == nil && (len(legacy.Centers) > 0 || len(legacy.Scales) > 0 || legacy.ExamCount > 0) {
+		return map[string]ExistingBaselineMetric{}, nil
+	}
+
+	return nil, errors.New("decode existing baseline metrics: unsupported metrics payload format")
+}
+
 func (r *SQLRepository) FinalizeAggregatedProfile(ctx context.Context, input FinalizeInput) error {
 	tx, err := r.begin(ctx)
 	if err != nil {
@@ -275,6 +334,14 @@ FOR UPDATE`
 	}
 
 	nextBaseline, err := json.Marshal(input.Baseline.NextBaseline)
+	if err != nil {
+		return err
+	}
+	significantDeviations, err := json.Marshal(input.Baseline.PersonalDeviation.SignificantDeviations)
+	if err != nil {
+		return err
+	}
+	baselineMetricScores, err := json.Marshal(input.Baseline.PersonalDeviation.MetricScores)
 	if err != nil {
 		return err
 	}
@@ -307,14 +374,22 @@ INSERT INTO examination_baseline_snapshots (
 	refreshed_at,
 	general_delta,
 	general_band,
+	general_baseline_available,
+	general_baseline_source,
 	general_reference_population_version,
 	personal_delta,
 	personal_band,
+	personal_baseline_available,
+	personal_baseline_source,
 	baseline_exam_count,
+	data_reliability,
+	significant_deviations,
+	baseline_metric_scores,
+	candidate_metrics,
 	update_eligible,
 	update_reason
 )
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb,$18::jsonb,$19,$20)
 ON CONFLICT (examination_id) DO NOTHING`
 	if _, err := tx.Exec(
 		ctx,
@@ -325,46 +400,20 @@ ON CONFLICT (examination_id) DO NOTHING`
 		input.Baseline.RefreshedAt.UTC(),
 		input.Baseline.GeneralDeviation.Score,
 		input.Baseline.GeneralDeviation.Band,
+		input.Baseline.GeneralDeviation.BaselineAvailable,
+		input.Baseline.GeneralDeviation.BaselineSource,
 		"general-v1",
 		input.Baseline.PersonalDeviation.Score,
 		input.Baseline.PersonalDeviation.Band,
+		input.Baseline.PersonalDeviation.BaselineAvailable,
+		input.Baseline.PersonalDeviation.BaselineSource,
 		input.Baseline.UpdateEligibility.BaselineExamCountAfterUpdate,
-		input.Baseline.UpdateEligibility.Eligible,
-		input.Baseline.UpdateEligibility.Reason,
-	); err != nil {
-		return err
-	}
-
-	const baselineStateQuery = `
-INSERT INTO specialist_baseline_states (
-	specialist_id,
-	algorithm_version,
-	refreshed_at,
-	baseline_exam_count,
-	update_eligible,
-	update_reason,
-	metrics
-)
-VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
-ON CONFLICT (specialist_id) DO UPDATE
-SET
-	algorithm_version = EXCLUDED.algorithm_version,
-	refreshed_at = EXCLUDED.refreshed_at,
-	baseline_exam_count = EXCLUDED.baseline_exam_count,
-	update_eligible = EXCLUDED.update_eligible,
-	update_reason = EXCLUDED.update_reason,
-	metrics = EXCLUDED.metrics,
-	updated_at = NOW()`
-	if _, err := tx.Exec(
-		ctx,
-		baselineStateQuery,
-		input.Profile.SpecialistID,
-		input.Baseline.AlgorithmVersion,
-		input.Baseline.RefreshedAt.UTC(),
-		input.Baseline.UpdateEligibility.BaselineExamCountAfterUpdate,
-		input.Baseline.UpdateEligibility.Eligible,
-		input.Baseline.UpdateEligibility.Reason,
+		input.Baseline.UpdateEligibility.DataReliability,
+		significantDeviations,
+		baselineMetricScores,
 		nextBaseline,
+		input.Baseline.UpdateEligibility.Eligible,
+		input.Baseline.UpdateEligibility.Reason,
 	); err != nil {
 		return err
 	}

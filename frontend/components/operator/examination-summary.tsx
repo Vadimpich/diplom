@@ -1,23 +1,24 @@
 import { ExaminationStatusBadge } from "@/components/operator/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Answer, Examination, Questionnaire, Specialist } from "@/lib/api/types";
+import type { Answer, Examination, ExaminationQuestionSnapshot, Specialist } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/utils";
 
 export function ExaminationSummary({
   examination,
   specialist,
-  questionnaire,
+  questions,
   answers,
 }: {
   examination: Examination;
   specialist?: Specialist;
-  questionnaire?: Questionnaire | null;
+  questions: ExaminationQuestionSnapshot[];
   answers: Answer[];
 }) {
-  const totalQuestions = questionnaire?.questions.length ?? 0;
+  const totalQuestions = questions.length;
   const savedAnswers = answers.length;
   const remainingAnswers = totalQuestions > 0 ? Math.max(totalQuestions - savedAnswers, 0) : null;
-  const nextQuestion = questionnaire?.questions[savedAnswers] ?? null;
+  const answeredQuestionIDs = new Set(answers.map((answer) => answer.examination_question_id));
+  const nextQuestion = questions.find((question) => !answeredQuestionIDs.has(question.id)) ?? null;
   const completionPercent =
     totalQuestions > 0 ? Math.min(Math.round((savedAnswers / totalQuestions) * 100), 100) : 0;
 
@@ -98,7 +99,7 @@ export function ExaminationSummary({
           ) : (
             <div className="space-y-3">
               {answers.map((answer, index) => {
-                const question = questionnaire?.questions[index];
+                const question = questions.find((item) => item.id === answer.examination_question_id) ?? questions[index];
 
                 return (
                   <div key={answer.id} className="rounded-2xl border border-border/70 p-4">
@@ -113,7 +114,10 @@ export function ExaminationSummary({
                       </div>
                       <p className="text-xs text-muted-foreground">{formatDateTime(answer.created_at)}</p>
                     </div>
-                    <p className="mt-3 text-sm text-foreground/80">{answer.text || "Текст ответа не указан."}</p>
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-secondary/25 px-3 py-2 text-sm">
+                      <span className="font-medium text-foreground">Аудиозапись сохранена</span>
+                      <span className="text-muted-foreground">Ответ {index + 1}</span>
+                    </div>
                   </div>
                 );
               })}

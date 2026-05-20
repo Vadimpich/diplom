@@ -1,9 +1,9 @@
 import asyncio
-import hashlib
 import json
 import logging
 import os
 import signal
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,11 +17,11 @@ from fastapi.responses import JSONResponse
 from minio import Minio
 from minio.error import S3Error
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from app.analysis import AnalysisConfig, MODEL_VERSION, analyze_audio_bytes
 from app.telemetry import metrics_payload, ready_payload, test_mode
 
 
 CHANNEL = "paralinguistic"
-MODEL_VERSION = "paralinguistic-stub-0.1.0"
 COMMAND_QUEUE = os.getenv("WORKER_QUEUE_NAME", "qq.processing.paralinguistic")
 COMMAND_ROUTING_KEY = os.getenv("WORKER_COMMAND_ROUTING_KEY", "processing.command.paralinguistic")
 
@@ -78,6 +78,10 @@ class WorkerConfig:
     s3_access_key: str
     s3_secret_key: str
     s3_use_ssl: bool
+    long_pause_threshold_ms: int
+    min_speech_duration_ms: int
+    low_speech_ratio_threshold: float
+    vad_aggressiveness: int
 
 
 class TemporaryProcessingError(Exception):
@@ -122,6 +126,10 @@ def load_config() -> WorkerConfig:
         s3_access_key=os.getenv("MINIO_ACCESS_KEY_ID", os.getenv("MINIO_ROOT_USER", "")),
         s3_secret_key=os.getenv("MINIO_SECRET_ACCESS_KEY", os.getenv("MINIO_ROOT_PASSWORD", "")),
         s3_use_ssl=env_bool("MINIO_USE_SSL", False),
+        long_pause_threshold_ms=int(os.getenv("PARALINGUISTIC_LONG_PAUSE_THRESHOLD_MS", "1200")),
+        min_speech_duration_ms=int(os.getenv("PARALINGUISTIC_MIN_SPEECH_DURATION_MS", "700")),
+        low_speech_ratio_threshold=float(os.getenv("PARALINGUISTIC_LOW_SPEECH_RATIO_THRESHOLD", "0.15")),
+        vad_aggressiveness=int(os.getenv("PARALINGUISTIC_VAD_AGGRESSIVENESS", "2")),
     )
 
 
@@ -225,7 +233,7 @@ class WorkerState:
                         "audio_s3_key": answer.audio_s3_key,
                         "answer_text": answer.answer_text,
                         "bytes": len(content),
-                        "sha256": hashlib.sha256(content).hexdigest(),
+                        "content": content,
                     }
                 )
             except S3Error as exc:
@@ -340,17 +348,107 @@ class WorkerState:
 
 
 def build_payload(command: ProcessingCommandEnvelope, fetched_objects: list[dict[str, Any]]) -> dict[str, Any]:
-    total_bytes = sum(item["bytes"] for item in fetched_objects)
-    average_chars = sum(len(item["answer_text"]) for item in fetched_objects) / len(fetched_objects)
-    digest = hashlib.sha256("".join(item["sha256"] for item in fetched_objects).encode("utf-8")).hexdigest()
+    started_at = time.perf_counter()
+    analysis_config = AnalysisConfig(
+        long_pause_threshold_ms=config.long_pause_threshold_ms,
+        min_speech_duration_ms=config.min_speech_duration_ms,
+        low_speech_ratio_threshold=config.low_speech_ratio_threshold,
+        vad_aggressiveness=config.vad_aggressiveness,
+    )
+    answer_results = []
+    for item in fetched_objects:
+        word_count = len(item["answer_text"].split()) if item["answer_text"].strip() else None
+        result = analyze_audio_bytes(item["content"], word_count=word_count, config=analysis_config)
+        answer_results.append(
+            {
+                "answer_id": item["answer_id"],
+                "question_id": item["question_id"],
+                "audio_s3_key": item["audio_s3_key"],
+                "bytes": item["bytes"],
+                "result": result,
+            }
+        )
+
+    payload = aggregate_answer_results(answer_results)
+    payload["examination_id"] = command.examination_id
+    payload["answer_id"] = answer_results[0]["answer_id"] if len(answer_results) == 1 else None
+    payload["processing_time_ms"] = int(round((time.perf_counter() - started_at) * 1000))
+    payload["error"] = None
+    return payload
+
+
+def aggregate_answer_results(answer_results: list[dict[str, Any]]) -> dict[str, Any]:
+    if not answer_results:
+        return analyze_audio_bytes(b"")
+
+    total_duration = sum(item["result"]["features"]["total_audio_duration_ms"] for item in answer_results)
+    speech_duration = sum(item["result"]["features"]["speech_duration_ms"] for item in answer_results)
+    silence_duration = max(total_duration - speech_duration, 0)
+    pause_count = sum(item["result"]["features"]["pause_count"] for item in answer_results)
+    long_pause_count = sum(item["result"]["features"]["long_pause_count"] for item in answer_results)
+    segment_count = sum(item["result"]["features"]["speech_segment_count"] for item in answer_results)
+    max_pause = max((item["result"]["features"]["max_pause_ms"] for item in answer_results), default=0)
+    weighted_pause_sum = sum(
+        item["result"]["features"]["mean_pause_ms"] * item["result"]["features"]["pause_count"]
+        for item in answer_results
+    )
+    response_delays = [
+        item["result"]["features"]["response_delay_ms"]
+        for item in answer_results
+        if item["result"]["features"]["total_audio_duration_ms"] > 0
+    ]
+    speech_rates = [
+        item["result"]["features"]["speech_rate_wpm"]
+        for item in answer_results
+        if item["result"]["features"]["speech_rate_wpm"] is not None
+    ]
+    quality_flags = sorted({flag for item in answer_results for flag in item["result"]["quality_flags"]})
+    scores = {
+        "hesitation_score": round(
+            sum(item["result"]["scores"]["hesitation_score"] for item in answer_results) / len(answer_results),
+            4,
+        ),
+        "speech_disorganization_score": round(
+            sum(item["result"]["scores"]["speech_disorganization_score"] for item in answer_results) / len(answer_results),
+            4,
+        ),
+    }
+    features = {
+        "total_audio_duration_ms": total_duration,
+        "speech_duration_ms": speech_duration,
+        "silence_duration_ms": silence_duration,
+        "speech_ratio": round(speech_duration / total_duration, 4) if total_duration > 0 else 0.0,
+        "response_delay_ms": round(sum(response_delays) / len(response_delays), 2) if response_delays else 0,
+        "pause_count": pause_count,
+        "long_pause_count": long_pause_count,
+        "mean_pause_ms": round(weighted_pause_sum / pause_count, 2) if pause_count > 0 else 0,
+        "max_pause_ms": max_pause,
+        "speech_segment_count": segment_count,
+        "speech_rate_wpm": round(sum(speech_rates) / len(speech_rates), 2) if speech_rates else None,
+    }
+    evidence = [
+        f"Речь занимает {round(features['speech_ratio'] * 100, 1)}% суммарного аудио.",
+        f"Обработано аудиоответов: {len(answer_results)}.",
+        f"Обнаружено пауз между речевыми сегментами: {pause_count}.",
+        f"Длинных пауз: {long_pause_count}.",
+        f"Средняя задержка до первой речи: {features['response_delay_ms']} мс.",
+    ]
+    if quality_flags:
+        evidence.append(f"Флаги качества: {', '.join(quality_flags)}.")
+
     return {
-        "summary": "paralinguistic worker stub result",
-        "answers_processed": len(fetched_objects),
-        "audio_total_bytes": total_bytes,
-        "speech_rate_proxy": round(average_chars, 2),
-        "prosody_variation_proxy": round((total_bytes / max(len(fetched_objects), 1)) % 1000, 2),
-        "artifact_digest": digest[:16],
-        "requested_at": command.requested_at.isoformat(),
+        "channel": CHANNEL,
+        "status": "done",
+        "examination_id": None,
+        "answer_id": None,
+        "features": features,
+        "scores": scores,
+        "quality_flags": quality_flags,
+        "evidence": evidence,
+        "model_version": MODEL_VERSION,
+        "processing_time_ms": 0,
+        "error": None,
+        "answers": answer_results,
     }
 
 

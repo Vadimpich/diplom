@@ -97,29 +97,33 @@ export default function OperatorHistoryPage() {
       <Card>
         <CardContent className="space-y-4 p-5">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <Input
-              placeholder="Найти запись"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: "all", label: "Все" },
-                { key: "attention", label: "Требует внимания" },
-                { key: "active", label: "В работе" },
-                { key: "completed", label: "С итогом" },
-              ].map((item) => (
-                <Button
-                  key={item.key}
-                  type="button"
-                  variant={filter === item.key ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter(item.key as typeof filter)}
-                >
-                  {item.label}
-                </Button>
-              ))}
-            </div>
+            <label className="flex flex-col gap-1 text-sm">
+              <Input
+                placeholder="Найти запись"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "all", label: "Все" },
+                  { key: "attention", label: "Требует внимания" },
+                  { key: "active", label: "В работе" },
+                  { key: "completed", label: "С итогом" },
+                ].map((item) => (
+                  <Button
+                    key={item.key}
+                    type="button"
+                    variant={filter === item.key ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilter(item.key as typeof filter)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            </label>
           </div>
 
           {examinationsQuery.isLoading ? (
@@ -144,13 +148,13 @@ export default function OperatorHistoryPage() {
           ) : null}
 
           {!examinationsQuery.isLoading && !examinationsQuery.isError && examinationItems.length === 0 ? (
-            <EmptyState title="История пока пуста" description="Записи появятся после первых обследований." />
+            <EmptyState title="История пока пуста" description="" />
           ) : null}
 
           {!examinationsQuery.isLoading && !examinationsQuery.isError && examinationItems.length > 0 && filtered.length === 0 ? (
             <EmptyState
-              title="Совпадений не найдено"
-              description="Снимите фильтр или уточните запрос."
+              title="По выбранным фильтрам записей нет"
+              description=""
               action={
                 <Button
                   type="button"

@@ -33,6 +33,7 @@ type ExaminationResultResponse struct {
 	Summary              ExaminationSummary          `json:"summary"`
 	Metrics              []ExaminationMetric         `json:"metrics"`
 	ChannelContributions []ChannelContribution       `json:"channel_contributions"`
+	ChannelReports       []ChannelReport             `json:"channel_reports"`
 	Explanations         []Explanation               `json:"explanations"`
 	BaselineSnapshot     ExaminationBaselineSnapshot `json:"baseline_snapshot"`
 	Decision             DecisionResultView          `json:"decision"`
@@ -61,6 +62,20 @@ type ChannelContribution struct {
 	EvidenceKeys []string `json:"evidence_keys"`
 }
 
+type ChannelReport struct {
+	Channel      string               `json:"channel"`
+	ModelVersion string               `json:"model_version"`
+	QualityFlags []string             `json:"quality_flags"`
+	Evidence     []string             `json:"evidence"`
+	Scores       []ChannelReportScore `json:"scores"`
+}
+
+type ChannelReportScore struct {
+	Key   string  `json:"key"`
+	Label string  `json:"label"`
+	Value float64 `json:"value"`
+}
+
 type Explanation struct {
 	Position int    `json:"position"`
 	Kind     string `json:"kind"`
@@ -70,9 +85,12 @@ type Explanation struct {
 type BaselineDeviation struct {
 	Delta                      float64 `json:"delta"`
 	Band                       string  `json:"band"`
+	BaselineAvailable          bool    `json:"baseline_available,omitempty"`
+	BaselineSource             string  `json:"baseline_source,omitempty"`
 	ReferencePopulationVersion string  `json:"reference_population_version,omitempty"`
 	BaselineExamCount          int     `json:"baseline_exam_count,omitempty"`
 	UpdateEligible             bool    `json:"update_eligible,omitempty"`
+	DataReliability            float64 `json:"data_reliability,omitempty"`
 }
 
 type ExaminationBaselineSnapshot struct {
@@ -94,6 +112,9 @@ type DecisionResultView struct {
 	State                string                  `json:"state"`
 	Recommendation       string                  `json:"recommendation"`
 	Message              string                  `json:"message"`
+	DecisionCode         string                  `json:"decision_code,omitempty"`
+	RiskClass            string                  `json:"risk_class,omitempty"`
+	Patterns             []string                `json:"patterns,omitempty"`
 	CorrelationID        string                  `json:"correlation_id"`
 	AttemptCount         int32                   `json:"attempt_count"`
 	MaxAttempts          int32                   `json:"max_attempts"`

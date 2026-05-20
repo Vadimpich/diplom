@@ -71,53 +71,56 @@ export default function SpecialistsPage() {
       <Card>
         <CardContent className="space-y-4 p-5">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <Input
-              placeholder="Найти специалиста"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: "all", label: "Все", count: counts.length },
-                {
-                  key: "active",
-                  label: "В работе",
-                  count: counts.filter(
-                    (item) => item.last_examination_status !== null && item.last_examination_status !== "completed",
-                  ).length,
-                },
-                {
-                  key: "completed",
-                  label: "С итогом",
-                  count: counts.filter((item) => item.last_examination_status === "completed").length,
-                },
-                {
-                  key: "no_history",
-                  label: "Без истории",
-                  count: counts.filter((item) => item.examinations_count === 0).length,
-                },
-              ].map((item) => (
-                <Button
-                  key={item.key}
-                  type="button"
-                  variant={filter === item.key ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter(item.key as typeof filter)}
-                >
-                  {item.label} {item.count}
-                </Button>
-              ))}
-            </div>
+            <label className="flex flex-col gap-1 text-sm">
+              <Input
+                placeholder="Найти специалиста"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "all", label: "Все", count: counts.length },
+                  {
+                    key: "active",
+                    label: "В работе",
+                    count: counts.filter(
+                      (item) => item.last_examination_status !== null && item.last_examination_status !== "completed",
+                    ).length,
+                  },
+                  {
+                    key: "completed",
+                    label: "С итогом",
+                    count: counts.filter((item) => item.last_examination_status === "completed").length,
+                  },
+                  {
+                    key: "no_history",
+                    label: "Без истории",
+                    count: counts.filter((item) => item.examinations_count === 0).length,
+                  },
+                ].map((item) => (
+                  <Button
+                    key={item.key}
+                    type="button"
+                    variant={filter === item.key ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilter(item.key as typeof filter)}
+                  >
+                    {item.label} <span className="ml-1 opacity-70">{item.count}</span>
+                  </Button>
+                ))}
+              </div>
+            </label>
           </div>
 
           {specialistsQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="grid grid-cols-[1.7fr_0.9fr_0.9fr_auto] gap-4 rounded-2xl border border-border/70 px-4 py-4">
+                <div key={index} className="grid grid-cols-[1.7fr_0.8fr_1fr] gap-4 rounded-2xl border border-border/70 px-4 py-4">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-9 w-24" />
                 </div>
               ))}
             </div>
@@ -147,7 +150,6 @@ export default function SpecialistsPage() {
               items={items}
               emptyTitle="Совпадений не найдено"
               emptyDescription="Снимите фильтр или уточните запрос."
-              actionLabel="Открыть"
             />
           )}
         </CardContent>

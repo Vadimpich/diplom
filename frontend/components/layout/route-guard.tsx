@@ -42,6 +42,14 @@ export function RouteGuard({
     });
   }, [isError, router]);
 
+  useEffect(() => {
+    if (isLoading || isError || data) {
+      return;
+    }
+
+    router.replace("/login");
+  }, [data, isError, isLoading, router]);
+
   if (isLoading || hasRoleMismatch) {
     return (
       <div className="space-y-6">
@@ -88,7 +96,38 @@ export function RouteGuard({
   }
 
   if (!data) {
-    return null;
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-10 w-full max-w-md" />
+          <Skeleton className="h-5 w-full max-w-2xl" />
+        </div>
+        <div className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
+          <Card>
+            <CardHeader className="space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-full max-w-xl" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="space-y-3">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-full max-w-xs" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

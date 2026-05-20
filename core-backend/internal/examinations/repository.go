@@ -95,6 +95,28 @@ func (r *SQLCRepository) GetByID(ctx context.Context, id int64) (Examination, er
 	return mapGetExamination(row), nil
 }
 
+func (r *SQLCRepository) ListQuestionsByExaminationID(ctx context.Context, examinationID int64) ([]ExaminationQuestion, error) {
+	rows, err := r.queries.ListExaminationQuestionsByExaminationID(ctx, examinationID)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]ExaminationQuestion, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, ExaminationQuestion{
+			ID:               row.ID,
+			ExaminationID:    row.ExaminationID,
+			SpecialistID:     row.SpecialistID,
+			QuestionnaireID:  row.QuestionnaireID,
+			SourceQuestionID: int64Ptr(row.SourceQuestionID),
+			Position:         row.Position,
+			QuestionText:     row.QuestionText,
+		})
+	}
+
+	return items, nil
+}
+
 func (r *SQLCRepository) ListBySpecialistID(ctx context.Context, specialistID int64) ([]Examination, error) {
 	if _, err := r.queries.GetSpecialistByID(ctx, specialistID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -314,6 +336,14 @@ func buildExamination(
 		exam.QuestionnaireID = &questionnaireID.Int64
 	}
 	return exam
+}
+
+func int64Ptr(value pgtype.Int8) *int64 {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Int64
+	return &result
 }
 
 func int8Value(value *int64) pgtype.Int8 {

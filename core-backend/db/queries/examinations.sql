@@ -36,6 +36,12 @@ SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_
 FROM examinations
 WHERE id = $1;
 
+-- name: ListExaminationQuestionsByExaminationID :many
+SELECT id, examination_id, specialist_id, questionnaire_id, source_question_id, position, question_text
+FROM examination_questions
+WHERE examination_id = $1
+ORDER BY position, id;
+
 -- name: GetExaminationForUpdate :one
 SELECT id, specialist_id, created_by_user_id, questionnaire_id, status, created_at, started_at, finished_at, updated_at
 FROM examinations

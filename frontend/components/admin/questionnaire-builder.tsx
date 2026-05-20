@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { SubmitHandler, UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ export function QuestionnaireBuilder({
   successMessage?: string;
 }) {
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const submitLabel = mode === "create" ? "Создать опросник" : "Сохранить опросник";
   const isDirty = form.formState.isDirty;
 
@@ -55,22 +56,11 @@ export function QuestionnaireBuilder({
 
   return (
     <Card className="max-w-4xl">
-      <CardHeader className="gap-1.5 pb-4">
-        <CardTitle>{mode === "create" ? "Новый опросник" : "Состав опросника"}</CardTitle>
-        <CardDescription>
-          {mode === "create"
-            ? "Задайте название, короткое описание и список вопросов перед первым сохранением."
-            : "Обновляйте название, публикацию и порядок вопросов в одной форме."}
-        </CardDescription>
+      <CardHeader className="pb-4">
+        <CardTitle>{mode === "create" ? "Новый опросник" : "Редактирование опросника"}</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-          {isDirty ? (
-            <Alert variant="warning">
-              Есть несохранённые изменения. Если закрыть страницу или перейти в другой раздел сейчас, правки потеряются.
-            </Alert>
-          ) : null}
-
           <div className="space-y-1.5">
             <Label htmlFor="title">Название</Label>
             <Input id="title" placeholder="Например, предсменный скрининг" {...form.register("title")} />
@@ -84,48 +74,52 @@ export function QuestionnaireBuilder({
             <Textarea
               id="description"
               className="min-h-[96px]"
-              placeholder="Кратко опишите, для какого обследования используется этот набор вопросов"
+              placeholder="Описание"
               {...form.register("description")}
             />
             {form.formState.errors.description ? (
               <p className="text-sm text-danger">{form.formState.errors.description.message}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Поле необязательное, но помогает отличать похожие наборы вопросов.
-              </p>
-              )}
+            ) : null}
           </div>
 
-          <label className="flex items-start gap-3 rounded-2xl border border-border/70 bg-surface/50 px-4 py-3 text-sm">
+          <label className="flex items-start gap-3 rounded-2xl border border-border/70 px-4 py-3 text-sm">
             <input type="checkbox" className="mt-1 h-4 w-4" {...form.register("is_active")} />
             <span className="space-y-1">
               <span className="block font-medium text-foreground">Опросник опубликован</span>
-              <span className="block text-muted-foreground">
-                Активный опросник доступен оператору при создании новых обследований.
-              </span>
+              <span className="block text-muted-foreground">Доступен при создании обследования.</span>
             </span>
           </label>
 
           <div className="space-y-3">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">Вопросы</p>
-                <p className="text-sm text-muted-foreground">Вопросы будут заданы оператором в указанном порядке.</p>
-              </div>
+              <p className="text-sm font-medium text-foreground">Вопросы</p>
               <Button type="button" variant="outline" onClick={() => fieldArray.append({ text: "" })}>
                 Добавить вопрос
               </Button>
             </div>
 
             {fieldArray.fields.map((field, index) => (
-              <div key={field.id} className="rounded-2xl border border-border/70 bg-surface/40 px-4 py-3">
+              <div
+                key={field.id}
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex === null || dragIndex === index) {
+                    setDragIndex(null);
+                    return;
+                  }
+                  fieldArray.move(dragIndex, index);
+                  setDragIndex(null);
+                }}
+                onDragEnd={() => setDragIndex(null)}
+                className="rounded-2xl border border-border/70 px-4 py-3"
+              >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <Label htmlFor={`question-${field.id}`}>Вопрос {index + 1}</Label>
-                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        Позиция {index + 1}
-                      </span>
+                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Перетащите</span>
                     </div>
                     <Textarea
                       id={`question-${field.id}`}
@@ -140,28 +134,12 @@ export function QuestionnaireBuilder({
                     ) : null}
                   </div>
 
-                  <div className="flex flex-wrap gap-2 lg:w-[12.5rem] lg:justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fieldArray.move(index, index - 1)}
-                      disabled={index === 0}
-                    >
-                      Вверх
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fieldArray.move(index, index + 1)}
-                      disabled={index === fieldArray.fields.length - 1}
-                    >
-                      Вниз
-                    </Button>
+                  <div className="flex flex-wrap gap-2 lg:w-[7rem] lg:justify-end">
                     <ConfirmDialog
                       open={removeIndex === index}
                       onOpenChange={(open) => setRemoveIndex(open ? index : null)}
                       title="Удалить вопрос?"
-                      description="Вопрос исчезнет из текущего набора до сохранения. Проверьте порядок перед подтверждением."
+                      description="Вопрос исчезнет из текущего набора."
                       confirmLabel="Удалить вопрос"
                       trigger={
                         <Button

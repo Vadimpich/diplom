@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	sqlcdb "diplom/db/sqlc"
 	"diplom/internal/aggregation"
+	"diplom/internal/processing"
 	"diplom/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -25,6 +27,9 @@ type FinalizeInput struct {
 	State          string
 	Recommendation string
 	Message        string
+	DecisionCode   string
+	RiskClass      string
+	Patterns       []string
 	CorrelationID  string
 	AttemptCount   int32
 	LastAttemptAt  time.Time
@@ -88,9 +93,21 @@ func (r *SQLRepository) LoadDecisionInput(ctx context.Context, examinationID int
 	if err != nil {
 		return DecisionInput{}, err
 	}
-	return NewDecisionInput(profile, DecisionServiceMetadata{
+	channelPayloads, err := r.loadChannelPayloads(ctx, examinationID)
+	if err != nil {
+		return DecisionInput{}, err
+	}
+	baselineMetricScores, err := r.loadBaselineMetricScores(ctx, examinationID)
+	if err != nil {
+		return DecisionInput{}, err
+	}
+	payload, err := aggregation.BuildDecisionPayload(profile, channelPayloads, baselineMetricScores)
+	if err != nil {
+		return DecisionInput{}, err
+	}
+	return NewDecisionInput(profile, payload, DecisionServiceMetadata{
 		TargetSystem: "kesmi",
-		DeliveryMode: "placeholder",
+		DeliveryMode: "canonical_kesmi_payload",
 		Message:      PlaceholderMessage,
 	}), nil
 }
@@ -163,11 +180,13 @@ func (r *SQLRepository) MarkSucceeded(ctx context.Context, input FinalizeInput) 
 	}); err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(ctx, `
+	if _, err := r.pool.Exec(ctx, `
 UPDATE examinations
 SET status = 'completed', finished_at = $2, updated_at = NOW()
-WHERE id = $1`, input.ExaminationID, input.CompletedAt.UTC())
-	return err
+WHERE id = $1`, input.ExaminationID, input.CompletedAt.UTC()); err != nil {
+		return err
+	}
+	return r.applyBaselineUpdate(ctx, input.ExaminationID, input.Recommendation, input.CompletedAt.UTC(), true)
 }
 
 func (r *SQLRepository) MarkFailed(ctx context.Context, input FinalizeInput) error {
@@ -189,11 +208,157 @@ func (r *SQLRepository) MarkFailed(ctx context.Context, input FinalizeInput) err
 	}); err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(ctx, `
+	if _, err := r.pool.Exec(ctx, `
 UPDATE examinations
 SET status = 'completed', finished_at = $2, updated_at = NOW()
-WHERE id = $1`, input.ExaminationID, input.CompletedAt.UTC())
+WHERE id = $1`, input.ExaminationID, input.CompletedAt.UTC()); err != nil {
+		return err
+	}
+	return r.applyBaselineUpdate(ctx, input.ExaminationID, input.Recommendation, input.CompletedAt.UTC(), false)
+}
+
+type baselineCandidateRow struct {
+	SpecialistID        int64
+	AlgorithmVersion    string
+	BaselineExamCount   int
+	UpdateEligible      bool
+	UpdateReason        *string
+	OverallBand         string
+	CandidateMetricsRaw []byte
+}
+
+func (r *SQLRepository) applyBaselineUpdate(
+	ctx context.Context,
+	examinationID int64,
+	recommendation string,
+	completedAt time.Time,
+	decisionSucceeded bool,
+) error {
+	const query = `
+SELECT
+    profiles.specialist_id,
+    baseline.algorithm_version,
+    baseline.baseline_exam_count,
+    baseline.update_eligible,
+    baseline.update_reason,
+    profiles.overall_band,
+    baseline.candidate_metrics
+FROM examination_baseline_snapshots baseline
+JOIN aggregated_examination_profiles profiles
+    ON profiles.id = baseline.profile_id
+WHERE baseline.examination_id = $1`
+
+	var row baselineCandidateRow
+	err := r.pool.QueryRow(ctx, query, examinationID).Scan(
+		&row.SpecialistID,
+		&row.AlgorithmVersion,
+		&row.BaselineExamCount,
+		&row.UpdateEligible,
+		&row.UpdateReason,
+		&row.OverallBand,
+		&row.CandidateMetricsRaw,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	finalEligible := row.UpdateEligible && decisionSucceeded && !blocksBaselineRecommendation(recommendation)
+	finalReason := "accepted"
+	if !row.UpdateEligible {
+		finalReason = stringOrDefault(row.UpdateReason, "baseline_ineligible")
+	} else if !decisionSucceeded {
+		finalReason = "decision_not_succeeded"
+	} else if blocksBaselineRecommendation(recommendation) {
+		finalReason = "decision_blocked"
+	}
+
+	finalExamCount := row.BaselineExamCount
+	if finalEligible {
+		metrics, err := extractBaselineMetrics(row.CandidateMetricsRaw)
+		if err != nil {
+			return err
+		}
+		metricsJSON, err := json.Marshal(metrics)
+		if err != nil {
+			return err
+		}
+		finalExamCount = baselineExamCount(metrics)
+		const upsertState = `
+INSERT INTO specialist_baseline_states (
+    specialist_id,
+    algorithm_version,
+    refreshed_at,
+    baseline_exam_count,
+    update_eligible,
+    update_reason,
+    metrics
+)
+VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
+ON CONFLICT (specialist_id) DO UPDATE
+SET
+    algorithm_version = EXCLUDED.algorithm_version,
+    refreshed_at = EXCLUDED.refreshed_at,
+    baseline_exam_count = EXCLUDED.baseline_exam_count,
+    update_eligible = EXCLUDED.update_eligible,
+    update_reason = EXCLUDED.update_reason,
+    metrics = EXCLUDED.metrics,
+    updated_at = NOW()`
+		if _, err := r.pool.Exec(
+			ctx,
+			upsertState,
+			row.SpecialistID,
+			row.AlgorithmVersion,
+			completedAt,
+			finalExamCount,
+			true,
+			finalReason,
+			metricsJSON,
+		); err != nil {
+			return err
+		}
+	}
+
+	const updateSnapshot = `
+UPDATE examination_baseline_snapshots
+SET
+    baseline_exam_count = $2,
+    update_eligible = $3,
+    update_reason = $4
+WHERE examination_id = $1`
+	_, err = r.pool.Exec(ctx, updateSnapshot, examinationID, finalExamCount, finalEligible, finalReason)
 	return err
+}
+
+func blocksBaselineRecommendation(recommendation string) bool {
+	return recommendation == DecisionRecommendationDenied
+}
+
+func extractBaselineMetrics(raw []byte) (map[string]aggregation.ExistingBaselineMetric, error) {
+	var payload aggregation.NextBaseline
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("decode next baseline candidate: %w", err)
+	}
+	return payload.Metrics, nil
+}
+
+func baselineExamCount(metrics map[string]aggregation.ExistingBaselineMetric) int {
+	count := 0
+	for _, item := range metrics {
+		if item.SampleCount > count {
+			count = item.SampleCount
+		}
+	}
+	return count
+}
+
+func stringOrDefault(value *string, fallback string) string {
+	if value == nil || *value == "" {
+		return fallback
+	}
+	return *value
 }
 
 func snapshotFromDB(row sqlcdb.DecisionSnapshot) Snapshot {
@@ -236,11 +401,17 @@ SELECT
 	b.refreshed_at,
 	b.general_delta,
 	b.general_band,
+	b.general_baseline_available,
+	b.general_baseline_source,
 	b.general_reference_population_version,
 	b.personal_delta,
 	b.personal_band,
+	b.personal_baseline_available,
+	b.personal_baseline_source,
 	b.baseline_exam_count,
-	b.update_eligible
+	b.update_eligible,
+	b.data_reliability,
+	b.significant_deviations
 FROM aggregated_examination_profiles p
 LEFT JOIN examination_baseline_snapshots b
 	ON b.profile_id = p.id
@@ -252,8 +423,12 @@ WHERE p.examination_id = $1
 	var refreshedAt *time.Time
 	var generalDelta, personalDelta *float64
 	var generalBand, personalBand *string
+	var generalAvailable, personalAvailable *bool
+	var generalSource, personalSource *string
 	var baselineExamCount *int
 	var updateEligible *bool
+	var dataReliability *float64
+	var significantDeviationsRaw []byte
 	err := r.pool.QueryRow(ctx, profileQuery, examinationID).Scan(
 		&profile.ExaminationID,
 		&profile.SpecialistID,
@@ -269,11 +444,17 @@ WHERE p.examination_id = $1
 		&refreshedAt,
 		&generalDelta,
 		&generalBand,
+		&generalAvailable,
+		&generalSource,
 		&generalRef,
 		&personalDelta,
 		&personalBand,
+		&personalAvailable,
+		&personalSource,
 		&baselineExamCount,
 		&updateEligible,
+		&dataReliability,
+		&significantDeviationsRaw,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -290,6 +471,12 @@ WHERE p.examination_id = $1
 	if generalBand != nil {
 		profile.BaselineSnapshot.General.Band = *generalBand
 	}
+	if generalAvailable != nil {
+		profile.BaselineSnapshot.General.BaselineAvailable = *generalAvailable
+	}
+	if generalSource != nil {
+		profile.BaselineSnapshot.General.BaselineSource = *generalSource
+	}
 	if generalRef != nil {
 		profile.BaselineSnapshot.General.ReferencePopulationVersion = *generalRef
 	}
@@ -299,11 +486,25 @@ WHERE p.examination_id = $1
 	if personalBand != nil {
 		profile.BaselineSnapshot.Personal.Band = *personalBand
 	}
+	if personalAvailable != nil {
+		profile.BaselineSnapshot.Personal.BaselineAvailable = *personalAvailable
+	}
+	if personalSource != nil {
+		profile.BaselineSnapshot.Personal.BaselineSource = *personalSource
+	}
 	if baselineExamCount != nil {
 		profile.BaselineSnapshot.Personal.BaselineExamCount = *baselineExamCount
 	}
 	if updateEligible != nil {
 		profile.BaselineSnapshot.Personal.UpdateEligible = *updateEligible
+	}
+	if dataReliability != nil {
+		profile.BaselineSnapshot.Personal.DataReliability = *dataReliability
+	}
+	if len(significantDeviationsRaw) > 0 {
+		if err := json.Unmarshal(significantDeviationsRaw, &profile.BaselineSnapshot.Personal.SignificantDeviations); err != nil {
+			return aggregation.AggregatedProfile{}, err
+		}
 	}
 
 	profile.Metrics, err = r.loadMetrics(ctx, examinationID)
@@ -319,6 +520,63 @@ WHERE p.examination_id = $1
 		return aggregation.AggregatedProfile{}, err
 	}
 	return profile, nil
+}
+
+func (r *SQLRepository) loadChannelPayloads(ctx context.Context, examinationID int64) (aggregation.ChannelPayloadMap, error) {
+	const query = `
+SELECT channel, payload
+FROM channel_results
+WHERE examination_id = $1
+  AND status = 'succeeded'
+ORDER BY completed_at DESC`
+
+	rows, err := r.pool.Query(ctx, query, examinationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make(aggregation.ChannelPayloadMap, len(processing.MandatoryChannels))
+	for rows.Next() {
+		var channel string
+		var raw []byte
+		if err := rows.Scan(&channel, &raw); err != nil {
+			return nil, err
+		}
+		if _, exists := items[channel]; exists {
+			continue
+		}
+		var payload processing.CanonicalChannelPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			return nil, fmt.Errorf("decode channel payload %s: %w", channel, err)
+		}
+		items[channel] = payload
+	}
+	return items, rows.Err()
+}
+
+func (r *SQLRepository) loadBaselineMetricScores(ctx context.Context, examinationID int64) (map[string]aggregation.BaselineMetricScore, error) {
+	const query = `
+SELECT baseline_metric_scores
+FROM examination_baseline_snapshots
+WHERE examination_id = $1`
+
+	var raw []byte
+	err := r.pool.QueryRow(ctx, query, examinationID).Scan(&raw)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return map[string]aggregation.BaselineMetricScore{}, nil
+		}
+		return nil, err
+	}
+	if len(raw) == 0 {
+		return map[string]aggregation.BaselineMetricScore{}, nil
+	}
+	var scores map[string]aggregation.BaselineMetricScore
+	if err := json.Unmarshal(raw, &scores); err != nil {
+		return nil, fmt.Errorf("decode baseline metric scores: %w", err)
+	}
+	return scores, nil
 }
 
 func (r *SQLRepository) loadMetrics(ctx context.Context, examinationID int64) ([]aggregation.Metric, error) {

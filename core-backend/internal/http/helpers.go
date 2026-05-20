@@ -15,6 +15,7 @@ import (
 	"diplom/internal/processing"
 	"diplom/internal/questionnaires"
 	"diplom/internal/repository"
+	"diplom/internal/settings"
 	"diplom/internal/specialists"
 )
 
@@ -66,6 +67,8 @@ func mapDomainError(err error) (int, string) {
 		return http.StatusConflict, "processing status is not available for this examination"
 	case errors.Is(err, questionnaires.ErrInvalidInput):
 		return http.StatusBadRequest, "invalid questionnaire payload"
+	case errors.Is(err, settings.ErrInvalidInput):
+		return http.StatusBadRequest, "invalid settings payload"
 	case errors.Is(err, answers.ErrInvalidInput):
 		return http.StatusBadRequest, "invalid answer payload"
 	case errors.Is(err, answers.ErrExaminationNotReady):

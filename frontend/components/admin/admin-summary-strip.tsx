@@ -335,7 +335,10 @@ export function AdminSummaryStrip() {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{auditEventLabel(event.event_type)}</p>
                     <p className="truncate text-muted-foreground">
-                      {event.actor.login || "Системное действие"} • {event.resource.kind} #{event.resource.id}
+                      {event.actor?.login || "Системное действие"} •{" "}
+                      {event.resource?.kind
+                        ? `${event.resource.kind}${event.resource.id ? ` #${event.resource.id}` : ""}`
+                        : "связанный объект не указан"}
                     </p>
                   </div>
                   <div>

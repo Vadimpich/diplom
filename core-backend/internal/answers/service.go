@@ -77,7 +77,7 @@ func NewService(repo Repository, storage Storage) *Service {
 
 func (s *Service) Create(ctx context.Context, input CreateInput) (Answer, error) {
 	input.Text = strings.TrimSpace(input.Text)
-	if input.ExaminationID <= 0 || input.ExaminationQuestionID <= 0 || input.SpecialistID <= 0 || input.CreatedByUserID <= 0 || input.Text == "" || input.Content == nil || input.FileName == "" {
+	if input.ExaminationID <= 0 || input.ExaminationQuestionID <= 0 || input.SpecialistID <= 0 || input.CreatedByUserID <= 0 || input.Content == nil || input.FileName == "" {
 		return Answer{}, ErrInvalidInput
 	}
 

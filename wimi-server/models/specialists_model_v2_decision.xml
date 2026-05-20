@@ -1,0 +1,776 @@
+<model id="{a51f0d7c-6de1-4f7d-9a11-91f874f10001}" shortName="ПсихоэмоциональнаяМЭС_v2" formatXmlVersion="2.0" description="МЭС оценки психоэмоционального состояния специалиста, входы decision-input-v2">
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10002}" shortName="Обследование">
+<parameters/>
+<rules>
+<rule id="r1" shortName="text_semantic_stress" relation="rel1" resultId="semantic_stress:p1" initId="text_anxiety_score:i2;text_negativity_score:i1;text_evasion_score:i5;semantic_stress_index:i19;data_reliability:i18"/>
+<rule id="r2" shortName="text_negative_affect" relation="rel2" resultId="negative_affect:p2" initId="text_negativity_score:i1;text_anxiety_score:i2;text_evasion_score:i5;text_risk_z:i14;data_reliability:i18"/>
+<rule id="r3" shortName="text_self_control" relation="rel3" resultId="self_control:p3" initId="text_confidence_score:i3;text_coherence_score:i4;data_reliability:i18"/>
+<rule id="r4" shortName="text_coherence_drop" relation="rel4" resultId="coherence_drop:p4" initId="text_coherence_score:i4;text_evasion_score:i5;data_reliability:i18"/>
+<rule id="r5" shortName="acoustic_activation" relation="rel5" resultId="acoustic_activation:p5" initId="acoustic_stress_score:i6;intensity_variability_score:i8;acoustic_activation_index:i20;data_reliability:i18"/>
+<rule id="r6" shortName="tempo_disturbance" relation="rel6" resultId="tempo_disturbance:p6" initId="voice_stability_score:i7;intensity_variability_score:i8;speech_stability_z:i17;data_reliability:i18"/>
+<rule id="r7" shortName="voice_instability" relation="rel7" resultId="voice_instability:p7" initId="voice_stability_score:i7;speech_stability_z:i17;data_reliability:i18"/>
+<rule id="r8" shortName="pause_overload" relation="rel8" resultId="pause_overload:p8" initId="speech_disorganization_score:i10;speech_disorganization_index:i21;paralinguistic_behavior_z:i16;data_reliability:i18"/>
+<rule id="r9" shortName="hesitation_overload" relation="rel9" resultId="hesitation_overload:p9" initId="hesitation_score:i9;speech_disorganization_score:i10;data_reliability:i18"/>
+<rule id="r10" shortName="latency_problem" relation="rel10" resultId="latency_problem:p10" initId="speech_disorganization_score:i10;hesitation_score:i9;paralinguistic_behavior_z:i16;data_reliability:i18"/>
+<rule id="r11" shortName="baseline_shift" relation="rel11" resultId="baseline_shift:p11" initId="baseline_available:i11;baseline_deviation_index:i12;overall_deviation_z:i13;text_risk_z:i14;acoustic_stress_z:i15;paralinguistic_behavior_z:i16;speech_stability_z:i17;baseline_shift_index:i22"/>
+<rule id="r12" shortName="text_alarm" relation="rel12" resultId="text_alarm:p12" initId="negative_affect:p2;self_control:p3;semantic_stress:p1;coherence_drop:p4"/>
+<rule id="r13" shortName="text_depression" relation="rel13" resultId="text_depression:p13" initId="negative_affect:p2;self_control:p3;coherence_drop:p4"/>
+<rule id="r14" shortName="acoustic_alarm" relation="rel14" resultId="acoustic_alarm:p14" initId="voice_instability:p7;acoustic_activation:p5;tempo_disturbance:p6"/>
+<rule id="r15" shortName="acoustic_depression" relation="rel15" resultId="acoustic_depression:p15" initId="voice_instability:p7;tempo_disturbance:p6;acoustic_activation:p5"/>
+<rule id="r16" shortName="speech_disorganization" relation="rel16" resultId="speech_disorganization:p16" initId="hesitation_overload:p9;coherence_drop:p4;pause_overload:p8;latency_problem:p10"/>
+<rule id="r17" shortName="speech_slowdown" relation="rel17" resultId="speech_slowdown:p17" initId="pause_overload:p8;tempo_disturbance:p6;latency_problem:p10"/>
+<rule id="r18" shortName="baseline_alarm" relation="rel18" resultId="baseline_alarm:p18" initId="baseline_shift:p11"/>
+<rule id="r19" shortName="hidden_stress" relation="rel19" resultId="hidden_stress:p19" initId="self_control:p3;baseline_alarm:p18;acoustic_alarm:p14;text_alarm:p12"/>
+<rule id="r20" shortName="open_stress" relation="rel20" resultId="open_stress:p20" initId="text_alarm:p12;acoustic_alarm:p14;speech_disorganization:p16"/>
+<rule id="r21" shortName="cognitive_overload" relation="rel21" resultId="cognitive_overload:p21" initId="coherence_drop:p4;speech_disorganization:p16;latency_problem:p10;pause_overload:p8"/>
+<rule id="r22" shortName="fatigue_state" relation="rel22" resultId="fatigue_state:p22" initId="text_depression:p13;speech_slowdown:p17;pause_overload:p8;voice_instability:p7"/>
+<rule id="r23" shortName="depressive_pattern" relation="rel23" resultId="depressive_pattern:p23" initId="text_depression:p13;self_control:p3;acoustic_depression:p15"/>
+<rule id="r24" shortName="compensation_breakdown" relation="rel24" resultId="compensation_breakdown:p24" initId="hidden_stress:p19;self_control:p3;baseline_alarm:p18;text_alarm:p12"/>
+<rule id="r25" shortName="unstable_selfregulation" relation="rel25" resultId="unstable_selfregulation:p25" initId="voice_instability:p7;open_stress:p20;compensation_breakdown:p24"/>
+<rule id="r26" shortName="atypical_response" relation="rel26" resultId="atypical_response:p26" initId="text_alarm:p12;baseline_alarm:p18;acoustic_alarm:p14;speech_disorganization:p16"/>
+<rule id="r27" shortName="risk_attention" relation="rel27" resultId="risk_attention:p27" initId="hidden_stress:p19;atypical_response:p26;fatigue_state:p22;baseline_alarm:p18"/>
+<rule id="r28" shortName="risk_functional_decline" relation="rel28" resultId="risk_functional_decline:p28" initId="depressive_pattern:p23;cognitive_overload:p21;fatigue_state:p22;speech_slowdown:p17"/>
+<rule id="r29" shortName="risk_critical" relation="rel29" resultId="risk_critical:p29" initId="unstable_selfregulation:p25;atypical_response:p26;compensation_breakdown:p24;baseline_alarm:p18"/>
+<rule id="r30" shortName="risk_classification" relation="rel30" resultId="risk_class:p30" initId="risk_compensation:p39;risk_attention:p27;risk_emotional:p38;risk_critical:p29;baseline_alarm:p18;risk_functional_decline:p28;risk_retest:p40"/>
+<rule id="r31" shortName="operator_action" relation="rel31" resultId="operator_action:p31" initId="risk_class:p30;cognitive_overload:p21;baseline_alarm:p18;risk_retest:p40;baseline_sensitive_case:p37"/>
+<rule id="r32" shortName="final_decision" relation="rel32" resultId="final_decision:p32" initId="operator_action:p31;risk_class:p30;baseline_sensitive_case:p37;compensation_breakdown:p24"/>
+<rule id="r33" shortName="final_summary" relation="rel33" resultId="final_summary:p33" initId="hidden_stress:p19;depressive_pattern:p23;risk_class:p30;masked_distress:p35;open_stress:p20;contradictory_profile:p36;final_decision:p32;cognitive_overload:p21;emotional_cross:p34;fatigue_state:p22;baseline_sensitive_case:p37;compensation_breakdown:p24"/>
+<rule id="r34" shortName="emotional_cross" relation="rel34" resultId="emotional_cross:p34" initId="negative_affect:p2;text_alarm:p12;acoustic_alarm:p14"/>
+<rule id="r35" shortName="masked_distress" relation="rel35" resultId="masked_distress:p35" initId="hidden_stress:p19;coherence_drop:p4;pause_overload:p8;self_control:p3"/>
+<rule id="r36" shortName="contradictory_profile" relation="rel36" resultId="contradictory_profile:p36" initId="self_control:p3;acoustic_alarm:p14;speech_disorganization:p16;text_alarm:p12"/>
+<rule id="r37" shortName="baseline_sensitive_case" relation="rel37" resultId="baseline_sensitive_case:p37" initId="depressive_pattern:p23;baseline_alarm:p18;atypical_response:p26;fatigue_state:p22;open_stress:p20"/>
+<rule id="r38" shortName="risk_emotional" relation="rel38" resultId="risk_emotional:p38" initId="negative_affect:p2;open_stress:p20;emotional_cross:p34;text_alarm:p12"/>
+<rule id="r39" shortName="risk_compensation" relation="rel39" resultId="risk_compensation:p39" initId="hidden_stress:p19;masked_distress:p35;compensation_breakdown:p24;contradictory_profile:p36"/>
+<rule id="r40" shortName="risk_retest" relation="rel40" resultId="risk_retest:p40" initId="contradictory_profile:p36;atypical_response:p26;baseline_sensitive_case:p37;baseline_alarm:p18"/>
+</rules>
+<constraints/>
+<classes>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10003}" shortName="Входные данные">
+<parameters/>
+<rules/>
+<constraints/>
+<classes>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10004}" shortName="Текстовый канал">
+<parameters>
+<parameter id="i1" shortName="text_negativity_score" type="double"/>
+<parameter id="i2" shortName="text_anxiety_score" type="double"/>
+<parameter id="i3" shortName="text_confidence_score" type="double"/>
+<parameter id="i4" shortName="text_coherence_score" type="double"/>
+<parameter id="i5" shortName="text_evasion_score" type="double"/>
+<parameter id="i19" shortName="semantic_stress_index" type="double"/>
+</parameters>
+<rules/>
+<constraints/>
+<classes/>
+</class>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10005}" shortName="Акустический канал">
+<parameters>
+<parameter id="i6" shortName="acoustic_stress_score" type="double"/>
+<parameter id="i7" shortName="voice_stability_score" type="double"/>
+<parameter id="i8" shortName="intensity_variability_score" type="double"/>
+<parameter id="i20" shortName="acoustic_activation_index" type="double"/>
+</parameters>
+<rules/>
+<constraints/>
+<classes/>
+</class>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10006}" shortName="Паралингвистический канал">
+<parameters>
+<parameter id="i9" shortName="hesitation_score" type="double"/>
+<parameter id="i10" shortName="speech_disorganization_score" type="double"/>
+<parameter id="i21" shortName="speech_disorganization_index" type="double"/>
+</parameters>
+<rules/>
+<constraints/>
+<classes/>
+</class>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10007}" shortName="Baseline">
+<parameters>
+<parameter id="i11" shortName="baseline_available" type="double"/>
+<parameter id="i12" shortName="baseline_deviation_index" type="double"/>
+<parameter id="i13" shortName="overall_deviation_z" type="double"/>
+<parameter id="i14" shortName="text_risk_z" type="double"/>
+<parameter id="i15" shortName="acoustic_stress_z" type="double"/>
+<parameter id="i16" shortName="paralinguistic_behavior_z" type="double"/>
+<parameter id="i17" shortName="speech_stability_z" type="double"/>
+<parameter id="i22" shortName="baseline_shift_index" type="double"/>
+</parameters>
+<rules/>
+<constraints/>
+<classes/>
+</class>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10010}" shortName="Надёжность данных">
+<parameters>
+<parameter id="i18" shortName="data_reliability" type="double"/>
+</parameters>
+<rules/>
+<constraints/>
+<classes/>
+</class>
+</classes>
+</class>
+<class id="{a51f0d7c-6de1-4f7d-9a11-91f874f10008}" shortName="Выходные данные">
+<parameters>
+<parameter id="p1" shortName="semantic_stress" type="string"/>
+<parameter id="p10" shortName="latency_problem" type="string"/>
+<parameter id="p11" shortName="baseline_shift" type="string"/>
+<parameter id="p12" shortName="text_alarm" type="string"/>
+<parameter id="p13" shortName="text_depression" type="string"/>
+<parameter id="p14" shortName="acoustic_alarm" type="string"/>
+<parameter id="p15" shortName="acoustic_depression" type="string"/>
+<parameter id="p16" shortName="speech_disorganization" type="string"/>
+<parameter id="p17" shortName="speech_slowdown" type="string"/>
+<parameter id="p18" shortName="baseline_alarm" type="string"/>
+<parameter id="p19" shortName="hidden_stress" type="string"/>
+<parameter id="p2" shortName="negative_affect" type="string"/>
+<parameter id="p20" shortName="open_stress" type="string"/>
+<parameter id="p21" shortName="cognitive_overload" type="string"/>
+<parameter id="p22" shortName="fatigue_state" type="string"/>
+<parameter id="p23" shortName="depressive_pattern" type="string"/>
+<parameter id="p24" shortName="compensation_breakdown" type="string"/>
+<parameter id="p25" shortName="unstable_selfregulation" type="string"/>
+<parameter id="p26" shortName="atypical_response" type="string"/>
+<parameter id="p27" shortName="risk_attention" type="string"/>
+<parameter id="p28" shortName="risk_functional_decline" type="string"/>
+<parameter id="p29" shortName="risk_critical" type="string"/>
+<parameter id="p3" shortName="self_control" type="string"/>
+<parameter id="p30" shortName="risk_class" type="string"/>
+<parameter id="p31" shortName="operator_action" type="string"/>
+<parameter id="p32" shortName="final_decision" type="string"/>
+<parameter id="p33" shortName="final_summary" type="string"/>
+<parameter id="p34" shortName="emotional_cross" type="string"/>
+<parameter id="p35" shortName="masked_distress" type="string"/>
+<parameter id="p36" shortName="contradictory_profile" type="string"/>
+<parameter id="p37" shortName="baseline_sensitive_case" type="string"/>
+<parameter id="p38" shortName="risk_emotional" type="string"/>
+<parameter id="p39" shortName="risk_compensation" type="string"/>
+<parameter id="p4" shortName="coherence_drop" type="string"/>
+<parameter id="p40" shortName="risk_retest" type="string"/>
+<parameter id="p5" shortName="acoustic_activation" type="string"/>
+<parameter id="p6" shortName="tempo_disturbance" type="string"/>
+<parameter id="p7" shortName="voice_instability" type="string"/>
+<parameter id="p8" shortName="pause_overload" type="string"/>
+<parameter id="p9" shortName="hesitation_overload" type="string"/>
+</parameters>
+<rules/>
+<constraints/>
+<classes/>
+</class>
+</classes>
+</class>
+<relations>
+<relation id="rel1" shortName="text_semantic_stress" inObj="text_anxiety_score:double;text_negativity_score:double;text_evasion_score:double;semantic_stress_index:double;data_reliability:double" relationType="prog" outObj="semantic_stress:string">
+      var text_anxiety_score,text_negativity_score,text_evasion_score,semantic_stress_index,data_reliability,semantic_stress;
+      
+      if(data_reliability&lt;0.35){
+        semantic_stress="unknown";
+      }
+      else if(semantic_stress_index&gt;=0.70||text_anxiety_score&gt;=0.65||(text_negativity_score&gt;=0.60&amp;&amp;text_evasion_score&gt;=0.55)){
+        semantic_stress="high";
+      }
+      else if(semantic_stress_index&gt;=0.45||text_anxiety_score&gt;=0.40||text_negativity_score&gt;=0.45||text_evasion_score&gt;=0.45){
+        semantic_stress="medium";
+      }
+      else{
+        semantic_stress="low";
+      }
+</relation>
+<relation id="rel2" shortName="text_negative_affect" inObj="text_negativity_score:double;text_anxiety_score:double;text_evasion_score:double;text_risk_z:double;data_reliability:double" relationType="prog" outObj="negative_affect:string">
+      var text_negativity_score,text_anxiety_score,text_evasion_score,text_risk_z,data_reliability,negative_affect;
+      
+      if(data_reliability&lt;0.35){
+        negative_affect="unknown";
+      }
+      else if(text_negativity_score&gt;=0.70||text_anxiety_score&gt;=0.70||text_risk_z&gt;=2.00){
+        negative_affect="high";
+      }
+      else if(text_negativity_score&gt;=0.45||text_anxiety_score&gt;=0.45||text_evasion_score&gt;=0.60||text_risk_z&gt;=1.00){
+        negative_affect="medium";
+      }
+      else{
+        negative_affect="low";
+      }
+</relation>
+<relation id="rel3" shortName="text_self_control" inObj="text_confidence_score:double;text_coherence_score:double;data_reliability:double" relationType="prog" outObj="self_control:string">
+      var text_confidence_score,text_coherence_score,data_reliability,self_control;
+      
+      if(data_reliability&lt;0.35){
+        self_control="unknown";
+      }
+      else if(text_confidence_score&lt;0.30||text_coherence_score&lt;0.35){
+        self_control="broken";
+      }
+      else if(text_confidence_score&lt;0.50||text_coherence_score&lt;0.55){
+        self_control="reduced";
+      }
+      else{
+        self_control="preserved";
+      }
+</relation>
+<relation id="rel4" shortName="text_coherence_drop" inObj="text_coherence_score:double;text_evasion_score:double;data_reliability:double" relationType="prog" outObj="coherence_drop:string">
+      var text_coherence_score,text_evasion_score,data_reliability,coherence_drop;
+      
+      if(data_reliability&lt;0.35){
+        coherence_drop="unknown";
+      }
+      else if(text_coherence_score&lt;0.35||text_evasion_score&gt;=0.75){
+        coherence_drop="high";
+      }
+      else if(text_coherence_score&lt;0.55||text_evasion_score&gt;=0.50){
+        coherence_drop="medium";
+      }
+      else{
+        coherence_drop="low";
+      }
+</relation>
+<relation id="rel5" shortName="acoustic_activation" inObj="acoustic_stress_score:double;intensity_variability_score:double;acoustic_activation_index:double;data_reliability:double" relationType="prog" outObj="acoustic_activation:string">
+      var acoustic_stress_score,intensity_variability_score,acoustic_activation_index,data_reliability,acoustic_activation;
+      
+      if(data_reliability&lt;0.35){
+        acoustic_activation="unknown";
+      }
+      else if(acoustic_activation_index&gt;=0.78||acoustic_stress_score&gt;=0.72||(acoustic_stress_score&gt;=0.55&amp;&amp;intensity_variability_score&gt;=0.88)){
+        acoustic_activation="high";
+      }
+      else if(acoustic_activation_index&gt;=0.55||acoustic_stress_score&gt;=0.50||(acoustic_stress_score&gt;=0.35&amp;&amp;intensity_variability_score&gt;=0.72)){
+        acoustic_activation="medium";
+      }
+      else{
+        acoustic_activation="low";
+      }
+</relation>
+<relation id="rel6" shortName="tempo_disturbance" inObj="voice_stability_score:double;intensity_variability_score:double;speech_stability_z:double;data_reliability:double" relationType="prog" outObj="tempo_disturbance:string">
+      var voice_stability_score,intensity_variability_score,speech_stability_z,data_reliability,tempo_disturbance;
+      
+      if(data_reliability&lt;0.35){
+        tempo_disturbance="unknown";
+      }
+      else if(Math.abs(speech_stability_z)&gt;=2.50||voice_stability_score&lt;0.30||intensity_variability_score&gt;=0.88){
+        tempo_disturbance="high";
+      }
+      else if(Math.abs(speech_stability_z)&gt;=1.50||voice_stability_score&lt;0.45||intensity_variability_score&gt;=0.72){
+        tempo_disturbance="medium";
+      }
+      else{
+        tempo_disturbance="low";
+      }
+</relation>
+<relation id="rel7" shortName="voice_instability" inObj="voice_stability_score:double;speech_stability_z:double;data_reliability:double" relationType="prog" outObj="voice_instability:string">
+      var voice_stability_score,speech_stability_z,data_reliability,voice_instability;
+      
+      if(data_reliability&lt;0.35){
+        voice_instability="unknown";
+      }
+      else if(voice_stability_score&lt;0.30||speech_stability_z&lt;=-2.50){
+        voice_instability="high";
+      }
+      else if(voice_stability_score&lt;0.45||speech_stability_z&lt;=-1.50){
+        voice_instability="medium";
+      }
+      else{
+        voice_instability="low";
+      }
+</relation>
+<relation id="rel8" shortName="pause_overload" inObj="speech_disorganization_score:double;speech_disorganization_index:double;paralinguistic_behavior_z:double;data_reliability:double" relationType="prog" outObj="pause_overload:string">
+      var speech_disorganization_score,speech_disorganization_index,paralinguistic_behavior_z,data_reliability,pause_overload;
+      
+      if(data_reliability&lt;0.35){
+        pause_overload="unknown";
+      }
+      else if(speech_disorganization_index&gt;=0.78||speech_disorganization_score&gt;=0.78||paralinguistic_behavior_z&gt;=2.50){
+        pause_overload="high";
+      }
+      else if(speech_disorganization_index&gt;=0.60||speech_disorganization_score&gt;=0.68||paralinguistic_behavior_z&gt;=1.50){
+        pause_overload="medium";
+      }
+      else{
+        pause_overload="low";
+      }
+</relation>
+<relation id="rel9" shortName="hesitation_overload" inObj="hesitation_score:double;speech_disorganization_score:double;data_reliability:double" relationType="prog" outObj="hesitation_overload:string">
+      var hesitation_score,speech_disorganization_score,data_reliability,hesitation_overload;
+      
+      if(data_reliability&lt;0.35){
+        hesitation_overload="unknown";
+      }
+      else if(hesitation_score&gt;=0.75||(hesitation_score&gt;=0.60&amp;&amp;speech_disorganization_score&gt;=0.75)){
+        hesitation_overload="high";
+      }
+      else if(hesitation_score&gt;=0.50||(hesitation_score&gt;=0.35&amp;&amp;speech_disorganization_score&gt;=0.70)){
+        hesitation_overload="medium";
+      }
+      else{
+        hesitation_overload="low";
+      }
+</relation>
+<relation id="rel10" shortName="latency_problem" inObj="speech_disorganization_score:double;hesitation_score:double;paralinguistic_behavior_z:double;data_reliability:double" relationType="prog" outObj="latency_problem:string">
+      var speech_disorganization_score,hesitation_score,paralinguistic_behavior_z,data_reliability,latency_problem;
+      
+      if(data_reliability&lt;0.35){
+        latency_problem="unknown";
+      }
+      else if(speech_disorganization_score&gt;=0.82&amp;&amp;(hesitation_score&gt;=0.60||paralinguistic_behavior_z&gt;=2.50)){
+        latency_problem="high";
+      }
+      else if(speech_disorganization_score&gt;=0.70||(hesitation_score&gt;=0.40&amp;&amp;paralinguistic_behavior_z&gt;=1.50)){
+        latency_problem="medium";
+      }
+      else{
+        latency_problem="low";
+      }
+</relation>
+<relation id="rel11" shortName="baseline_shift" inObj="baseline_available:double;baseline_deviation_index:double;overall_deviation_z:double;text_risk_z:double;acoustic_stress_z:double;paralinguistic_behavior_z:double;speech_stability_z:double;baseline_shift_index:double" relationType="prog" outObj="baseline_shift:string">
+      var baseline_available,baseline_deviation_index,overall_deviation_z,text_risk_z,acoustic_stress_z,paralinguistic_behavior_z,speech_stability_z,baseline_shift_index,baseline_shift;
+      
+      if(baseline_available&lt;0.50){
+        baseline_shift="unknown";
+      }
+      else if(baseline_deviation_index&gt;=0.65||baseline_shift_index&gt;=0.70||Math.abs(overall_deviation_z)&gt;=2.00||text_risk_z&gt;=2.00||acoustic_stress_z&gt;=2.00||paralinguistic_behavior_z&gt;=2.00||Math.abs(speech_stability_z)&gt;=2.00){
+        baseline_shift="high";
+      }
+      else if(baseline_deviation_index&gt;=0.35||baseline_shift_index&gt;=0.45||Math.abs(overall_deviation_z)&gt;=1.00||text_risk_z&gt;=1.00||acoustic_stress_z&gt;=1.00||paralinguistic_behavior_z&gt;=1.00||Math.abs(speech_stability_z)&gt;=1.00){
+        baseline_shift="medium";
+      }
+      else{
+        baseline_shift="low";
+      }
+</relation>
+<relation id="rel12" shortName="text_alarm" inObj="negative_affect:string;self_control:string;semantic_stress:string;coherence_drop:string" relationType="prog" outObj="text_alarm:string">
+      var negative_affect,self_control,semantic_stress,coherence_drop,text_alarm;
+      
+      if((semantic_stress=="high"&amp;&amp;negative_affect!="low")||(negative_affect=="high"&amp;&amp;self_control!="preserved")||coherence_drop=="high"){
+        text_alarm="high";
+      }
+      else if(semantic_stress=="medium"||negative_affect=="medium"||coherence_drop=="medium"){
+        text_alarm="medium";
+      }
+      else{
+        text_alarm="low";
+      }
+</relation>
+<relation id="rel13" shortName="text_depression" inObj="negative_affect:string;self_control:string;coherence_drop:string" relationType="prog" outObj="text_depression:string">
+      var negative_affect,self_control,coherence_drop,text_depression;
+      
+      if(negative_affect=="high"&amp;&amp;self_control!="preserved"&amp;&amp;coherence_drop!="low"){
+        text_depression="high";
+      }
+      else if(negative_affect=="medium"&amp;&amp;self_control=="reduced"){
+        text_depression="medium";
+      }
+      else{
+        text_depression="low";
+      }
+</relation>
+<relation id="rel14" shortName="acoustic_alarm" inObj="voice_instability:string;acoustic_activation:string;tempo_disturbance:string" relationType="prog" outObj="acoustic_alarm:string">
+      var voice_instability,acoustic_activation,tempo_disturbance,acoustic_alarm;
+      
+      if(acoustic_activation=="high"&amp;&amp;(tempo_disturbance=="high"||voice_instability=="high")){
+        acoustic_alarm="high";
+      }
+      else if((acoustic_activation=="high"&amp;&amp;(tempo_disturbance=="medium"||voice_instability=="medium"))||(acoustic_activation=="medium"&amp;&amp;tempo_disturbance!="low"&amp;&amp;voice_instability!="low")){
+        acoustic_alarm="medium";
+      }
+      else{
+        acoustic_alarm="low";
+      }
+</relation>
+<relation id="rel15" shortName="acoustic_depression" inObj="voice_instability:string;tempo_disturbance:string;acoustic_activation:string" relationType="prog" outObj="acoustic_depression:string">
+      var voice_instability,tempo_disturbance,acoustic_activation,acoustic_depression;
+      
+      if(tempo_disturbance=="high"&amp;&amp;voice_instability=="high"&amp;&amp;acoustic_activation!="high"){
+        acoustic_depression="high";
+      }
+      else if(tempo_disturbance=="medium"&amp;&amp;voice_instability!="low"){
+        acoustic_depression="medium";
+      }
+      else{
+        acoustic_depression="low";
+      }
+</relation>
+<relation id="rel16" shortName="speech_disorganization" inObj="hesitation_overload:string;coherence_drop:string;pause_overload:string;latency_problem:string" relationType="prog" outObj="speech_disorganization:string">
+      var hesitation_overload,coherence_drop,pause_overload,latency_problem,speech_disorganization;
+      
+      if((pause_overload=="high"&amp;&amp;hesitation_overload!="low")||coherence_drop=="high"||latency_problem=="high"){
+        speech_disorganization="high";
+      }
+      else if(pause_overload=="medium"||hesitation_overload=="medium"||coherence_drop=="medium"||latency_problem=="medium"){
+        speech_disorganization="medium";
+      }
+      else{
+        speech_disorganization="low";
+      }
+</relation>
+<relation id="rel17" shortName="speech_slowdown" inObj="pause_overload:string;tempo_disturbance:string;latency_problem:string" relationType="prog" outObj="speech_slowdown:string">
+      var pause_overload,tempo_disturbance,latency_problem,speech_slowdown;
+      
+      if((tempo_disturbance=="high"&amp;&amp;pause_overload!="low")||latency_problem=="high"){
+        speech_slowdown="high";
+      }
+      else if(tempo_disturbance=="medium"||pause_overload=="medium"||latency_problem=="medium"){
+        speech_slowdown="medium";
+      }
+      else{
+        speech_slowdown="low";
+      }
+</relation>
+<relation id="rel18" shortName="baseline_alarm" inObj="baseline_shift:string" relationType="prog" outObj="baseline_alarm:string">
+      var baseline_shift,baseline_alarm;
+      
+      if(baseline_shift=="high"){
+        baseline_alarm="critical";
+      }
+      else if(baseline_shift=="medium"){
+        baseline_alarm="attention";
+      }
+      else if(baseline_shift=="unknown"){
+        baseline_alarm="unavailable";
+      }
+      else{
+        baseline_alarm="normal";
+      }
+</relation>
+<relation id="rel19" shortName="hidden_stress" inObj="self_control:string;baseline_alarm:string;acoustic_alarm:string;text_alarm:string" relationType="prog" outObj="hidden_stress:string">
+      var self_control,baseline_alarm,acoustic_alarm,text_alarm,hidden_stress;
+      
+      if(acoustic_alarm=="high"&amp;&amp;self_control=="preserved"&amp;&amp;(baseline_alarm=="attention"||baseline_alarm=="critical")&amp;&amp;text_alarm!="high"){
+        hidden_stress="confirmed";
+      }
+      else if(acoustic_alarm=="high"&amp;&amp;self_control=="preserved"&amp;&amp;text_alarm=="low"){
+        hidden_stress="probable";
+      }
+      else{
+        hidden_stress="none";
+      }
+</relation>
+<relation id="rel20" shortName="open_stress" inObj="text_alarm:string;acoustic_alarm:string;speech_disorganization:string" relationType="prog" outObj="open_stress:string">
+      var text_alarm,acoustic_alarm,speech_disorganization,open_stress;
+      
+      if(text_alarm=="high"&amp;&amp;acoustic_alarm=="high"){
+        open_stress="confirmed";
+      }
+      else if((text_alarm=="high"&amp;&amp;speech_disorganization!="low")||(acoustic_alarm=="high"&amp;&amp;speech_disorganization=="high")){
+        open_stress="probable";
+      }
+      else{
+        open_stress="none";
+      }
+</relation>
+<relation id="rel21" shortName="cognitive_overload" inObj="coherence_drop:string;speech_disorganization:string;latency_problem:string;pause_overload:string" relationType="prog" outObj="cognitive_overload:string">
+      var coherence_drop,speech_disorganization,latency_problem,pause_overload,cognitive_overload;
+      
+      if(speech_disorganization=="high"&amp;&amp;(coherence_drop=="high"||latency_problem=="high"||pause_overload=="high")){
+        cognitive_overload="confirmed";
+      }
+      else if(speech_disorganization=="medium"&amp;&amp;((coherence_drop=="medium"||coherence_drop=="high")||latency_problem=="high"||pause_overload=="high")){
+        cognitive_overload="probable";
+      }
+      else{
+        cognitive_overload="none";
+      }
+</relation>
+<relation id="rel22" shortName="fatigue_state" inObj="text_depression:string;speech_slowdown:string;pause_overload:string;voice_instability:string" relationType="prog" outObj="fatigue_state:string">
+      var text_depression,speech_slowdown,pause_overload,voice_instability,fatigue_state;
+      
+      if(speech_slowdown=="high"&amp;&amp;pause_overload!="low"&amp;&amp;(text_depression!="low"||voice_instability!="low")){
+        fatigue_state="confirmed";
+      }
+      else if((speech_slowdown=="medium"&amp;&amp;pause_overload=="medium")||(text_depression=="medium"&amp;&amp;voice_instability!="low")||speech_slowdown=="high"){
+        fatigue_state="probable";
+      }
+      else{
+        fatigue_state="none";
+      }
+</relation>
+<relation id="rel23" shortName="depressive_pattern" inObj="text_depression:string;self_control:string;acoustic_depression:string" relationType="prog" outObj="depressive_pattern:string">
+      var text_depression,self_control,acoustic_depression,depressive_pattern;
+      
+      if(text_depression=="high"&amp;&amp;acoustic_depression=="high"&amp;&amp;self_control!="preserved"){
+        depressive_pattern="confirmed";
+      }
+      else if(text_depression!="low"&amp;&amp;acoustic_depression!="low"){
+        depressive_pattern="probable";
+      }
+      else{
+        depressive_pattern="none";
+      }
+</relation>
+<relation id="rel24" shortName="compensation_breakdown" inObj="hidden_stress:string;self_control:string;baseline_alarm:string;text_alarm:string" relationType="prog" outObj="compensation_breakdown:string">
+      var hidden_stress,self_control,baseline_alarm,text_alarm,compensation_breakdown;
+      
+      if(hidden_stress=="confirmed"&amp;&amp;self_control=="broken"){
+        compensation_breakdown="confirmed";
+      }
+      else if(hidden_stress!="none"&amp;&amp;baseline_alarm=="critical"&amp;&amp;self_control!="preserved"){
+        compensation_breakdown="probable";
+      }
+      else if(text_alarm=="high"&amp;&amp;self_control=="broken"){
+        compensation_breakdown="probable";
+      }
+      else{
+        compensation_breakdown="none";
+      }
+</relation>
+<relation id="rel25" shortName="unstable_selfregulation" inObj="voice_instability:string;open_stress:string;compensation_breakdown:string" relationType="prog" outObj="unstable_selfregulation:string">
+      var voice_instability,open_stress,compensation_breakdown,unstable_selfregulation;
+      
+      if(compensation_breakdown=="confirmed"||(open_stress=="confirmed"&amp;&amp;voice_instability=="high")){
+        unstable_selfregulation="confirmed";
+      }
+      else if(open_stress!="none"&amp;&amp;voice_instability!="low"){
+        unstable_selfregulation="probable";
+      }
+      else{
+        unstable_selfregulation="none";
+      }
+</relation>
+<relation id="rel26" shortName="atypical_response" inObj="text_alarm:string;baseline_alarm:string;acoustic_alarm:string;speech_disorganization:string" relationType="prog" outObj="atypical_response:string">
+      var text_alarm,baseline_alarm,acoustic_alarm,speech_disorganization,atypical_response;
+      
+      if(baseline_alarm=="critical"&amp;&amp;(text_alarm!="low"||acoustic_alarm!="low"||speech_disorganization!="low")){
+        atypical_response="confirmed";
+      }
+      else if(baseline_alarm=="attention"&amp;&amp;(text_alarm=="high"||acoustic_alarm=="high"||speech_disorganization=="high")){
+        atypical_response="probable";
+      }
+      else{
+        atypical_response="none";
+      }
+</relation>
+<relation id="rel34" shortName="emotional_cross" inObj="negative_affect:string;text_alarm:string;acoustic_alarm:string" relationType="prog" outObj="emotional_cross:string">
+      var negative_affect,text_alarm,acoustic_alarm,emotional_cross;
+      
+      if((text_alarm=="high"&amp;&amp;negative_affect=="high"&amp;&amp;acoustic_alarm!="low")||(text_alarm=="high"&amp;&amp;acoustic_alarm=="high"&amp;&amp;negative_affect=="high")){
+        emotional_cross="confirmed";
+      }
+      else if((text_alarm!="low"&amp;&amp;acoustic_alarm!="low")||(negative_affect=="high"&amp;&amp;acoustic_alarm!="low")){
+        emotional_cross="probable";
+      }
+      else{
+        emotional_cross="none";
+      }
+</relation>
+<relation id="rel35" shortName="masked_distress" inObj="hidden_stress:string;coherence_drop:string;pause_overload:string;self_control:string" relationType="prog" outObj="masked_distress:string">
+      var hidden_stress,coherence_drop,pause_overload,self_control,masked_distress;
+      
+      if(hidden_stress=="confirmed"&amp;&amp;(coherence_drop=="high"||pause_overload=="high")){
+        masked_distress="confirmed";
+      }
+      else if((hidden_stress=="confirmed"&amp;&amp;(coherence_drop!="low"||pause_overload!="low"))||(hidden_stress=="probable"&amp;&amp;(coherence_drop=="high"||pause_overload=="high"))){
+        masked_distress="probable";
+      }
+      else{
+        masked_distress="none";
+      }
+</relation>
+<relation id="rel36" shortName="contradictory_profile" inObj="self_control:string;acoustic_alarm:string;speech_disorganization:string;text_alarm:string" relationType="prog" outObj="contradictory_profile:string">
+      var self_control,acoustic_alarm,speech_disorganization,text_alarm,contradictory_profile;
+      
+      if(self_control=="preserved"&amp;&amp;speech_disorganization=="high"&amp;&amp;acoustic_alarm=="high"){
+        contradictory_profile="confirmed";
+      }
+      else if(self_control=="preserved"&amp;&amp;speech_disorganization!="low"&amp;&amp;acoustic_alarm!="low"&amp;&amp;text_alarm!="high"){
+        contradictory_profile="probable";
+      }
+      else{
+        contradictory_profile="none";
+      }
+</relation>
+<relation id="rel37" shortName="baseline_sensitive_case" inObj="depressive_pattern:string;baseline_alarm:string;atypical_response:string;fatigue_state:string;open_stress:string" relationType="prog" outObj="baseline_sensitive_case:string">
+      var depressive_pattern,baseline_alarm,atypical_response,fatigue_state,open_stress,baseline_sensitive_case;
+      
+      if(baseline_alarm=="critical"&amp;&amp;(fatigue_state!="none"||depressive_pattern!="none"||atypical_response!="none"||open_stress!="none")){
+        baseline_sensitive_case="confirmed";
+      }
+      else if(baseline_alarm=="attention"&amp;&amp;(fatigue_state=="probable"||depressive_pattern=="probable"||atypical_response=="probable"||open_stress=="probable")){
+        baseline_sensitive_case="probable";
+      }
+      else{
+        baseline_sensitive_case="none";
+      }
+</relation>
+<relation id="rel27" shortName="risk_attention" inObj="hidden_stress:string;atypical_response:string;fatigue_state:string;baseline_alarm:string" relationType="prog" outObj="risk_attention:string">
+      var hidden_stress,atypical_response,fatigue_state,baseline_alarm,risk_attention;
+      
+      if(hidden_stress!="none"||fatigue_state!="none"||atypical_response!="none"||baseline_alarm=="attention"){
+        risk_attention="yes";
+      }
+      else{
+        risk_attention="no";
+      }
+</relation>
+<relation id="rel28" shortName="risk_functional_decline" inObj="depressive_pattern:string;cognitive_overload:string;fatigue_state:string;speech_slowdown:string" relationType="prog" outObj="risk_functional_decline:string">
+      var depressive_pattern,cognitive_overload,fatigue_state,speech_slowdown,risk_functional_decline;
+      
+      if(cognitive_overload=="confirmed"||fatigue_state=="confirmed"||depressive_pattern=="confirmed"){
+        risk_functional_decline="high";
+      }
+      else if(cognitive_overload=="probable"||fatigue_state=="probable"||depressive_pattern=="probable"||speech_slowdown=="high"){
+        risk_functional_decline="medium";
+      }
+      else{
+        risk_functional_decline="low";
+      }
+</relation>
+<relation id="rel29" shortName="risk_critical" inObj="unstable_selfregulation:string;atypical_response:string;compensation_breakdown:string;baseline_alarm:string" relationType="prog" outObj="risk_critical:string">
+      var unstable_selfregulation,atypical_response,compensation_breakdown,baseline_alarm,risk_critical;
+      
+      if(compensation_breakdown=="confirmed"||unstable_selfregulation=="confirmed"){
+        risk_critical="yes";
+      }
+      else if(atypical_response=="confirmed"&amp;&amp;compensation_breakdown!="none"){
+        risk_critical="yes";
+      }
+      else if(baseline_alarm=="critical"&amp;&amp;unstable_selfregulation=="probable"){
+        risk_critical="yes";
+      }
+      else{
+        risk_critical="no";
+      }
+</relation>
+<relation id="rel38" shortName="risk_emotional" inObj="negative_affect:string;open_stress:string;emotional_cross:string;text_alarm:string" relationType="prog" outObj="risk_emotional:string">
+      var negative_affect,open_stress,emotional_cross,text_alarm,risk_emotional;
+      
+      if(open_stress=="confirmed"||emotional_cross=="confirmed"||(negative_affect=="high"&amp;&amp;text_alarm=="high")){
+        risk_emotional="high";
+      }
+      else if(open_stress=="probable"||emotional_cross=="probable"||negative_affect=="high"||text_alarm=="high"){
+        risk_emotional="medium";
+      }
+      else{
+        risk_emotional="low";
+      }
+</relation>
+<relation id="rel39" shortName="risk_compensation" inObj="hidden_stress:string;masked_distress:string;compensation_breakdown:string;contradictory_profile:string" relationType="prog" outObj="risk_compensation:string">
+      var hidden_stress,masked_distress,compensation_breakdown,contradictory_profile,risk_compensation;
+      
+      if(compensation_breakdown=="confirmed"||masked_distress=="confirmed"){
+        risk_compensation="high";
+      }
+      else if((hidden_stress!="none"&amp;&amp;masked_distress!="none")||contradictory_profile=="confirmed"){
+        risk_compensation="medium";
+      }
+      else{
+        risk_compensation="low";
+      }
+</relation>
+<relation id="rel40" shortName="risk_retest" inObj="contradictory_profile:string;atypical_response:string;baseline_sensitive_case:string;baseline_alarm:string" relationType="prog" outObj="risk_retest:string">
+      var contradictory_profile,atypical_response,baseline_sensitive_case,baseline_alarm,risk_retest;
+      
+      if(contradictory_profile=="confirmed"||baseline_sensitive_case=="confirmed"){
+        risk_retest="yes";
+      }
+      else if(atypical_response=="confirmed"||(contradictory_profile=="probable"&amp;&amp;baseline_alarm!="unavailable")||baseline_sensitive_case=="probable"){
+        risk_retest="yes";
+      }
+      else{
+        risk_retest="no";
+      }
+</relation>
+<relation id="rel30" shortName="risk_classification" inObj="risk_compensation:string;risk_attention:string;risk_emotional:string;risk_critical:string;baseline_alarm:string;risk_functional_decline:string;risk_retest:string" relationType="prog" outObj="risk_class:string">
+      var risk_compensation,risk_attention,risk_emotional,risk_critical,baseline_alarm,risk_functional_decline,risk_retest,risk_class;
+      
+      if(risk_critical=="yes"){
+        risk_class="critical";
+      }
+      else if((risk_functional_decline=="high"&amp;&amp;(risk_emotional=="high"||risk_compensation=="high"))||(risk_compensation=="high"&amp;&amp;baseline_alarm=="critical")){
+        risk_class="high";
+      }
+      else if(risk_functional_decline=="high"||risk_emotional=="high"){
+        risk_class="high";
+      }
+      else if(risk_functional_decline=="medium"||risk_emotional=="medium"||risk_compensation=="medium"){
+        risk_class="medium";
+      }
+      else if(risk_attention=="yes"||risk_retest=="yes"){
+        risk_class="attention";
+      }
+      else{
+        risk_class="low";
+      }
+</relation>
+<relation id="rel31" shortName="operator_action" inObj="risk_class:string;cognitive_overload:string;baseline_alarm:string;risk_retest:string;baseline_sensitive_case:string" relationType="prog" outObj="operator_action:string">
+      var risk_class,cognitive_overload,baseline_alarm,risk_retest,baseline_sensitive_case,operator_action;
+      
+      if(risk_class=="critical"){
+        operator_action="urgent";
+      }
+      else if(risk_class=="high"){
+        operator_action="extended_exam";
+      }
+      else if(risk_retest=="yes"||baseline_sensitive_case=="confirmed"){
+        operator_action="repeat_screening";
+      }
+      else if(risk_class=="medium"||baseline_alarm=="attention"||cognitive_overload=="probable"){
+        operator_action="repeat_screening";
+      }
+      else{
+        operator_action="routine";
+      }
+</relation>
+<relation id="rel32" shortName="final_decision" inObj="operator_action:string;risk_class:string;baseline_sensitive_case:string;compensation_breakdown:string" relationType="prog" outObj="final_decision:string">
+      var operator_action,risk_class,baseline_sensitive_case,compensation_breakdown,final_decision;
+      
+      if(compensation_breakdown=="confirmed"||risk_class=="critical"){
+        final_decision="no_access";
+      }
+      else if(risk_class=="high"&amp;&amp;baseline_sensitive_case=="confirmed"){
+        final_decision="no_access";
+      }
+      else if(risk_class=="high"){
+        final_decision="extended_check";
+      }
+      else if(risk_class=="medium"||operator_action=="repeat_screening"){
+        final_decision="monitoring";
+      }
+      else if(risk_class=="attention"){
+        final_decision="monitoring";
+      }
+      else{
+        final_decision="allow";
+      }
+</relation>
+<relation id="rel33" shortName="final_summary" inObj="hidden_stress:string;depressive_pattern:string;risk_class:string;masked_distress:string;open_stress:string;contradictory_profile:string;final_decision:string;cognitive_overload:string;emotional_cross:string;fatigue_state:string;baseline_sensitive_case:string;compensation_breakdown:string" relationType="prog" outObj="final_summary:string">
+      var hidden_stress,depressive_pattern,risk_class,masked_distress,open_stress,contradictory_profile,final_decision,cognitive_overload,emotional_cross,fatigue_state,baseline_sensitive_case,compensation_breakdown,final_summary;
+      
+      var patterns="";
+      
+      if(hidden_stress!="none"){
+        patterns=patterns+"hidden_stress;";
+      }
+      if(open_stress!="none"){
+        patterns=patterns+"open_stress;";
+      }
+      if(cognitive_overload!="none"){
+        patterns=patterns+"cognitive_overload;";
+      }
+      if(fatigue_state!="none"){
+        patterns=patterns+"fatigue_state;";
+      }
+      if(depressive_pattern!="none"){
+        patterns=patterns+"depressive_pattern;";
+      }
+      if(compensation_breakdown!="none"){
+        patterns=patterns+"compensation_breakdown;";
+      }
+      if(emotional_cross!="none"){
+        patterns=patterns+"emotional_cross;";
+      }
+      if(masked_distress!="none"){
+        patterns=patterns+"masked_distress;";
+      }
+      if(contradictory_profile!="none"){
+        patterns=patterns+"contradictory_profile;";
+      }
+      if(baseline_sensitive_case!="none"){
+        patterns=patterns+"baseline_sensitive_case;";
+      }
+      
+      if(patterns==""){
+        final_summary="risk="+risk_class+"; decision="+final_decision+"; patterns=none";
+      }
+      else{
+        final_summary="risk="+risk_class+"; decision="+final_decision+"; patterns="+patterns;
+      }
+</relation>
+</relations>
+</model>

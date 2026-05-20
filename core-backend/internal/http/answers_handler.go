@@ -42,7 +42,6 @@ func (h AnswersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text := r.FormValue("text")
 	file, header, err := r.FormFile("audio")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "audio file is required")
@@ -55,7 +54,7 @@ func (h AnswersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ExaminationQuestionID: examinationQuestionID,
 		SpecialistID:          specialistID,
 		CreatedByUserID:       claims.UserID,
-		Text:                  text,
+		Text:                  "",
 		FileName:              header.Filename,
 		ContentType:           fileContentType(header),
 		Size:                  header.Size,

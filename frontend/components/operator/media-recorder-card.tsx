@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Mic, Pause, RotateCcw, StopCircle, Upload } from "lucide-react";
+import { CheckCircle2, FileAudio, Mic, Pause, RotateCcw, StopCircle, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -30,10 +30,12 @@ export function MediaRecorderCard({
   onUploaded: (answer: Answer) => void;
 }) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [recorderState, setRecorderState] = useState<RecorderState>("idle");
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioSourceLabel, setAudioSourceLabel] = useState<string>("Микрофон готов");
   const [recorderError, setRecorderError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,12 +58,16 @@ export function MediaRecorderCard({
       const file = new File([audioBlob], "answer.webm", {
         type: audioBlob.type || "audio/webm",
       });
+      const uploadFile =
+        audioBlob instanceof File
+          ? audioBlob
+          : file;
 
       return apiClient.uploadAnswer({
         examination_id: examinationId,
         examination_question_id: examinationQuestionId,
         specialist_id: specialistId,
-        audio: file,
+        audio: uploadFile,
       });
     },
     onSuccess: (answer) => {
@@ -75,6 +81,7 @@ export function MediaRecorderCard({
         URL.revokeObjectURL(audioUrl);
       }
       setAudioUrl(null);
+      setAudioSourceLabel("Микрофон готов");
       setRecorderState("idle");
     },
   });
@@ -85,11 +92,11 @@ export function MediaRecorderCard({
     }
 
     if (audioBlob) {
-      return "Запись готова";
+      return audioBlob instanceof File ? "Файл готов" : "Запись готова";
     }
 
-    return "Готово к записи";
-  }, [audioBlob, recorderState]);
+    return audioSourceLabel;
+  }, [audioBlob, audioSourceLabel, recorderState]);
 
   async function startRecording() {
     try {
@@ -109,6 +116,7 @@ export function MediaRecorderCard({
         const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || "audio/webm" });
         setAudioBlob(blob);
         setRecorderState("recorded");
+        setAudioSourceLabel("Запись готова");
         if (audioUrl) {
           URL.revokeObjectURL(audioUrl);
         }
@@ -128,12 +136,44 @@ export function MediaRecorderCard({
   }
 
   function resetRecording() {
+    mediaRecorderRef.current?.stream?.getTracks().forEach((track) => track.stop());
     setAudioBlob(null);
     setRecorderState("idle");
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
     }
     setAudioUrl(null);
+    setAudioSourceLabel("Микрофон готов");
+    setRecorderError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0];
+    if (!nextFile) {
+      return;
+    }
+    if (!nextFile.type.startsWith("audio/")) {
+      setRecorderError("Выберите аудиофайл для загрузки.");
+      event.target.value = "";
+      return;
+    }
+
+    mediaRecorderRef.current?.stream?.getTracks().forEach((track) => track.stop());
+    setRecorderError(null);
+    setAudioBlob(nextFile);
+    setRecorderState("recorded");
+    setAudioSourceLabel("Файл готов");
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    setAudioUrl(URL.createObjectURL(nextFile));
   }
 
   return (
@@ -151,7 +191,9 @@ export function MediaRecorderCard({
                   {recorderState === "recording"
                     ? "Идёт запись"
                     : recorderState === "recorded"
-                      ? "Запись готова"
+                      ? audioBlob instanceof File
+                        ? "Файл готов"
+                        : "Запись готова"
                       : "Микрофон готов"}
                 </p>
               </div>
@@ -195,6 +237,13 @@ export function MediaRecorderCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
           {recorderState !== "recording" ? (
             <Button type="button" onClick={startRecording}>
               <Mic className="mr-2 h-4 w-4" />
@@ -206,6 +255,17 @@ export function MediaRecorderCard({
               Остановить
             </Button>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 w-10 rounded-full border-border/70 p-0 text-muted-foreground"
+            onClick={openFilePicker}
+            disabled={uploadMutation.isPending || recorderState === "recording"}
+            title="Загрузить аудиофайл"
+            aria-label="Загрузить аудиофайл"
+          >
+            <FileAudio className="h-4 w-4" />
+          </Button>
           <Button type="button" variant="outline" onClick={resetRecording} disabled={!audioBlob && recorderState !== "recording"}>
             <RotateCcw className="mr-2 h-4 w-4" />
             Перезаписать

@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiClient, ApiError } from "@/lib/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -186,7 +186,6 @@ export default function SpecialistDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={specialist.full_name}
-        description="Краткая сводка по специалисту, baseline и последние рабочие сессии."
         action={
           <Button asChild>
             <Link href={nextActionHref}>{nextActionLabel}</Link>
@@ -195,14 +194,10 @@ export default function SpecialistDetailPage() {
       />
 
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle>Сводка по специалисту</CardTitle>
-          <CardDescription>Последний статус, база сравнения и ближайшее действие по этой карточке.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-5 p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Последний статус</p>
+              <p className="text-xs font-medium text-muted-foreground">Последний статус</p>
               <div className="mt-3">
                 {specialist.last_examination_status ? (
                   <ExaminationStatusBadge status={specialist.last_examination_status} />
@@ -217,12 +212,12 @@ export default function SpecialistDetailPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Последняя оценка</p>
+              <p className="text-xs font-medium text-muted-foreground">Последняя оценка</p>
               <p className="mt-3 text-2xl font-semibold">{formatScore(specialist.last_overall_score)}</p>
               <p className="mt-2 text-sm text-muted-foreground">{describeBand(specialist.last_overall_band)}</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">База сравнения</p>
+              <p className="text-xs font-medium text-muted-foreground">Личная норма</p>
               <p className="mt-3 text-2xl font-semibold">{specialist.baseline_exam_count}</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {specialist.baseline_refreshed_at
@@ -231,7 +226,7 @@ export default function SpecialistDetailPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Всего обследований</p>
+              <p className="text-xs font-medium text-muted-foreground">Всего обследований</p>
               <p className="mt-3 text-2xl font-semibold">{specialist.examinations_count}</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {latestResult
@@ -243,7 +238,7 @@ export default function SpecialistDetailPage() {
 
           <div className="grid gap-3 lg:grid-cols-[1fr_0.9fr]">
             <div className="rounded-2xl border border-border/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Следующее действие</p>
+              <p className="text-xs font-medium text-muted-foreground">Следующее действие</p>
               <p className="mt-2 text-base font-semibold">{nextActionLabel}</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {specialist.last_examination_status === "failed"
@@ -254,7 +249,7 @@ export default function SpecialistDetailPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Последний результат</p>
+              <p className="text-xs font-medium text-muted-foreground">Последний результат</p>
               {latestResult ? (
                 <>
                   <p className="mt-2 text-base font-semibold">{latestResult.summary.overall_band}</p>
@@ -278,11 +273,10 @@ export default function SpecialistDetailPage() {
       <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
         <div className="space-y-6">
           <Card>
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <CardTitle>Персональные данные</CardTitle>
-              <CardDescription>Поддерживайте карточку в актуальном состоянии. Удаление требует отдельного подтверждения.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <form className="space-y-5" onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}>
                 <div className="space-y-2">
                   <Label htmlFor="full_name">ФИО</Label>
@@ -309,7 +303,7 @@ export default function SpecialistDetailPage() {
                     loading={deleteMutation.isPending}
                     onConfirm={() => deleteMutation.mutate()}
                     trigger={
-                      <Button type="button" variant="outline" disabled={deleteMutation.isPending}>
+                      <Button type="button" variant="danger" disabled={deleteMutation.isPending}>
                         Удалить карточку
                       </Button>
                     }
@@ -323,21 +317,21 @@ export default function SpecialistDetailPage() {
             <CardHeader className="pb-4">
               <CardTitle>Карточка и baseline</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+            <CardContent className="space-y-3 text-sm">
               <div className="rounded-2xl border border-border/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Создано</p>
+                <p className="text-xs font-medium text-muted-foreground">Создано</p>
                 <p className="mt-1">{formatDateTime(specialist.created_at)}</p>
               </div>
               <div className="rounded-2xl border border-border/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Обновлено</p>
+                <p className="text-xs font-medium text-muted-foreground">Обновлено</p>
                 <p className="mt-1">{formatDateTime(specialist.updated_at)}</p>
               </div>
               <div className="rounded-2xl border border-border/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Табельный номер</p>
+                <p className="text-xs font-medium text-muted-foreground">Табельный номер</p>
                 <p className="mt-1">{specialist.personnel_number || "Не указан"}</p>
               </div>
               <div className="rounded-2xl border border-border/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Персональная норма</p>
+                <p className="text-xs font-medium text-muted-foreground">Персональная норма</p>
                 <p className="mt-1">
                   {specialist.baseline_refreshed_at
                     ? `Актуальна на ${formatDateTime(specialist.baseline_refreshed_at)}`
@@ -352,7 +346,6 @@ export default function SpecialistDetailPage() {
           <Card>
             <CardHeader className="pb-4">
               <CardTitle>Журнал обследований</CardTitle>
-              <CardDescription>Последние сессии и готовые результаты по этой карточке.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {historyQuery.isError ? (
@@ -370,7 +363,7 @@ export default function SpecialistDetailPage() {
               {!historyQuery.isLoading && !historyQuery.isError && !historyQuery.data?.items.length ? (
                 <EmptyState
                   title="Обследований ещё не было"
-                  description="Запустите первое обследование по этой карточке, и здесь появится хронология всех сессий."
+                  description=""
                   action={
                     <Button asChild variant="outline">
                       <Link href={`/operator/examinations/new?specialistId=${specialistId}`}>Запустить обследование</Link>
@@ -381,17 +374,17 @@ export default function SpecialistDetailPage() {
 
               {historyQuery.data?.items.length ? (
                 <div className="overflow-hidden rounded-2xl border border-border/70">
-                  <div className="grid grid-cols-[1.15fr_0.9fr_0.95fr_0.95fr_auto] gap-3 border-b border-border/70 bg-secondary/20 px-4 py-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="grid grid-cols-[1.2fr_0.9fr_0.95fr_0.95fr] gap-3 border-b border-border/70 bg-secondary/20 px-4 py-3 text-xs font-medium text-muted-foreground">
                     <span>Обследование</span>
                     <span>Статус</span>
                     <span>Создано</span>
                     <span>Последний этап</span>
-                    <span className="text-right">Действие</span>
                   </div>
                   {historyQuery.data.items.map((item) => (
-                    <div
+                    <Link
                       key={item.id}
-                      className="grid grid-cols-[1.15fr_0.9fr_0.95fr_0.95fr_auto] gap-3 border-t border-border/70 px-4 py-3 text-sm first:border-t-0"
+                      href={getOperatorExaminationHref(item.id, specialistId, item.status)}
+                      className="grid grid-cols-[1.2fr_0.9fr_0.95fr_0.95fr] gap-3 border-t border-border/70 px-4 py-3 text-sm transition-colors first:border-t-0 hover:bg-secondary/20"
                     >
                       <div>
                         <p className="font-medium">Обследование #{item.id}</p>
@@ -406,12 +399,7 @@ export default function SpecialistDetailPage() {
                       <p className="text-muted-foreground">
                         {item.finished_at ? formatDateTime(item.finished_at) : item.started_at ? "В работе" : "Не начато"}
                       </p>
-                      <div className="text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={getOperatorExaminationHref(item.id, specialistId, item.status)}>Открыть</Link>
-                        </Button>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : null}
@@ -429,25 +417,22 @@ export default function SpecialistDetailPage() {
               ) : null}
 
               {!resultHistoryQuery.isLoading && !resultHistoryQuery.isError && !resultHistoryQuery.data?.items.length ? (
-                <EmptyState
-                  title="Готовых сводок пока нет"
-                  description="После завершённой обработки здесь появятся краткие итоги и отклонения от нормы."
-                />
+                <EmptyState title="Готовых сводок пока нет" description="" />
               ) : null}
 
               {resultHistoryQuery.data?.items.length ? (
                 <div className="overflow-hidden rounded-2xl border border-border/70">
-                  <div className="grid grid-cols-[1.05fr_0.85fr_0.85fr_0.85fr_auto] gap-3 border-b border-border/70 bg-secondary/20 px-4 py-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="grid grid-cols-[1.05fr_0.85fr_0.85fr_0.85fr] gap-3 border-b border-border/70 bg-secondary/20 px-4 py-3 text-xs font-medium text-muted-foreground">
                     <span>Результат</span>
                     <span>Общий балл</span>
                     <span>Общее отклонение</span>
                     <span>Личное отклонение</span>
-                    <span className="text-right">Действие</span>
                   </div>
                   {resultHistoryQuery.data.items.map((item) => (
-                    <div
+                    <Link
                       key={item.examination_id}
-                      className="grid grid-cols-[1.05fr_0.85fr_0.85fr_0.85fr_auto] gap-3 border-t border-border/70 px-4 py-3 text-sm first:border-t-0"
+                      href={`/operator/examinations/${item.examination_id}/results?specialistId=${specialistId}`}
+                      className="grid grid-cols-[1.05fr_0.85fr_0.85fr_0.85fr] gap-3 border-t border-border/70 px-4 py-3 text-sm transition-colors first:border-t-0 hover:bg-secondary/20"
                     >
                       <div>
                         <p className="font-medium">Результат #{item.examination_id}</p>
@@ -463,14 +448,7 @@ export default function SpecialistDetailPage() {
                       <p className="font-medium">{item.summary.overall_score.toFixed(3)}</p>
                       <p className="text-muted-foreground">{item.baseline_snapshot.general_delta.toFixed(3)}</p>
                       <p className="text-muted-foreground">{item.baseline_snapshot.personal_delta.toFixed(3)}</p>
-                      <div className="text-right">
-                        <Button asChild size="sm">
-                          <Link href={`/operator/examinations/${item.examination_id}/results?specialistId=${specialistId}`}>
-                            Открыть
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : null}

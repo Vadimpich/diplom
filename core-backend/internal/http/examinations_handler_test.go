@@ -98,11 +98,45 @@ func TestListBySpecialistReturnsCurrentStatuses(t *testing.T) {
 	}
 }
 
+func TestGetByIDIncludesSnapshotQuestions(t *testing.T) {
+	handler := ExaminationsHandler{
+		service: examinations.NewService(&examServiceRepoStub{
+			getByIDResult: examinations.Examination{
+				ID:           12,
+				SpecialistID: 7,
+				Status:       examinations.StatusCollectingAnswers,
+			},
+			listQuestionsResult: []examinations.ExaminationQuestion{
+				{ID: 901, ExaminationID: 12, SpecialistID: 7, Position: 1, QuestionText: "Первый вопрос"},
+			},
+		}),
+	}
+
+	req := httptest.NewRequest(nethttp.MethodGet, "/examinations/12", nil)
+	req = withURLParam(req, "id", "12")
+	rec := httptest.NewRecorder()
+
+	handler.GetByID(rec, req)
+
+	if rec.Code != nethttp.StatusOK {
+		t.Fatalf("expected status %d, got %d", nethttp.StatusOK, rec.Code)
+	}
+
+	var exam examinations.Examination
+	if err := json.Unmarshal(rec.Body.Bytes(), &exam); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(exam.Questions) != 1 || exam.Questions[0].ID != 901 {
+		t.Fatalf("expected snapshot questions in response, got %+v", exam.Questions)
+	}
+}
+
 type examServiceRepoStub struct {
 	createResult           examinations.Examination
 	createErr              error
 	getByIDResult          examinations.Examination
 	getByIDErr             error
+	listQuestionsResult    []examinations.ExaminationQuestion
 	listBySpecialistResult []examinations.Examination
 	listBySpecialistErr    error
 	updateResult           examinations.Examination
@@ -121,6 +155,10 @@ func (s *examServiceRepoStub) List(context.Context) ([]examinations.Examination,
 
 func (s *examServiceRepoStub) GetByID(context.Context, int64) (examinations.Examination, error) {
 	return s.getByIDResult, s.getByIDErr
+}
+
+func (s *examServiceRepoStub) ListQuestionsByExaminationID(context.Context, int64) ([]examinations.ExaminationQuestion, error) {
+	return s.listQuestionsResult, nil
 }
 
 func (s *examServiceRepoStub) ListBySpecialistID(context.Context, int64) ([]examinations.Examination, error) {

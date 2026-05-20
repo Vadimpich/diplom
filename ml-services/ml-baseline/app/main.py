@@ -4,17 +4,14 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, Response
 
 from app.algorithms import (
-    GENERAL_REFERENCE_CENTER,
-    GENERAL_REFERENCE_SCALE,
     build_next_baseline,
     evaluate_update_eligibility,
-    robust_distance,
-    summarize_history,
+    build_deviation_section,
+    general_metric_reference,
 )
 from app.schemas import (
     BaselineCalculationRequest,
     BaselineCalculationResponse,
-    DeviationMetricScore,
     DeviationSection,
     HealthResponse,
     NextBaselineSnapshot,
@@ -22,9 +19,8 @@ from app.schemas import (
 )
 
 
-REQUIRED_METRIC_KEYS = {"overall_proxy_index", "speech_stability_proxy"}
+REQUIRED_METRIC_KEYS = {"overall_deviation_index", "speech_stability_score"}
 SUPPORTED_ALGORITHM_VERSION = os.getenv("BASELINE_ALGORITHM_VERSION", "baseline-v1")
-MAX_HISTORY = int(os.getenv("BASELINE_MAX_HISTORY", "5"))
 
 app = FastAPI(title="ml-baseline")
 
@@ -35,43 +31,6 @@ def utc_now() -> datetime:
 
 def metric_map(metrics: list) -> dict[str, float]:
     return {metric.key: metric.value for metric in metrics}
-
-
-def build_deviation_section(
-    current_metrics: dict[str, float],
-    centers: dict[str, float],
-    scales: dict[str, float],
-) -> DeviationSection:
-    metric_scores: dict[str, DeviationMetricScore] = {}
-    total = 0.0
-
-    for key, current_value in current_metrics.items():
-        delta, robust_z = robust_distance(
-            current_value=current_value,
-            center=centers.get(key, GENERAL_REFERENCE_CENTER),
-            scale=scales.get(key, GENERAL_REFERENCE_SCALE),
-        )
-        band = "low"
-        if abs(robust_z) >= 3:
-            band = "high"
-        elif abs(robust_z) >= 2:
-            band = "moderate"
-        elif abs(robust_z) >= 1:
-            band = "mild"
-
-        metric_scores[key] = DeviationMetricScore(delta=delta, robust_z=robust_z, band=band)
-        total += abs(robust_z)
-
-    score = round(total / max(len(metric_scores), 1), 4)
-    section_band = "low"
-    if score >= 3:
-        section_band = "high"
-    elif score >= 2:
-        section_band = "moderate"
-    elif score >= 1:
-        section_band = "mild"
-
-    return DeviationSection(score=score, band=section_band, metric_scores=metric_scores)
 
 
 def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculationResponse:
@@ -95,26 +54,54 @@ def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculati
         )
 
     history_vectors = [metric_map(vector.metrics) for vector in payload.history.metric_vectors]
-    history_summary = summarize_history(history_vectors)
     refreshed_at = utc_now()
+    existing_baseline_metrics = {
+        key: value.model_dump()
+        for key, value in payload.existing_baseline.metrics.items()
+    }
 
-    general_deviation = build_deviation_section(
-        current_metrics,
-        centers={key: GENERAL_REFERENCE_CENTER for key in current_metrics},
-        scales={key: GENERAL_REFERENCE_SCALE for key in current_metrics},
+    general_reference_metrics = {
+        key: {
+            "baseline_mean": float(general_metric_reference(key)["mean"]),
+            "baseline_std": float(general_metric_reference(key)["std"]),
+            "sample_count": 0,
+            "last_updated_at": None,
+            "method": str(general_metric_reference(key)["method"]),
+        }
+        for key in current_metrics
+    }
+    general_deviation = DeviationSection.model_validate(
+        build_deviation_section(
+            current_metrics,
+            general_reference_metrics,
+            baseline_source="general",
+            baseline_available=True,
+        )
     )
-    personal_deviation = build_deviation_section(
-        current_metrics,
-        centers={key: float(history_summary.get(key, {}).get("center", current_metrics[key])) for key in current_metrics},
-        scales={key: float(history_summary.get(key, {}).get("scale", GENERAL_REFERENCE_SCALE)) for key in current_metrics},
+    personal_available = payload.existing_baseline.baseline_available and bool(existing_baseline_metrics)
+    personal_deviation = DeviationSection.model_validate(
+        build_deviation_section(
+            current_metrics,
+            existing_baseline_metrics if personal_available else general_reference_metrics,
+            baseline_source="personal" if personal_available else "general",
+            baseline_available=personal_available,
+        )
     )
-    update_eligibility_data = evaluate_update_eligibility(history=history_vectors, current=current_metrics)
+    history_count = max(payload.history.baseline_exam_count, max((item.get("sample_count", 0) for item in existing_baseline_metrics.values()), default=0))
+    update_eligibility_data = evaluate_update_eligibility(
+        history_count=history_count,
+        all_channels_done=payload.context.all_channels_done,
+        critical_quality_flags=payload.context.critical_quality_flags,
+        data_reliability=payload.context.data_reliability,
+        overall_band=payload.context.overall_band,
+    )
     next_baseline = NextBaselineSnapshot.model_validate(
         build_next_baseline(
-            history=history_vectors,
             current=current_metrics,
+            history=history_vectors,
+            history_count=history_count,
+            existing_baseline_metrics=existing_baseline_metrics,
             refreshed_at=refreshed_at,
-            max_history=MAX_HISTORY,
             update_eligibility=update_eligibility_data,
         )
     )

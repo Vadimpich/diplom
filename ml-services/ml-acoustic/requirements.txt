@@ -5,3 +5,7 @@ pydantic
 pytest
 httpx
 uvicorn
+numpy
+soundfile
+transformers
+huggingface_hub

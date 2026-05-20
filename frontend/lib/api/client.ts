@@ -1,5 +1,5 @@
 import {
-  API_BASE_URL,
+  PUBLIC_API_BASE_URL,
   AUTH_LOGIN_ENDPOINT,
   AUTH_LOGOUT_ENDPOINT,
   AUTH_REFRESH_ENDPOINT,
@@ -7,12 +7,16 @@ import {
   AUTH_TOKEN_COOKIE,
 } from "@/lib/constants";
 import type {
+  AuditEventsQuery,
+  AuditEventsResponse,
   Answer,
   ApiErrorShape,
   Examination,
   ExaminationResult,
   ExaminationProcessingStatus,
   ExaminationsResponse,
+  FrontendReadinessResponse,
+  AdminMonitoringMetrics,
   HealthResponse,
   LoginResponse,
   Questionnaire,
@@ -20,6 +24,7 @@ import type {
   Specialist,
   SpecialistResultHistoryResponse,
   SpecialistsResponse,
+  SystemSettings,
   User,
   UsersResponse,
 } from "@/lib/api/types";
@@ -58,7 +63,9 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
     headers.set("Authorization", `Bearer ${authToken}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const target = path.startsWith("/api/") ? path : `${PUBLIC_API_BASE_URL}${path}`;
+
+  const response = await fetch(target, {
     ...init,
     headers,
   });
@@ -85,6 +92,51 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
   return (await response.json()) as T;
 }
 
+async function requestText(path: string, init?: RequestInit, token?: string): Promise<string> {
+  const authToken = token ?? getCookie(AUTH_TOKEN_COOKIE);
+  const headers = new Headers(init?.headers);
+
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const target = path.startsWith("/api/") ? path : `${PUBLIC_API_BASE_URL}${path}`;
+  const response = await fetch(target, {
+    ...init,
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new ApiError("Не удалось выполнить запрос", response.status);
+  }
+
+  return response.text();
+}
+
+function parseMonitoringMetrics(payload: string): AdminMonitoringMetrics {
+  const dependencyMatch = payload.match(
+    /^diplom_frontend_dependency_up\{dependency="core_backend"\}\s+([01])$/m,
+  );
+
+  return {
+    frontend_dependency_up: dependencyMatch?.[1] === "1" ? 1 : 0,
+  };
+}
+
+function buildQueryString(query: Record<string, string | number | undefined>) {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === "") {
+      continue;
+    }
+    params.set(key, String(value));
+  }
+
+  const serialized = params.toString();
+  return serialized ? `?${serialized}` : "";
+}
+
 export const apiClient = {
   login(payload: { login: string; password: string }) {
     return request<LoginResponse>(AUTH_LOGIN_ENDPOINT, {
@@ -109,6 +161,12 @@ export const apiClient = {
   },
   health() {
     return request<HealthResponse>("/health");
+  },
+  frontendReady() {
+    return request<FrontendReadinessResponse>("/api/ready");
+  },
+  frontendMonitoringMetrics() {
+    return requestText("/api/metrics").then(parseMonitoringMetrics);
   },
   getSpecialists() {
     return request<SpecialistsResponse>("/specialists");
@@ -152,10 +210,16 @@ export const apiClient = {
       method: "POST",
     });
   },
-  uploadAnswer(payload: { examination_id: number; text: string; audio: File }) {
+  uploadAnswer(payload: {
+    examination_id: number;
+    examination_question_id: number;
+    specialist_id: number;
+    audio: File;
+  }) {
     const formData = new FormData();
     formData.append("examination_id", String(payload.examination_id));
-    formData.append("text", payload.text);
+    formData.append("examination_question_id", String(payload.examination_question_id));
+    formData.append("specialist_id", String(payload.specialist_id));
     formData.append("audio", payload.audio);
 
     return request<Answer>("/answers", {
@@ -204,6 +268,31 @@ export const apiClient = {
   },
   getQuestionnaires() {
     return request<QuestionnairesResponse>("/questionnaires");
+  },
+  getAuditEvents(query: AuditEventsQuery) {
+    return request<AuditEventsResponse>(
+      `/audit/events${buildQueryString({
+        event_type: query.event_type,
+        resource_kind: query.resource_kind,
+        resource_id: query.resource_id,
+        from: query.from,
+        to: query.to,
+        limit: query.limit,
+      })}`,
+    );
+  },
+  getSystemSettings() {
+    return request<SystemSettings>("/settings");
+  },
+  updateSystemSettings(payload: {
+    audio_retention_ttl_days: number;
+    processing_max_attempts: number;
+    kesmi_max_retries: number;
+  }) {
+    return request<SystemSettings>("/settings", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   },
   getQuestionnaire(id: number) {
     return request<Questionnaire>(`/questionnaires/${id}`);

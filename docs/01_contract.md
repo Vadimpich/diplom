@@ -708,12 +708,12 @@ Endpoints:
   "summary": {
     "overall_score": 0.58,
     "overall_band": "elevated",
-    "primary_metric_key": "overall_proxy_index",
+    "primary_metric_key": "overall_deviation_index",
     "neutral_recommendation_placeholder": "phase3_pending_external_decision"
   },
   "metrics": [
     {
-      "key": "overall_proxy_index",
+      "key": "overall_deviation_index",
       "label": "Сводный прокси-индекс",
       "value": 0.58,
       "scale": "0..1",
@@ -723,11 +723,33 @@ Endpoints:
   "channel_contributions": [
     {
       "channel": "text",
-      "metric_key": "overall_proxy_index",
+      "metric_key": "overall_deviation_index",
       "weight": 0.33,
       "contribution": 0.17,
       "evidence_keys": [
-        "text_proxy_signal"
+        "text_risk_signal"
+      ]
+    }
+  ],
+  "channel_reports": [
+    {
+      "channel": "text",
+      "model_version": "rubert-go-emotions-v1",
+      "quality_flags": [],
+      "evidence": [
+        "Нейтральный и достаточно связный ответ без выраженной тревожной окраски."
+      ],
+      "scores": [
+        {
+          "key": "text_negativity_score",
+          "label": "Негативная окраска текста",
+          "value": 0.22
+        },
+        {
+          "key": "text_confidence_score",
+          "label": "Уверенность ответа",
+          "value": 0.78
+        }
       ]
     }
   ],
@@ -735,7 +757,7 @@ Endpoints:
     {
       "position": 1,
       "kind": "summary",
-      "text": "Повышение индекса в основном связано с proxy-метриками acoustic и paralinguistic каналов."
+      "text": "Повышение индекса в основном связано с score-метриками acoustic и paralinguistic каналов."
     }
   ],
   "baseline_snapshot": {
@@ -744,13 +766,21 @@ Endpoints:
     "general": {
       "delta": 0.21,
       "band": "mild",
+      "baseline_available": true,
+      "baseline_source": "general",
       "reference_population_version": "general-v1"
     },
     "personal": {
       "delta": 0.37,
       "band": "moderate",
+      "baseline_available": false,
+      "baseline_source": "general",
       "baseline_exam_count": 4,
-      "update_eligible": false
+      "update_eligible": false,
+      "data_reliability": 0.91,
+      "significant_deviations": [
+        "overall_deviation_index"
+      ]
     }
   },
   "decision": {
@@ -776,7 +806,9 @@ Endpoints:
 Правила:
 - профиль один на обследование;
 - контракт versioned через `schema_version`, а реализация агрегации versioned через `aggregation_version`;
-- названия метрик должны быть нейтральными и proxy-oriented до появления финальной ML-семантики;
+- названия метрик должны быть нейтральными и score-oriented до появления финальной ML-семантики;
+- `channel_reports` предназначен для operator-facing подробного отчёта и возвращает только explainable score-метрики каналов, без сырых `features`;
+- `channel_reports[*].scores[*].value` нормирован в том виде, в каком score был сохранён worker/aggregator слоем; визуальная цветовая интерпретация делается на frontend;
 - поле `neutral_recommendation_placeholder` резервирует место под future decision delivery, но не содержит KЭСМИ контракта и не заменяет финальную рекомендацию;
 - `status` для этого endpoint допускает `aggregated`, `decision_pending`, `completed`;
 - поле `decision` принадлежит backend domain и не совпадает с raw WiMi contract;
@@ -825,7 +857,7 @@ Endpoints:
       },
       "key_metrics": [
         {
-          "key": "overall_proxy_index",
+          "key": "overall_deviation_index",
           "label": "Сводный прокси-индекс",
           "value": 0.58,
           "previous_value": 0.46,
@@ -862,62 +894,126 @@ Endpoints:
 ```json
 {
   "schema_version": 1,
-  "payload_version": "decision-input-v1",
+  "payload_version": "decision-input-v2",
   "aggregation_version": "agg-v1",
   "examination_id": 101,
   "specialist_id": 55,
   "generated_at": "2026-03-22T10:02:10Z",
-  "summary": {
-    "overall_score": 0.58,
-    "overall_band": "elevated",
-    "primary_metric_key": "overall_proxy_index"
-  },
-  "metrics": [
-    {
-      "key": "overall_proxy_index",
-      "label": "Сводный прокси-индекс",
-      "value": 0.58,
-      "scale": "0..1",
-      "direction": "higher_means_more_deviation"
-    }
-  ],
-  "channel_contributions": [
-    {
-      "channel": "text",
-      "metric_key": "overall_proxy_index",
-      "weight": 0.33,
-      "contribution": 0.17,
-      "evidence_keys": [
-        "text_proxy_signal"
-      ]
-    }
-  ],
-  "baseline_snapshot": {
-    "algorithm_version": "baseline-v1",
-    "general": {
-      "delta": 0.21,
-      "band": "mild"
+  "data_reliability": 0.91,
+  "channels": {
+    "acoustic": {
+      "scores": {
+        "acoustic_stress_score": 0.46,
+        "voice_stability_score": 0.62,
+        "intensity_variability_score": 0.31
+      },
+      "quality_flags": []
     },
-    "personal": {
-      "delta": 0.37,
-      "band": "moderate",
-      "baseline_exam_count": 4,
-      "update_eligible": false
+    "text": {
+      "scores": {
+        "text_negativity_score": 0.28,
+        "text_anxiety_score": 0.34,
+        "text_confidence_score": 0.72,
+        "text_coherence_score": 0.82,
+        "text_evasion_score": 0.18
+      },
+      "quality_flags": []
+    },
+    "paralinguistic": {
+      "scores": {
+        "hesitation_score": 0.33,
+        "speech_disorganization_score": 0.22
+      },
+      "quality_flags": []
     }
   },
+  "baseline": {
+    "source": "general",
+    "available": false,
+    "baseline_deviation_index": 0.37,
+    "significant_deviations": [
+      "overall_deviation_index"
+    ],
+    "z_scores": {
+      "overall_deviation_index": 1.5,
+      "text_risk_signal": 2.1
+    }
+  },
+  "derived_indicators": {
+    "semantic_stress_index": 0.32,
+    "acoustic_activation_index": 0.41,
+    "speech_disorganization_index": 0.28,
+    "baseline_shift_index": 0.39
+  },
+  "evidence": [
+    "Агрегатор передает explainable channel scores и baseline deviations без итогового решения."
+  ],
   "service_metadata": {
     "target_system": "kesmi",
-    "delivery_mode": "placeholder",
+    "delivery_mode": "canonical_kesmi_payload",
     "message": "analysis_not_implemented_yet"
   }
 }
 ```
 
 Правила:
-- `decision_input` строится только из backend-owned aggregated profile и baseline snapshot;
+- `decision_input` строится из successful mandatory channel payloads, baseline snapshot и backend-derived indicators;
+- mandatory channels: `acoustic`, `text`, `paralinguistic`;
+- `channels.*.scores` передают explainable channel-level параметры и не заменяются одним общим score;
+- `baseline.source` принимает `general` или `personal`, а `baseline.z_scores` содержит per-parameter deviations для КЭСМИ;
+- `data_reliability < 1` означает, что анализ выполнен на данных с quality limitations и не эквивалентен “низкому риску”;
+- `derived_indicators` вычисляются backend-агрегатором как промежуточные explainable индексы (`semantic_stress_index`, `acoustic_activation_index`, `speech_disorganization_index`, `baseline_shift_index`);
 - payload versioned через `payload_version`;
-- список полей в `decision_input` стабилизируется раньше, чем появятся реальные WiMi model parameters;
-- последующий mapping `decision_input -> incommingParameters` живёт в integration layer и не меняет operator-facing contract.
+- integration layer маппит этот объект в WiMi/KЭСМИ `incommingParameters: [{id, value}]` по ID параметров конкретной decision-модели, не перекладывая final decision logic в backend.
+
+### KESMI /ModelCalc bridge
+
+`core-backend` отправляет в WiMi:
+
+```json
+{
+  "modelID": "specialists-model-v2-decision",
+  "incommingParameters": [
+    { "id": "i1", "value": 0.28 },
+    { "id": "i2", "value": 0.34 },
+    { "id": "i3", "value": 0.72 },
+    { "id": "i4", "value": 0.82 },
+    { "id": "i5", "value": 0.18 },
+    { "id": "i6", "value": 0.46 },
+    { "id": "i7", "value": 0.62 },
+    { "id": "i8", "value": 0.31 },
+    { "id": "i9", "value": 0.33 },
+    { "id": "i10", "value": 0.22 },
+    { "id": "i11", "value": 0.0 },
+    { "id": "i12", "value": 0.37 },
+    { "id": "i13", "value": 1.5 },
+    { "id": "i14", "value": 2.1 },
+    { "id": "i15", "value": 1.7 },
+    { "id": "i16", "value": 1.2 },
+    { "id": "i17", "value": -0.4 },
+    { "id": "i18", "value": 0.91 },
+    { "id": "i19", "value": 0.32 },
+    { "id": "i20", "value": 0.41 },
+    { "id": "i21", "value": 0.28 },
+    { "id": "i22", "value": 0.39 }
+  ],
+  "outputParameters": ["p32", "p33"],
+  "service": {
+    "outputFields": [
+      "requiredExploredParameters"
+    ]
+  }
+}
+```
+
+Правила:
+- raw transport body к WiMi остаётся обёрткой вокруг `decision_input`;
+- `modelID` должен совпадать с ID, под которым decision-модель загружена в WiMi через `POST /Models`;
+- входные параметры передаются по opaque model parameter IDs из XML-модели, а не по человекочитаемым backend field names;
+- для текущей модели `specialists_model_v2_decision.xml` backend обязан заполнять все входы `i1..i22`;
+- `outputParameters` запрашивают только `final_decision (p32)` и `final_summary (p33)`;
+- `service.outputFields` ограничивается только `requiredExploredParameters`, так как `notRequiredExploredParameters` в текущей WiMi-модели не даёт полезного вывода, а диагностические поля `algorithm`, `timing` и подобные остаются отключёнными;
+- финальные экспертные правила и recommendation остаются внутри КЭСМИ/WiMi.
 
 ### decision_result
 
@@ -932,6 +1028,9 @@ Endpoints:
   "state": "pending",
   "recommendation": "unavailable",
   "message": "analysis_not_implemented_yet",
+  "decision_code": "monitoring",
+  "risk_class": "medium",
+  "patterns": ["emotional_cross", "contradictory_profile"],
   "correlation_id": "exam-101-kesmi-1",
   "attempt_count": 1,
   "max_attempts": 2,
@@ -950,6 +1049,19 @@ Endpoints:
 Допустимые значения:
 - `state`: `pending`, `succeeded`, `transport_exhausted`, `business_error`;
 - `recommendation`: `unavailable`, `allowed`, `risk`, `denied`.
+
+Нормализация ответа WiMi:
+- backend читает из `requiredExploredParameters` как минимум `p32=final_decision` и `p33=final_summary`;
+- `decision_code` возвращает сырой код WiMi без переименования: `allow`, `monitoring`, `extended_check`, `no_access`;
+- `risk_class` извлекается из `final_summary` (`low`, `attention`, `medium`, `high`, `critical`);
+- `patterns` извлекается из хвоста `patterns=...` в `final_summary`; `patterns=none` нормализуется в пустой массив;
+- coarse `recommendation` сохраняется для совместимости frontend/workflow и маппится так:
+  - `allow` -> `allowed`
+  - `monitoring` -> `risk`
+  - `extended_check` -> `risk`
+  - `no_access` -> `denied`
+- `message` в terminal successful outcome содержит сырой `final_summary` WiMi, например `risk=medium; decision=monitoring; patterns=emotional_cross;contradictory_profile;`;
+- если WiMi вернул `200 OK`, но не прислал корректные `p32/p33`, backend завершает decision delivery как `business_error` с `diagnostics.error_code=invalid_kesmi_response`.
 
 Правила:
 - `pending` отражает `decision_pending` в coarse workflow и не является terminal operator outcome;
@@ -983,11 +1095,11 @@ Phase 3 baseline остаётся отдельным Python compute-only service
   "generated_at": "2026-03-22T10:02:08Z",
   "metrics": [
     {
-      "key": "overall_proxy_index",
+      "key": "overall_deviation_index",
       "value": 0.58
     },
     {
-      "key": "speech_stability_proxy",
+      "key": "speech_stability_score",
       "value": 0.41
     }
   ],
@@ -999,12 +1111,22 @@ Phase 3 baseline остаётся отдельным Python compute-only service
         "generated_at": "2026-03-20T10:02:08Z",
         "metrics": [
           {
-            "key": "overall_proxy_index",
+            "key": "overall_deviation_index",
             "value": 0.46
           }
         ]
       }
     ]
+  },
+  "existing_baseline": {
+    "baseline_available": false,
+    "metrics": {}
+  },
+  "context": {
+    "all_channels_done": true,
+    "critical_quality_flags": [],
+    "data_reliability": 0.91,
+    "overall_band": "mild"
   },
   "general_reference_population_version": "general-v1"
 }
@@ -1020,37 +1142,62 @@ Phase 3 baseline остаётся отдельным Python compute-only service
   "general_deviation": {
     "score": 0.21,
     "band": "mild",
+    "baseline_available": true,
+    "baseline_source": "general",
+    "significant_deviations": [],
     "metric_scores": {
-      "overall_proxy_index": {
+      "overall_deviation_index": {
+        "baseline_available": true,
+        "baseline_source": "general",
+        "baseline_mean": 0.26,
+        "baseline_std": 0.08,
+        "sample_count": 0,
+        "method": "general_reference",
         "delta": 0.08,
-        "robust_z": 0.54,
-        "band": "low"
+        "z_score": 1.0,
+        "deviation_level": "mild"
       }
     }
   },
   "personal_deviation": {
     "score": 0.37,
     "band": "moderate",
+    "baseline_available": false,
+    "baseline_source": "general",
+    "significant_deviations": [
+      "overall_deviation_index"
+    ],
     "metric_scores": {
-      "overall_proxy_index": {
+      "overall_deviation_index": {
+        "baseline_available": false,
+        "baseline_source": "general",
+        "baseline_mean": 0.26,
+        "baseline_std": 0.08,
+        "sample_count": 0,
+        "method": "general_reference",
         "delta": 0.12,
-        "robust_z": 1.91,
-        "band": "mild"
+        "z_score": 1.5,
+        "deviation_level": "mild"
       }
     }
   },
   "update_eligibility": {
-    "eligible": false,
-    "reason": "outlier_detected",
-    "baseline_exam_count_after_update": 4
+    "eligible": true,
+    "reason": "accepted",
+    "baseline_exam_count_after_update": 5,
+    "data_reliability": 0.91
   },
   "next_baseline": {
-    "exam_count": 4,
-    "centers": {
-      "overall_proxy_index": 0.46
-    },
-    "scales": {
-      "overall_proxy_index": 0.03
+    "exam_count": 5,
+    "baseline_available": true,
+    "metrics": {
+      "overall_deviation_index": {
+        "baseline_mean": 0.48,
+        "baseline_std": 0.05,
+        "sample_count": 5,
+        "last_updated_at": "2026-03-22T10:02:09Z",
+        "method": "ewma_bootstrap"
+      }
     },
     "refreshed_at": "2026-03-22T10:02:09Z"
   }
@@ -1064,10 +1211,15 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 
 Правила:
 - `general_deviation` и `personal_deviation` обязательны даже если history пустая;
-- `metric_scores` внутри обоих deviation-блоков содержат per-metric delta, robust z-score и severity band для канонических proxy-метрик;
+- `metric_scores` внутри обоих deviation-блоков содержат per-metric baseline reference, `delta`, `z_score` и `deviation_level` для канонических score-метрик;
 - `algorithm_version` и `refreshed_at` обязательны для persistence snapshot в core backend;
-- `update_eligibility` обязателен для outlier-gated baseline refresh;
-- `next_baseline` обязателен и содержит кандидатный snapshot baseline после применения bounded-history и outlier gate;
+- `existing_baseline` передаётся только как backend-owned persisted state; baseline service не получает raw DB access;
+- `context` передаёт eligibility-факторы уровня workflow: готовность каналов, критичные `quality_flags`, `data_reliability`, coarse `overall_band`;
+- `update_eligibility` описывает только предварительную допустимость baseline refresh на уровне compute-сервиса; финальное persisted обновление personal baseline происходит в core backend только после завершения decision-stage;
+- `next_baseline` обязателен и содержит кандидатный snapshot personal baseline на основе EWMA mean/std и `sample_count`, без немедленной записи в PostgreSQL;
+- personal baseline считается доступным только после `BASELINE_MIN_PERSONAL_EXAMS` качественных обследований, до этого `personal_deviation` использует `baseline_source="general"`;
+- до созревания personal baseline (`baseline_available=false`) general fallback не должен доминировать над реальными каналами: в decision payload для КЭСМИ backend передаёт `baseline_deviation_index=0`, `baseline_shift_index=0` и обнуляет baseline `z_scores`, оставляя baseline только как operator-facing справочный слой;
+- history для bootstrap personal baseline формируется только из baseline snapshot-ов, которые прошли финальный eligibility gate и были приняты в persisted baseline history.
 - клинические выводы и KЭСМИ-поля в ответ baseline service не включаются.
 
 ### POST /users
@@ -1374,7 +1526,37 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 Назначение:
 - получение одного обследования по идентификатору.
 
-Ответ `200 OK`: объект `Examination`.
+Ответ `200 OK`: объект `Examination` с `questions` snapshot-массивом для operator recording flow.
+
+```json
+{
+  "id": 100,
+  "specialist_id": 10,
+  "created_by_user_id": 1,
+  "questionnaire_id": 5,
+  "status": "collecting_answers",
+  "questions": [
+    {
+      "id": 9001,
+      "examination_id": 100,
+      "specialist_id": 10,
+      "questionnaire_id": 5,
+      "source_question_id": 11,
+      "position": 1,
+      "text": "Как вы себя чувствуете сегодня?"
+    }
+  ],
+  "created_at": "2026-03-19T12:00:00Z",
+  "started_at": "2026-03-19T12:01:00Z",
+  "finished_at": null,
+  "updated_at": "2026-03-19T12:01:00Z"
+}
+```
+
+Правила:
+- `questions` содержит snapshot-вопросы из `examination_questions`, а не live-версию из `questionnaires`;
+- порядок элементов в `questions` совпадает с `position`;
+- operator UI обязан использовать именно `questions[*].id` как `examination_question_id` при `POST /answers`.
 
 Ошибки:
 - `404 Not Found` если обследование не найдено.
@@ -1518,14 +1700,15 @@ Phase 3 baseline остаётся отдельным Python compute-only service
 
 Правила:
 - endpoint возвращает состояние, вычисленное из PostgreSQL (`examinations`, `examination_channel_runs`, `processing_outbox`, `channel_results`), а не из состояния очередей RabbitMQ;
-- общее поле `status` для обследования в Phase 2 допускает значения `ready_for_processing`, `processing`, `failed`;
+- общее поле `status` допускает значения `ready_for_processing`, `processing`, `aggregating`, `aggregated`, `decision_pending`, `completed`, `failed`;
 - детальное состояние каналов живёт только в `channels[*]` и не должно дублироваться в основном объекте `Examination`;
-- `terminal=true` означает, что все обязательные каналы достигли финального состояния (`succeeded` либо терминальная ошибка с переводом обследования в `failed`);
+- после завершения обязательных каналов endpoint продолжает оставаться доступным и для post-processing состояний `aggregated`, `decision_pending`, `completed`;
+- `terminal=true` означает только terminal coarse outcome `completed` или `failed`;
 - `last_error_message` предназначено для операторской диагностики и не должно содержать stack trace или чувствительные данные.
 
 Ошибки:
 - `404 Not Found` если обследование не найдено;
-- `409 Conflict` если обследование ещё не было переведено в `ready_for_processing`.
+- `409 Conflict` если обследование ещё не было переведено в `ready_for_processing` и не входило в processing/post-processing pipeline.
 
 ## Asynchronous Processing Contract
 
@@ -1611,7 +1794,7 @@ Worker runtime env:
       "question_id": 9001,
       "audio_s3_bucket": "diplom-audio",
       "audio_s3_key": "examinations/100/answers/500/audio.webm",
-      "answer_text": "Ответ обследуемого"
+      "answer_text": ""
     }
   ]
 }
@@ -1627,7 +1810,7 @@ Worker runtime env:
 - `max_attempts`: максимальное число попыток для данного канала;
 - `requested_at`: время формирования команды в core backend;
 - `answers[*].audio_s3_bucket` и `answers[*].audio_s3_key`: обязательные ссылки на объект в S3;
-- `answers[*].answer_text`: текстовая транскрипция/ответ, доступная всем каналам как часть общего контракта;
+- `answers[*].answer_text`: строковое поле общего контракта; в текущем audio-only operator flow может быть пустой строкой до появления отдельной транскрипции;
 - передача бинарных audio bytes в RabbitMQ запрещена.
 
 ### Channel result envelope v1
@@ -1646,22 +1829,365 @@ Worker runtime env:
   "attempt": 1,
   "status": "succeeded",
   "completed_at": "2026-03-21T09:00:10Z",
-  "model_version": "text-stub-0.1.0",
+  "model_version": "rubert-go-emotions-v1",
   "error_code": null,
   "error_message": null,
   "payload": {
-    "summary": "stub result"
+    "channel": "text",
+    "status": "done",
+    "examination_id": 100,
+    "answer_id": null,
+    "features": {},
+    "scores": {},
+    "quality_flags": [],
+    "evidence": [],
+    "model_version": "rubert-go-emotions-v1",
+    "processing_time_ms": 120,
+    "error": null
   }
 }
 ```
 
 Поля:
 - `status`: одно из `succeeded`, `temporary_error`, `fatal_error`;
-- `payload`: channel-specific JSON object, но envelope shape одинакова для всех каналов;
+- `payload`: канонический channel result payload для `succeeded`; при transport/contract ошибках может быть `{}`;
 - `error_code` и `error_message` обязательны при `temporary_error` и `fatal_error`, должны быть пустыми при `succeeded`;
 - `completed_at` обязателен для всех terminal result-сообщений;
 - worker не должен публиковать разные envelope shapes для разных каналов.
-- stub workers текущей фазы обязаны заполнять `model_version` и использовать `temporary_error` для transport/S3 availability failures, `fatal_error` для невалидного payload или отсутствующего S3 object reference.
+- worker обязан заполнять `model_version` и использовать `temporary_error` для transport/S3 availability failures, `fatal_error` для невалидного command payload или отсутствующего S3 object reference.
+
+#### Canonical channel payload v1
+
+Все успешные channel results сохраняются в PostgreSQL в едином payload-формате:
+
+```json
+{
+  "channel": "acoustic",
+  "status": "done",
+  "examination_id": 100,
+  "answer_id": null,
+  "features": {},
+  "scores": {},
+  "quality_flags": [],
+  "evidence": [],
+  "model_version": "acoustic-librosa-v1",
+  "processing_time_ms": 90,
+  "error": null
+}
+```
+
+Правила:
+- `channel`: `text`, `acoustic` или `paralinguistic`;
+- `status`: `done` или `failed` внутри payload; transport-level статус остаётся в result envelope;
+- `examination_id`: id обследования из command envelope;
+- `answer_id`: id ответа, если payload относится к одному ответу; `null`, если worker агрегировал несколько audio answers в один channel result;
+- `features`: измеренные признаки канала, без итоговых решений;
+- `scores`: нормированные/производные оценки канала `0..1`, без решения о допуске;
+- `quality_flags`: технические флаги качества данных/обработки;
+- `evidence`: человекочитаемые факты для оператора и отладки;
+- `model_version`: версия модели/алгоритма канала, обязательна;
+- `processing_time_ms`: wall-clock время обработки worker payload;
+- `error`: `null` для `done`; строка/объект ошибки для `failed`.
+
+Core backend валидирует наличие этих полей перед сохранением successful channel result. Старые stub/proxy поля (`summary`, `text_total_characters`, `audio_energy_proxy`, `speech_rate_proxy` и аналоги) больше не являются контрактом.
+
+#### Paralinguistic payload v1
+
+`paralinguistic-worker` больше не возвращает stub payload. Worker декодирует каждый audio object через local `ffmpeg` в mono PCM 16 kHz, выделяет speech-сегменты lightweight WebRTC VAD и возвращает измеримые признаки речевого поведения. Ошибки декодирования/VAD не должны падать из worker process: если S3 object доступен, но аудио не анализируется, result envelope остаётся `status=succeeded`, а payload получает `quality_flags=["vad_failed"]` и evidence с причиной. Transport/S3 ошибки по-прежнему идут через `temporary_error`/`fatal_error` envelope.
+
+Минимальный payload:
+
+```json
+{
+  "channel": "paralinguistic",
+  "status": "done",
+  "examination_id": 100,
+  "answer_id": null,
+  "features": {
+    "total_audio_duration_ms": 10000,
+    "speech_duration_ms": 5700,
+    "silence_duration_ms": 4300,
+    "speech_ratio": 0.57,
+    "response_delay_ms": 500,
+    "pause_count": 2,
+    "long_pause_count": 1,
+    "mean_pause_ms": 900,
+    "max_pause_ms": 1200,
+    "speech_segment_count": 3,
+    "speech_rate_wpm": null
+  },
+  "scores": {
+    "hesitation_score": 0.31,
+    "speech_disorganization_score": 0.2
+  },
+  "quality_flags": [],
+  "evidence": [
+    "Речь занимает 57.0% суммарного аудио.",
+    "Обнаружено пауз между речевыми сегментами: 2.",
+    "Длинных пауз: 1."
+  ],
+  "model_version": "paralinguistic-vad-v1",
+  "processing_time_ms": 70,
+  "error": null,
+  "answers": [
+    {
+      "answer_id": 500,
+      "question_id": 9001,
+      "audio_s3_key": "examinations/100/answers/500/audio.webm",
+      "bytes": 524288,
+      "result": {
+        "channel": "paralinguistic",
+        "status": "done",
+        "features": {},
+        "scores": {},
+        "quality_flags": [],
+        "evidence": [],
+        "model_version": "paralinguistic-vad-v1"
+      }
+    }
+  ]
+}
+```
+
+Поля:
+- `features.total_audio_duration_ms`: суммарная длительность обработанных аудиоответов после декодирования;
+- `features.speech_duration_ms`: суммарная длительность VAD speech-сегментов;
+- `features.silence_duration_ms`: `total_audio_duration_ms - speech_duration_ms`;
+- `features.speech_ratio`: доля речи в аудио, `0..1`;
+- `features.response_delay_ms`: средняя задержка от начала ответа до первого speech-сегмента по обработанным ответам;
+- `features.pause_count`: количество пауз между speech-сегментами, паузы между разными audio objects не склеиваются;
+- `features.long_pause_count`: количество пауз с длительностью не меньше `PARALINGUISTIC_LONG_PAUSE_THRESHOLD_MS`, default `1200`;
+- `features.mean_pause_ms`, `features.max_pause_ms`: средняя и максимальная длительность пауз;
+- `features.speech_segment_count`: количество speech-сегментов после VAD merge;
+- `features.speech_rate_wpm`: слов в минуту, если worker получил `answer_text`/transcript; иначе `null`;
+- `scores.hesitation_score`: нормированный `0..1` индекс на основе pause ratio, long pauses и response delay;
+- `scores.speech_disorganization_score`: нормированный `0..1` индекс фрагментации речи и низкой доли речи;
+- `quality_flags`: набор из `no_speech_detected`, `too_short_speech`, `low_speech_ratio`, `vad_failed`;
+- `evidence`: человекочитаемые факты для operator-facing explanation;
+- `answers`: per-answer diagnostic breakdown без audio bytes и без transcript leakage.
+
+Runtime config:
+- `PARALINGUISTIC_LONG_PAUSE_THRESHOLD_MS`, default `1200`;
+- `PARALINGUISTIC_MIN_SPEECH_DURATION_MS`, default `700`;
+- `PARALINGUISTIC_LOW_SPEECH_RATIO_THRESHOLD`, default `0.15`;
+- `PARALINGUISTIC_VAD_AGGRESSIVENESS`, default `2`, допустимые значения WebRTC VAD `0..3`.
+
+Compatibility proxy-поля `speech_rate_proxy` и `prosody_variation_proxy` удалены. Aggregator читает `scores.hesitation_score` и `scores.speech_disorganization_score`.
+
+#### Acoustic payload v1
+
+`acoustic-worker` больше не возвращает stub payload. Worker декодирует каждый audio object через local `ffmpeg` в mono float32 PCM 22.05 kHz и извлекает explainable audio features через `librosa`/`numpy` без обучения большой модели. Ошибки декодирования или feature extraction не должны падать из worker process: если S3 object доступен, result envelope остаётся `status=succeeded`, а payload получает `quality_flags=["feature_extraction_failed"]` и evidence с причиной. Transport/S3 ошибки по-прежнему идут через `temporary_error`/`fatal_error` envelope.
+
+Минимальный payload:
+
+```json
+{
+  "channel": "acoustic",
+  "status": "done",
+  "examination_id": 100,
+  "answer_id": null,
+  "features": {
+    "duration_ms": 2000,
+    "sample_rate": 16000,
+    "rms_energy_mean": 0.12
+  },
+  "scores": {
+    "acoustic_stress_score": 0.41,
+    "voice_stability_score": 0.63,
+    "intensity_variability_score": 0.18
+  },
+  "emotion_probs": {
+    "neutral": 0.24,
+    "happiness": 0.08,
+    "sadness": 0.16,
+    "anger": 0.44,
+    "fear": 0.0,
+    "other": 0.08
+  },
+  "dominant_emotion": "anger",
+  "quality_flags": [],
+  "evidence": [
+    "Доминирующая эмоция: anger (44.0%).",
+    "Средняя энергия RMS: 0.12.",
+    "Индекс акустического напряжения: 0.41."
+  ],
+  "model_version": "xbgoose-hubert-large-dusha-v1",
+  "processing_time_ms": 90,
+  "error": null,
+  "answers": [
+    {
+      "answer_id": 500,
+      "question_id": 9001,
+      "audio_s3_key": "examinations/100/answers/500/audio.webm",
+      "bytes": 524288,
+      "result": {
+        "channel": "acoustic",
+        "status": "done",
+        "features": {},
+        "scores": {},
+        "emotion_probs": {},
+        "dominant_emotion": "neutral",
+        "quality_flags": [],
+        "evidence": [],
+        "model_version": "xbgoose-hubert-large-dusha-v1"
+      }
+    }
+  ]
+}
+```
+
+Поля:
+- `features.duration_ms`: длительность декодированного аудио после нормализации в mono `16 kHz`;
+- `features.sample_rate`: sample rate, на котором модель получает аудио; в Phase 4 acoustic worker это `16000`;
+- `features.rms_energy_mean`: вспомогательная low-level метрика для quality gating и operator-facing evidence;
+- `emotion_probs`: вероятности классов SER-модели, нормализованные к ключам `neutral`, `happiness`, `sadness`, `anger`, `fear`, `other`; если исходный label модели не попадает в известный mapping, он агрегируется в `other`;
+- `dominant_emotion`: класс с максимальной вероятностью после нормализации label mapping;
+- `scores.voice_stability_score`: нормированный `0..1`, где `1` означает более стабильный голос; в MVP считается эвристически из SER negative signal, neutral share и intensity variability;
+- `scores.acoustic_stress_score`: основной acoustic risk/stress score `0..1`, вычисляемый из SER emotion probabilities c небольшим вкладом intensity variability;
+- `scores.intensity_variability_score`: вспомогательный совместимый score на основе RMS variability; сохраняется в payload для текущего aggregator/KЭСМИ mapping и не является основным acoustic inference-каналом;
+- `quality_flags`: набор из `audio_too_short`, `low_volume`, `model_load_failed`, `inference_failed`, `unsupported_audio_format`;
+- `evidence`: человекочитаемые факты для operator-facing explanation;
+- `answers`: per-answer diagnostic breakdown без audio bytes.
+
+Runtime env:
+- `ACOUSTIC_MODEL_PATH`: локальная директория модели, default `/app/models/acoustic-emotion`;
+- `ACOUSTIC_MODEL_ID`: fallback Hugging Face model id, default `xbgoose/hubert-large-speech-emotion-recognition-russian-dusha-finetuned`;
+- `ACOUSTIC_DEVICE`: `cpu` или `cuda`;
+- `HF_HUB_OFFLINE`: если `1`, acoustic worker обязан грузить модель только из `ACOUSTIC_MODEL_PATH`.
+
+Compatibility proxy-поля `audio_total_bytes`, `audio_average_bytes` и `audio_energy_proxy` удалены. Aggregator читает `scores.acoustic_stress_score`, `scores.voice_stability_score` и `scores.intensity_variability_score`.
+
+#### Text analysis payload v1
+
+`text-worker` выполняет локальную STT-транскрибацию через `faster-whisper`, а затем анализирует transcript внутри того же worker-а. Для emotion probabilities используется локальная RuBERT-compatible multi-label emotion-модель, default `seara/rubert-base-cased-russian-emotion-detection-ru-go-emotions`; модель грузится лениво при первом непустом transcript. Выходы исходной go-emotions taxonomy нормализуются к backend-owned ключам `joy`, `sadness`, `anger`, `fear`, `surprise`, `neutral`, чтобы downstream aggregator, КЭСМИ и operator UI не зависели от конкретной модели. Health/readiness worker-а не требуют загрузки STT или emotion-модели. Если STT или emotion-модель не сработали, worker не должен падать: result envelope остаётся `status=succeeded`, payload получает quality flag (`stt_failed` или `emotion_model_failed`) и сохраняет explainable heuristic features/scores там, где это возможно.
+
+Минимальный payload:
+
+```json
+{
+  "channel": "text",
+  "status": "done",
+  "examination_id": 100,
+  "answer_id": null,
+  "stt": {
+    "transcript": "текст ответа",
+    "language": "ru",
+    "segments": [
+      {
+        "start_ms": 0,
+        "end_ms": 1200,
+        "text": "текст ответа",
+        "answer_id": 500,
+        "question_id": 9001
+      }
+    ],
+    "duration_ms": 1200,
+    "word_count": 2,
+    "model_version": "faster-whisper-medium"
+  },
+  "features": {
+    "transcript_length_chars": 11,
+    "word_count": 2,
+    "sentence_count": 1,
+    "avg_sentence_length": 2.0,
+    "uncertainty_marker_count": 0,
+    "negation_count": 0,
+    "short_answer_flag": true
+  },
+  "scores": {
+    "text_negativity_score": 0.1,
+    "text_anxiety_score": 0.2,
+    "text_confidence_score": 0.8,
+    "text_coherence_score": 0.7,
+    "text_evasion_score": 0.45
+  },
+  "emotion_probs": {
+    "joy": 0.05,
+    "sadness": 0.1,
+    "anger": 0.0,
+    "fear": 0.2,
+    "surprise": 0.0,
+    "neutral": 0.65
+  },
+  "quality_flags": [],
+  "evidence": [
+    "STT total transcript length: 11 characters.",
+    "STT total word count: 2.",
+    "Короткий ответ: мало слов или символов для устойчивого текстового анализа."
+  ],
+  "model_version": "rubert-go-emotions-v1",
+  "emotion_model_version": "emotion-rubert-base-cased-russian-emotion-detection-ru-go-emotions",
+  "processing_time_ms": 120,
+  "error": null,
+  "answers": [
+    {
+      "answer_id": 500,
+      "question_id": 9001,
+      "audio_s3_key": "examinations/100/answers/500/audio.webm",
+      "bytes": 524288,
+      "stt": {
+        "transcript": "текст ответа",
+        "language": "ru",
+        "segments": [
+          {
+            "start_ms": 0,
+            "end_ms": 1200,
+            "text": "текст ответа"
+          }
+        ],
+        "duration_ms": 1200,
+        "word_count": 2,
+        "model_version": "faster-whisper-medium"
+      },
+      "quality_flags": [],
+      "evidence": []
+    }
+  ]
+}
+```
+
+Поля:
+- `stt.transcript`: агрегированный transcript по всем audio answers текущего обследования;
+- `stt.language`: наиболее частый язык, который вернул `faster-whisper`; может быть `null`;
+- `stt.segments`: STT-сегменты в миллисекундах, обогащённые `answer_id` и `question_id`;
+- `stt.duration_ms`: суммарная длительность STT-аудио, если модель вернула duration;
+- `stt.word_count`: количество слов в transcript;
+- `stt.model_version`: фактическая версия/источник STT-модели;
+- `features.transcript_length_chars`, `features.word_count`, `features.sentence_count`, `features.avg_sentence_length`: базовые признаки объёма и структуры transcript;
+- `features.uncertainty_marker_count`: количество простых русскоязычных маркеров неопределённости (`не знаю`, `возможно`, `кажется`, `затрудняюсь` и т.п.);
+- `features.negation_count`: количество простых отрицательных маркеров;
+- `features.distress_marker_count`: количество прямых текстовых маркеров неблагополучия/напряжения (`переживаю`, `не готов`, `плохо`, `болит`, `не спал`, `ужас` и т.п.);
+- `features.short_answer_flag`: `true`, если transcript слишком короткий для устойчивого текстового анализа;
+- `scores.text_negativity_score`: эвристический `0..1` score на основе `sadness`, `anger`, `fear`, усиленный при накоплении нескольких негативных эмоций и прямых distress-маркеров в transcript;
+- `scores.text_anxiety_score`: эвристический `0..1` score на основе `fear`, distress-маркеров, uncertainty markers и negations;
+- `scores.text_confidence_score`: эвристический `0..1`, где `1` означает более уверенный/определённый ответ; снижается не только от uncertainty/evasion, но и от выраженного негативного или тревожного текстового профиля;
+- `scores.text_coherence_score`: эвристический `0..1` score связности по длине/структуре/уклончивости;
+- `scores.text_evasion_score`: эвристический `0..1` score уклончивости по короткому ответу, uncertainty markers и negations;
+- `emotion_probs`: вероятности эмоций из emotion-модели, нормализованные к ключам `joy`, `sadness`, `anger`, `fear`, `surprise`, `neutral`; если модель не поддерживает часть классов, они возвращаются как `0.0`;
+- `quality_flags`: `stt_failed`, `emotion_model_failed`, `empty_transcript` при пустом STT, `too_short_text` при коротком transcript;
+- `evidence`: человекочитаемые факты: короткий ответ, число неопределённых формулировок, отрицательные маркеры, высокая тревожная/негативная окраска;
+- `emotion_model_version`: фактический источник emotion-модели;
+- `answers[*].stt`: per-answer STT breakdown; transcript хранится в channel result payload и не создаёт отдельного постоянного storage-контракта.
+
+Runtime config:
+- `STT_MODEL_PATH`: путь к локальной модели внутри контейнера, default `/app/models/stt`;
+- `STT_MODEL_SIZE`: fallback model size/name для download/dev-запуска, default `medium`, допускается `large-v3`;
+- `STT_DEVICE`: `cpu` или `cuda`;
+- `STT_COMPUTE_TYPE`: например `int8` для CPU или `float16` для CUDA;
+- `TEXT_EMOTION_MODEL_PATH`: путь к локальной emotion-модели внутри контейнера, default `/app/models/text-emotion`;
+- `TEXT_EMOTION_MODEL_NAME`: fallback Hugging Face model id для dev-download, default `seara/rubert-base-cased-russian-emotion-detection-ru-go-emotions`;
+- `TEXT_EMOTION_DEVICE`: `cpu` или `cuda`;
+- `HF_HUB_OFFLINE=1`: запрещает download и требует наличие локальной модели.
+
+Docker runtime:
+- host-папка `./models` монтируется в `text-worker` как `/app/models:ro`;
+- локальная offline STT-модель должна лежать в `./models/stt` на хосте и быть доступна как `/app/models/stt` внутри контейнера;
+- локальная offline emotion-модель должна лежать в `./models/text-emotion` на хосте и быть доступна как `/app/models/text-emotion` внутри контейнера;
+- локальная STT-модель считается доступной только если в `STT_MODEL_PATH` есть `config.json`; пустая директория `models/stt` не блокирует dev-download;
+- локальная emotion-модель считается доступной только если в `TEXT_EMOTION_MODEL_PATH` есть `config.json`; пустая директория `models/text-emotion` не блокирует dev-download;
+- если локальные модели отсутствуют/неполные и `HF_HUB_OFFLINE` выключен, worker использует `STT_MODEL_SIZE` и `TEXT_EMOTION_MODEL_NAME` для dev-download.
+
+Compatibility proxy-поля `text_total_characters`, `text_non_empty_answers`, `audio_total_bytes` удалены. Aggregator читает `scores.text_negativity_score`, `scores.text_anxiety_score`, `scores.text_confidence_score`, `scores.text_coherence_score` и `scores.text_evasion_score`.
 
 ## Answers API
 
@@ -1672,17 +2198,20 @@ Worker runtime env:
   "id": 500,
   "examination_id": 100,
   "created_by_user_id": 1,
-  "text": "Ответ обследуемого",
+  "text": "",
   "audio_s3_key": "examinations/100/answers/500/audio.webm",
   "created_at": "2026-03-19T12:05:00Z"
 }
 ```
 
+Примечание:
+- operator flow на текущем этапе audio-only, поэтому `text` в объекте ответа сохраняется как пустая строка и зарезервирован под будущую транскрипцию/текстовый слой.
+
 ### POST /answers
 
 Назначение:
 - загрузка аудиоответа в S3-совместимое хранилище;
-- сохранение текстового ответа и `audio_s3_key` в PostgreSQL.
+- сохранение аудиозаписи и `audio_s3_key` в PostgreSQL.
 
 Аутентификация:
 - `Authorization: Bearer <jwt>`.
@@ -1694,14 +2223,13 @@ Worker runtime env:
 - `examination_id`: integer, обязательное;
 - `examination_question_id`: integer, обязательное;
 - `specialist_id`: integer, обязательное;
-- `text`: string, обязательное;
 - `audio`: binary file, обязательное.
 
 Ответ `201 Created`: объект `Answer`.
 
 Правила:
 - файл не сохраняется в PostgreSQL;
-- в БД хранится только `audio_s3_key`;
+- в БД хранится `audio_s3_key`, а поле `answer_text` сохраняется как пустая строка до появления отдельной транскрипции;
 - ключ объекта детерминирован: `examinations/{examination_id}/answers/{answer_id}/audio{ext}`;
 - ответ можно сохранять только для обследования в статусе `collecting_answers`;
 - `examination_question_id` должен ссылаться на snapshot-вопрос из `examination_questions`, принадлежащий тому же `examination_id` и `specialist_id`;
@@ -2109,12 +2637,14 @@ Phase 4 runtime использует обязательный internal-only comp
 Обязательные env-переменные backend:
 
 - `KESMI_BASE_URL=http://wimi:8081`
-- `KESMI_MODEL_ID=stub-decision-model`
+- `KESMI_MODEL_ID=specialists-model-v2-decision`
 - `KESMI_TIMEOUT_MS=1000ms`
 - `KESMI_MAX_RETRIES=2`
 - `KESMI_RETRY_BACKOFF_MS=500ms`
+- `WIMI_AUTOLOAD_MODEL_PATH=/opt/wimi-models/specialists_model_v2_decision.xml`
 
 Правила:
-- WiMi не должен публиковаться наружу через host-port и не требует `WIMI_HOST_PORT`;
+- WiMi в текущем локальном compose остаётся internal-only сервисом и не публикуется наружу; ручные smoke/debug проверки выполняются изнутри compose-сети через `core-backend` или другой контейнер;
 - только `core-backend` обращается к WiMi;
+- decision-модель `wimi-server/models/specialists_model_v2_decision.xml` автозагружается в контейнере `wimi` при старте через `POST /Models` под `KESMI_MODEL_ID`;
 - smoke-проверка runtime выполняется изнутри compose-сети через `docker compose exec core-backend ... http://wimi:8081/Models`.

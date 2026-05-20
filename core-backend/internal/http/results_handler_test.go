@@ -68,7 +68,7 @@ func TestExaminationResultIncludesDecisionBlock(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	if !containsAll(body, `"decision"`, `"state":"pending"`, `"recommendation":"unavailable"`, `"correlation_id"`) {
+	if !containsAll(body, `"decision"`, `"state":"pending"`, `"recommendation":"unavailable"`, `"correlation_id"`, `"channel_reports"`) {
 		t.Fatalf("expected result contract to expose normalized decision block, got %s", body)
 	}
 }

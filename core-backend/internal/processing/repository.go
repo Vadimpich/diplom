@@ -22,16 +22,26 @@ const (
 )
 
 type SQLRepository struct {
-	pool    *pgxpool.Pool
-	bucket  string
-	nowFunc func() time.Time
+	pool                *pgxpool.Pool
+	bucket              string
+	nowFunc             func() time.Time
+	maxAttemptsProvider MaxAttemptsProvider
 }
 
-func NewRepository(pool *pgxpool.Pool, bucket string) *SQLRepository {
+type MaxAttemptsProvider interface {
+	ProcessingMaxAttempts(context.Context) (int32, error)
+}
+
+func NewRepository(pool *pgxpool.Pool, bucket string, providers ...MaxAttemptsProvider) *SQLRepository {
+	var provider MaxAttemptsProvider
+	if len(providers) > 0 {
+		provider = providers[0]
+	}
 	return &SQLRepository{
-		pool:    pool,
-		bucket:  bucket,
-		nowFunc: func() time.Time { return time.Now().UTC() },
+		pool:                pool,
+		bucket:              bucket,
+		nowFunc:             func() time.Time { return time.Now().UTC() },
+		maxAttemptsProvider: provider,
 	}
 }
 
@@ -72,7 +82,7 @@ func (r *SQLRepository) FinishLaunch(ctx context.Context, examinationID int64) (
 	if err != nil {
 		return examinations.Examination{}, nil, err
 	}
-	runs, err := ensureChannelRuns(ctx, tx, exam)
+	runs, err := r.ensureChannelRuns(ctx, tx, exam)
 	if err != nil {
 		return examinations.Examination{}, nil, err
 	}
@@ -224,7 +234,7 @@ ORDER BY eq.position ASC, a.id ASC`
 	return refs, nil
 }
 
-func ensureChannelRuns(ctx context.Context, tx pgx.Tx, exam examinations.Examination) ([]channelRunRecord, error) {
+func (r *SQLRepository) ensureChannelRuns(ctx context.Context, tx pgx.Tx, exam examinations.Examination) ([]channelRunRecord, error) {
 	const query = `
 INSERT INTO examination_channel_runs (
 	examination_id,
@@ -243,9 +253,19 @@ SET
 RETURNING id, channel, attempt_count, max_attempts, message_version`
 
 	runs := make([]channelRunRecord, 0, len(MandatoryChannels))
+	maxAttempts := defaultMaxAttempts
+	if r.maxAttemptsProvider != nil {
+		value, err := r.maxAttemptsProvider.ProcessingMaxAttempts(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if value > 0 {
+			maxAttempts = value
+		}
+	}
 	for _, channel := range MandatoryChannels {
 		var run channelRunRecord
-		if err := tx.QueryRow(ctx, query, exam.ID, channel, defaultMaxAttempts, MessageVersionV1).Scan(
+		if err := tx.QueryRow(ctx, query, exam.ID, channel, maxAttempts, MessageVersionV1).Scan(
 			&run.ID,
 			&run.Channel,
 			&run.AttemptCount,
@@ -379,10 +399,14 @@ SELECT
 	cr.broker_correlation_id,
 	cr.queued_at,
 	cr.started_at,
-	cr.finished_at
+	cr.finished_at,
+	po.status,
+	po.published_at
 FROM examinations e
 LEFT JOIN examination_channel_runs cr
 	ON cr.examination_id = e.id
+LEFT JOIN processing_outbox po
+	ON po.channel_run_id = cr.id
 WHERE e.id = $1
 ORDER BY cr.channel ASC`
 
@@ -421,6 +445,8 @@ ORDER BY cr.channel ASC`
 			queuedAt        pgtype.Timestamptz
 			startedAt       pgtype.Timestamptz
 			finishedAt      pgtype.Timestamptz
+			outboxStatus    pgtype.Text
+			publishedAt     pgtype.Timestamptz
 		)
 		if err := rows.Scan(
 			&examID,
@@ -439,6 +465,8 @@ ORDER BY cr.channel ASC`
 			&queuedAt,
 			&startedAt,
 			&finishedAt,
+			&outboxStatus,
+			&publishedAt,
 		); err != nil {
 			return ProcessingStatusResponse{}, err
 		}
@@ -448,14 +476,22 @@ ORDER BY cr.channel ASC`
 		if examUpdatedAt.Valid {
 			response.UpdatedAt = examUpdatedAt.Time
 		}
-		if examFinishedAt.Valid && examStatus == examinations.StatusAggregated {
+		if examFinishedAt.Valid && (examStatus == examinations.StatusAggregated || examStatus == "decision_pending" || examStatus == "completed") {
 			response.FinishedAt = &examFinishedAt.Time
 		}
 
 		if channel.Valid {
+			runtimeStatus, runtimeStartedAt := resolveChannelRuntimeStatus(
+				channelStatus.String,
+				timePtrFromPG(queuedAt),
+				timePtrFromPG(startedAt),
+				timePtrFromPG(finishedAt),
+				textFromPG(outboxStatus),
+				timePtrFromPG(publishedAt),
+			)
 			dto := ChannelStatusDTO{
 				Channel:        channel.String,
-				Status:         channelStatus.String,
+				Status:         runtimeStatus,
 				AttemptCount:   attemptCount.Int32,
 				MaxAttempts:    maxAttempts.Int32,
 				MessageVersion: int(messageVersion.Int32),
@@ -463,8 +499,8 @@ ORDER BY cr.channel ASC`
 			if queuedAt.Valid {
 				dto.QueuedAt = &queuedAt.Time
 			}
-			if startedAt.Valid {
-				dto.StartedAt = &startedAt.Time
+			if runtimeStartedAt != nil {
+				dto.StartedAt = runtimeStartedAt
 			}
 			if finishedAt.Valid {
 				dto.FinishedAt = &finishedAt.Time
@@ -485,8 +521,8 @@ ORDER BY cr.channel ASC`
 			if queuedAt.Valid {
 				firstActivityAt = earlierTime(firstActivityAt, queuedAt.Time)
 			}
-			if startedAt.Valid {
-				firstActivityAt = earlierTime(firstActivityAt, startedAt.Time)
+			if runtimeStartedAt != nil {
+				firstActivityAt = earlierTime(firstActivityAt, *runtimeStartedAt)
 			}
 			if dto.Status == "succeeded" {
 				response.ChannelsComplete++
@@ -503,14 +539,54 @@ ORDER BY cr.channel ASC`
 		return ProcessingStatusResponse{}, repository.ErrNotFound
 	}
 	switch response.Status {
-	case examinations.StatusReadyForProcessing, examinations.StatusProcessing, examinations.StatusAggregating, examinations.StatusAggregated, examinations.StatusFailed:
+	case examinations.StatusReadyForProcessing, examinations.StatusProcessing, examinations.StatusAggregating, examinations.StatusAggregated, "decision_pending", "completed", examinations.StatusFailed:
 	default:
 		return ProcessingStatusResponse{}, ErrProcessingStatusUnavailable
 	}
 	response.StartedAt = firstActivityAt
 	response.FailedAt = failedAt
-	response.Terminal = response.Status == examinations.StatusFailed || response.Status == examinations.StatusAggregated
+	response.Terminal = response.Status == examinations.StatusFailed || response.Status == "completed"
 	return response, nil
+}
+
+func resolveChannelRuntimeStatus(
+	channelStatus string,
+	queuedAt *time.Time,
+	startedAt *time.Time,
+	finishedAt *time.Time,
+	outboxStatus string,
+	publishedAt *time.Time,
+) (string, *time.Time) {
+	if startedAt != nil {
+		value := startedAt.UTC()
+		return channelStatus, &value
+	}
+	if finishedAt != nil {
+		return channelStatus, nil
+	}
+	if channelStatus == "queued" && outboxStatus == "published" && publishedAt != nil {
+		value := publishedAt.UTC()
+		return "processing", &value
+	}
+	if channelStatus == "queued" && queuedAt != nil {
+		return channelStatus, nil
+	}
+	return channelStatus, nil
+}
+
+func timePtrFromPG(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	item := value.Time.UTC()
+	return &item
+}
+
+func textFromPG(value pgtype.Text) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.String
 }
 
 func isTerminalChannelStatus(status string) bool {

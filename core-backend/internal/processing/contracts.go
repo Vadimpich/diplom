@@ -65,6 +65,20 @@ type ChannelResultEnvelope struct {
 	Payload        json.RawMessage `json:"payload"`
 }
 
+type CanonicalChannelPayload struct {
+	Channel          string         `json:"channel"`
+	Status           string         `json:"status"`
+	ExaminationID    int64          `json:"examination_id"`
+	AnswerID         *int64         `json:"answer_id"`
+	Features         map[string]any `json:"features"`
+	Scores           map[string]any `json:"scores"`
+	QualityFlags     []string       `json:"quality_flags"`
+	Evidence         []string       `json:"evidence"`
+	ModelVersion     string         `json:"model_version"`
+	ProcessingTimeMS int64          `json:"processing_time_ms"`
+	Error            *string        `json:"error"`
+}
+
 type ChannelStatusDTO struct {
 	Channel             string     `json:"channel"`
 	Status              string     `json:"status"`

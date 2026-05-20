@@ -1,5 +1,8 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8080";
+export const PUBLIC_API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:18080";
+
+export const INTERNAL_API_BASE_URL =
+  process.env.INTERNAL_API_BASE_URL?.replace(/\/$/, "") ?? "http://localhost:18080";
 
 export const AUTH_TOKEN_COOKIE = "diplom_access_token";
 export const AUTH_ROLE_COOKIE = "diplom_user_role";

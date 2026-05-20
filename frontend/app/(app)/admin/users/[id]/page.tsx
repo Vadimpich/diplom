@@ -9,11 +9,10 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiClient, ApiError } from "@/lib/api/client";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { UserForm, type UserFormValues } from "@/components/admin/user-form";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -130,73 +129,32 @@ export default function AdminUserEditPage() {
   const lastLoginLabel = user.last_login_at ? formatDateTime(user.last_login_at) : "Вход в систему ещё не зафиксирован";
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title={`Пользователь ${user.login}`}
-        description="Проверьте доступ, роль и последние действия пользователя перед сохранением изменений."
-      />
+    <div className="space-y-4">
+      <PageHeader title={`Пользователь ${user.login}`} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <UserForm
-          mode="edit"
-          form={form}
-          onSubmit={(values) =>
-            updateMutation.mutate({
-              login: values.login,
-              role: values.role,
-              is_active: values.is_active ?? false,
-            })
-          }
-          isPending={updateMutation.isPending}
-          errorMessage={updateMutation.isError ? (updateMutation.error as ApiError).message : undefined}
-          successMessage={updateMutation.isSuccess ? "Изменения сохранены и синхронизированы со списком пользователей." : undefined}
-          user={user}
-        />
-
-        <Card className="h-fit">
-          <CardHeader className="gap-1.5 pb-4">
-            <CardTitle>Контекст доступа</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5 text-sm">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Роль</p>
-                <Badge variant="info">{roleLabel}</Badge>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Статус</p>
-                <Badge variant={user.is_active ? "success" : "warning"}>{accessLabel}</Badge>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-border/70 bg-surface/50 px-4 py-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последний вход</p>
-                <p className="mt-1 font-medium text-foreground">{lastLoginLabel}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Логин для входа</p>
-                <p className="mt-1 text-muted-foreground">{user.login}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Создан</p>
-                <p className="mt-1 text-muted-foreground">{formatDateTime(user.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последнее изменение</p>
-                <p className="mt-1 text-muted-foreground">{formatDateTime(user.updated_at)}</p>
-              </div>
-            </div>
-
-            <Alert variant="default">
-              Проверяйте роль и активность перед сохранением. Если доступ отключён, пользователь не сможет войти в систему.
-            </Alert>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+        <Badge variant="info">{roleLabel}</Badge>
+        <Badge variant={user.is_active ? "success" : "warning"}>{accessLabel}</Badge>
+        <span>Последний вход: {lastLoginLabel}</span>
+        <span>Создан: {formatDateTime(user.created_at)}</span>
+        <span>Обновлён: {formatDateTime(user.updated_at)}</span>
       </div>
+
+      <UserForm
+        mode="edit"
+        form={form}
+        onSubmit={(values) =>
+          updateMutation.mutate({
+            login: values.login,
+            role: values.role,
+            is_active: values.is_active ?? false,
+          })
+        }
+        isPending={updateMutation.isPending}
+        errorMessage={updateMutation.isError ? (updateMutation.error as ApiError).message : undefined}
+        successMessage={updateMutation.isSuccess ? "Изменения сохранены." : undefined}
+        user={user}
+      />
     </div>
   );
 }

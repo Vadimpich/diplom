@@ -1,9 +1,9 @@
 import asyncio
-import hashlib
 import json
 import logging
 import os
 import signal
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,13 +17,16 @@ from fastapi.responses import JSONResponse
 from minio import Minio
 from minio.error import S3Error
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from app.stt import FasterWhisperSTT, STTError, failed_stt_result, load_stt_config
+from app.text_analysis import TEXT_MODEL_VERSION, TextAnalyzer, load_text_analysis_config
 from app.telemetry import metrics_payload, ready_payload, test_mode
 
 
 CHANNEL = "text"
-MODEL_VERSION = "text-stub-0.1.0"
+MODEL_VERSION = TEXT_MODEL_VERSION
 COMMAND_QUEUE = os.getenv("WORKER_QUEUE_NAME", "qq.processing.text")
 COMMAND_ROUTING_KEY = os.getenv("WORKER_COMMAND_ROUTING_KEY", "processing.command.text")
+
 
 
 def utc_now() -> datetime:
@@ -143,6 +146,8 @@ class WorkerState:
         self.stop_event = asyncio.Event()
         self.consumer_ready = False
         self.last_error: str | None = None
+        self.stt = FasterWhisperSTT(load_stt_config())
+        self.text_analyzer = TextAnalyzer(load_text_analysis_config())
 
     async def start(self) -> None:
         self.connection = await aio_pika.connect_robust(self.config.rabbitmq_url)
@@ -225,7 +230,7 @@ class WorkerState:
                         "audio_s3_key": answer.audio_s3_key,
                         "answer_text": answer.answer_text,
                         "bytes": len(content),
-                        "sha256": hashlib.sha256(content).hexdigest(),
+                        "content": content,
                     }
                 )
             except S3Error as exc:
@@ -340,18 +345,168 @@ class WorkerState:
 
 
 def build_payload(command: ProcessingCommandEnvelope, fetched_objects: list[dict[str, Any]]) -> dict[str, Any]:
-    total_bytes = sum(item["bytes"] for item in fetched_objects)
-    total_chars = sum(len(item["answer_text"].strip()) for item in fetched_objects)
-    combined_digest = hashlib.sha256("".join(item["sha256"] for item in fetched_objects).encode("utf-8")).hexdigest()
-    return {
-        "summary": "text worker stub result",
-        "answers_processed": len(fetched_objects),
-        "audio_total_bytes": total_bytes,
-        "text_total_characters": total_chars,
-        "text_non_empty_answers": sum(1 for item in fetched_objects if item["answer_text"].strip()),
-        "artifact_digest": combined_digest[:16],
-        "requested_at": command.requested_at.isoformat(),
+    started_at = time.perf_counter()
+    answer_results = []
+    for item in fetched_objects:
+        result = transcribe_item(item, examination_id=command.examination_id)
+        answer_results.append(
+            {
+                "answer_id": item["answer_id"],
+                "question_id": item["question_id"],
+                "audio_s3_key": item["audio_s3_key"],
+                "bytes": item["bytes"],
+                "stt": result["stt"],
+                "quality_flags": result["quality_flags"],
+                "evidence": result["evidence"],
+            }
+        )
+
+    payload = aggregate_answer_results(answer_results, examination_id=command.examination_id)
+    payload["examination_id"] = command.examination_id
+    payload["answer_id"] = answer_results[0]["answer_id"] if len(answer_results) == 1 else None
+    payload["processing_time_ms"] = int(round((time.perf_counter() - started_at) * 1000))
+    payload["error"] = None
+    return payload
+
+
+def transcribe_item(item: dict[str, Any], *, examination_id: int) -> dict[str, Any]:
+    suffix = suffix_from_s3_key(item["audio_s3_key"])
+    try:
+        stt = state.stt.transcribe_bytes(item["content"], suffix=suffix)
+        quality_flags: list[str] = []
+        evidence = [
+            f"STT transcript length: {len(stt['transcript'])} characters.",
+            f"STT word count: {stt['word_count']}.",
+            f"STT segments: {len(stt['segments'])}.",
+        ]
+        if not stt["transcript"]:
+            quality_flags.append("empty_transcript")
+            evidence.append("STT returned empty transcript.")
+        maybe_log_stt_transcript(
+            examination_id=examination_id,
+            answer_id=item["answer_id"],
+            question_id=item["question_id"],
+            transcript=stt["transcript"],
+        )
+        return {"stt": stt, "quality_flags": quality_flags, "evidence": evidence}
+    except STTError as exc:
+        stt = failed_stt_result(str(exc), model_version=state.stt.model_version)
+        return {
+            "stt": stt,
+            "quality_flags": ["stt_failed"],
+            "evidence": [f"STT failed: {exc}."],
+        }
+
+
+def aggregate_answer_results(answer_results: list[dict[str, Any]], *, examination_id: int) -> dict[str, Any]:
+    transcripts = [item["stt"]["transcript"].strip() for item in answer_results if item["stt"]["transcript"].strip()]
+    transcript = "\n".join(transcripts).strip()
+    segments = []
+    duration_ms = 0
+    for item in answer_results:
+        for segment in item["stt"]["segments"]:
+            enriched = dict(segment)
+            enriched["answer_id"] = item["answer_id"]
+            enriched["question_id"] = item["question_id"]
+            segments.append(enriched)
+        if item["stt"]["duration_ms"] is not None:
+            duration_ms += int(item["stt"]["duration_ms"])
+
+    quality_flags = sorted({flag for item in answer_results for flag in item["quality_flags"]})
+    languages = [item["stt"]["language"] for item in answer_results if item["stt"]["language"]]
+    model_versions = sorted({item["stt"]["model_version"] for item in answer_results if item["stt"]["model_version"]})
+    word_count = sum(int(item["stt"]["word_count"]) for item in answer_results)
+    stt = {
+        "transcript": transcript,
+        "language": most_common(languages),
+        "segments": segments,
+        "duration_ms": duration_ms if duration_ms > 0 else None,
+        "word_count": word_count,
+        "model_version": model_versions[0] if model_versions else state.stt.model_version,
     }
+    maybe_log_stt_transcript(
+        examination_id=examination_id,
+        answer_id=None,
+        question_id=None,
+        transcript=transcript,
+        aggregate=True,
+    )
+    evidence = [
+        f"STT total transcript length: {len(transcript)} characters.",
+        f"STT total word count: {word_count}.",
+        f"STT total segments: {len(segments)}.",
+    ]
+    if quality_flags:
+        evidence.append(f"Quality flags: {', '.join(quality_flags)}.")
+    text_analysis = state.text_analyzer.analyze(transcript, stt_word_count=word_count)
+    quality_flags = sorted(set(quality_flags + text_analysis["quality_flags"]))
+    evidence.extend(text_analysis["evidence"])
+    return {
+        "channel": CHANNEL,
+        "status": "done",
+        "examination_id": None,
+        "answer_id": None,
+        "stt": stt,
+        "features": text_analysis["features"],
+        "scores": text_analysis["scores"],
+        "emotion_probs": text_analysis["emotion_probs"],
+        "quality_flags": quality_flags,
+        "evidence": evidence,
+        "model_version": MODEL_VERSION,
+        "emotion_model_version": text_analysis["emotion_model_version"],
+        "processing_time_ms": 0,
+        "error": None,
+        "answers": answer_results,
+    }
+
+
+def suffix_from_s3_key(key: str) -> str:
+    _, ext = os.path.splitext(key)
+    return ext if ext else ".webm"
+
+
+def most_common(values: list[str]) -> str | None:
+    if not values:
+        return None
+    return max(set(values), key=values.count)
+
+
+def maybe_log_stt_transcript(
+    *,
+    examination_id: int,
+    answer_id: int | None,
+    question_id: int | None,
+    transcript: str,
+    aggregate: bool = False,
+) -> None:
+    if not env_bool("TEXT_DEBUG_LOG_STT_TRANSCRIPTS", False):
+        return
+
+    max_chars_raw = os.getenv("TEXT_DEBUG_LOG_STT_MAX_CHARS", "1200").strip()
+    try:
+        max_chars = max(0, int(max_chars_raw))
+    except ValueError:
+        max_chars = 1200
+
+    normalized = " ".join(transcript.split())
+    if max_chars and len(normalized) > max_chars:
+        normalized = normalized[:max_chars] + "..."
+
+    if aggregate:
+        state.logger.info(
+            "stt_debug aggregate examination_id=%s transcript=%r",
+            examination_id,
+            normalized,
+        )
+        return
+
+    state.logger.info(
+        "stt_debug answer examination_id=%s answer_id=%s question_id=%s transcript=%r",
+        examination_id,
+        answer_id,
+        question_id,
+        normalized,
+    )
 
 
 logging.basicConfig(

@@ -7,6 +7,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { Alert } from "@/components/ui/alert";
 import {
   QuestionnaireBuilder,
   type QuestionnaireFormValues,
@@ -49,20 +50,27 @@ export default function NewQuestionnairePage() {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Создать опросник"
-        description="Соберите название, описание и вопросы. При необходимости опубликуйте опросник сразу."
-      />
+    <div className="space-y-4">
+      <PageHeader title="Создать опросник" />
 
-      <QuestionnaireBuilder
-        mode="create"
-        form={form}
-        fieldArray={fieldArray}
-        onSubmit={(values) => createMutation.mutate(values)}
-        isPending={createMutation.isPending}
-        errorMessage={createMutation.isError ? (createMutation.error as ApiError).message : undefined}
-      />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+        <QuestionnaireBuilder
+          mode="create"
+          form={form}
+          fieldArray={fieldArray}
+          onSubmit={(values) => createMutation.mutate(values)}
+          isPending={createMutation.isPending}
+          errorMessage={createMutation.isError ? (createMutation.error as ApiError).message : undefined}
+        />
+
+        <aside className="xl:sticky xl:top-4">
+          {form.formState.isDirty ? (
+            <Alert variant="warning">
+              Есть несохранённые изменения. Если закрыть страницу или перейти в другой раздел сейчас, правки потеряются.
+            </Alert>
+          ) : null}
+        </aside>
+      </div>
     </div>
   );
 }

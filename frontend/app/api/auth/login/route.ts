@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setAuthCookies } from "@/lib/auth";
-import { API_BASE_URL } from "@/lib/constants";
+import { INTERNAL_API_BASE_URL } from "@/lib/constants";
 import type { LoginResponse } from "@/lib/api/types";
 
 export async function POST(request: NextRequest) {
   const payload = await request.text();
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const response = await fetch(`${INTERNAL_API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: payload,

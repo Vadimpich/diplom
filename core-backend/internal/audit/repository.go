@@ -82,6 +82,7 @@ func (r *SQLRepository) List(ctx context.Context, filter ListFilter) ([]Event, e
 	rows, err := r.queries.ListAuditLogs(ctx, sqlcdb.ListAuditLogsParams{
 		EventType:     textPtrArg(filter.EventType),
 		ResourceKind:  textPtrArg(filter.ResourceKind),
+		ResourceID:    int8PtrArg(filter.ResourceID),
 		ActorUserID:   int8PtrArg(filter.ActorUserID),
 		ExaminationID: int8PtrArg(filter.ExaminationID),
 		FromAt:        pgtype.Timestamptz{Time: fromAt.UTC(), Valid: true},

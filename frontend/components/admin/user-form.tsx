@@ -2,7 +2,7 @@
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
@@ -37,13 +37,8 @@ export function UserForm({
 
   return (
     <Card className="max-w-2xl">
-      <CardHeader className="gap-1.5 pb-4">
-        <CardTitle>{mode === "create" ? "Новая учётная запись" : "Данные доступа"}</CardTitle>
-        <CardDescription>
-          {mode === "create"
-            ? "Задайте логин, стартовый пароль и роль. После сохранения откроется карточка пользователя."
-            : "Изменяйте логин, роль и доступ к системе. Пароль при необходимости меняется отдельно."}
-        </CardDescription>
+      <CardHeader className="pb-4">
+        <CardTitle>{mode === "create" ? "Новая запись" : "Данные доступа"}</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
@@ -61,11 +56,7 @@ export function UserForm({
               <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
               {form.formState.errors.password ? (
                 <p className="text-sm text-danger">{form.formState.errors.password.message}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Минимум 6 символов. Пользователь сможет войти с этой учётной записью сразу после создания.
-                </p>
-              )}
+              ) : null}
             </div>
           ) : null}
 
@@ -85,13 +76,12 @@ export function UserForm({
           </div>
 
           {mode === "edit" ? (
-            <label className="flex items-start gap-3 rounded-2xl border border-border/70 bg-surface/50 px-4 py-3 text-sm">
+            <label className="flex items-start gap-3 rounded-2xl border border-border/70 px-4 py-3 text-sm">
               <input type="checkbox" className="mt-1 h-4 w-4" {...form.register("is_active")} />
               <span className="space-y-1">
                 <span className="block font-medium text-foreground">Учётная запись активна</span>
                 <span className="block text-muted-foreground">
-                  Отключённый пользователь не сможет авторизоваться в системе.
-                  {user ? ` Сейчас: ${user.is_active ? "доступ активен" : "доступ отключён"}.` : ""}
+                  {user ? `Сейчас: ${user.is_active ? "активна" : "отключена"}.` : "Отключённый пользователь не сможет войти."}
                 </span>
               </span>
             </label>

@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"diplom/internal/answers"
+	"diplom/internal/audit"
 	"diplom/internal/auth"
 	"diplom/internal/examinations"
 	"diplom/internal/observability"
@@ -17,6 +18,7 @@ import (
 	"diplom/internal/processing"
 	"diplom/internal/questionnaires"
 	"diplom/internal/results"
+	"diplom/internal/settings"
 	"diplom/internal/specialists"
 )
 
@@ -30,6 +32,8 @@ type Dependencies struct {
 	Results         *results.Service
 	Questionnaires  *questionnaires.Service
 	Answers         *answers.Service
+	Audit           *audit.Service
+	Settings        *settings.Service
 	AllowedOrigins  []string
 	MaxUploadSize   int64
 	Logger          *slog.Logger
@@ -65,6 +69,8 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		examinationsHandler.statusProvider = deps.Processing
 	}
 	questionnairesHandler := QuestionnairesHandler{service: deps.Questionnaires}
+	auditHandler := AuditHandler{service: deps.Audit}
+	settingsHandler := SettingsHandler{service: deps.Settings}
 	resultsHandler := ResultsHandler{}
 	if deps.Results != nil {
 		resultsHandler.service = deps.Results
@@ -92,7 +98,9 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 			admin.Get("/users/{id}", authHandler.GetUserByID)
 			admin.Post("/users", authHandler.CreateUser)
 			admin.Put("/users/{id}", authHandler.UpdateUser)
-			admin.Get("/questionnaires", questionnairesHandler.List)
+			admin.Get("/audit/events", auditHandler.List)
+			admin.Get("/settings", settingsHandler.Get)
+			admin.Put("/settings", settingsHandler.Update)
 			admin.Post("/questionnaires", questionnairesHandler.Create)
 			admin.Get("/questionnaires/{id}", questionnairesHandler.GetByID)
 			admin.Put("/questionnaires/{id}", questionnairesHandler.Update)
@@ -100,6 +108,7 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 
 		private.Group(func(operatorOrAdmin chi.Router) {
 			operatorOrAdmin.Use(RequireRoles("operator", "admin"))
+			operatorOrAdmin.Get("/questionnaires", questionnairesHandler.List)
 			operatorOrAdmin.Post("/specialists", specialistsHandler.Create)
 			operatorOrAdmin.Get("/specialists", specialistsHandler.List)
 			operatorOrAdmin.Get("/specialists/{id}", specialistsHandler.GetByID)

@@ -21,6 +21,16 @@ export interface NavSection {
   items: NavItem[];
 }
 
+function roleLabel(roleSlug?: string) {
+  if (roleSlug === "admin") {
+    return "Администратор";
+  }
+  if (roleSlug === "operator") {
+    return "Оператор";
+  }
+  return "Роль не определена";
+}
+
 export function AppShell({
   contour,
   eyebrow,
@@ -30,9 +40,9 @@ export function AppShell({
   children,
 }: {
   contour: "operator" | "admin";
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   navSections: NavSection[];
   children: ReactNode;
 }) {
@@ -49,12 +59,12 @@ export function AppShell({
           className={cn(
             "app-shell-grid rounded-[24px] border text-primary-foreground",
             isOperator ? "border-border/70 bg-primary" : "border-slate-700/80 bg-slate-900",
-            isOperator ? "lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]" : "",
+            "lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]",
           )}
         >
           <div className="flex h-full flex-col p-5">
             <div className="space-y-2 border-b border-white/10 pb-4">
-              <p className="text-xs uppercase tracking-[0.28em] text-white/55">{eyebrow}</p>
+              {eyebrow ? <p className="text-[11px] uppercase tracking-[0.22em] text-white/55">{eyebrow}</p> : null}
               <div>
                 <h1 className={cn("font-semibold", isOperator ? "text-xl" : "text-[1.75rem] leading-tight")}>{title}</h1>
                 {subtitle ? <p className="mt-1 text-sm text-white/62">{subtitle}</p> : null}
@@ -64,7 +74,7 @@ export function AppShell({
               {navSections.map((section) => (
                 <div key={section.title ?? section.items.map((item) => item.href).join(":")} className="space-y-2">
                   {section.title ? (
-                    <p className="px-2 text-xs uppercase tracking-[0.24em] text-white/45">{section.title}</p>
+                    <p className="px-2 text-[11px] uppercase tracking-[0.18em] text-white/45">{section.title}</p>
                   ) : null}
                   <div className="space-y-2">
                     {section.items.map((item) => {
@@ -74,10 +84,10 @@ export function AppShell({
                           key={item.href}
                           href={item.href}
                           className={cn(
-                            "block rounded-xl border px-3 py-2.5 transition",
+                            "block rounded-xl border px-3 py-2.5 transition-colors duration-200",
                             active
-                              ? "border-white/12 bg-white/12 text-white"
-                              : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/8 hover:text-white",
+                              ? "border-white/10 bg-white/10 text-white"
+                              : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/6 hover:text-white",
                           )}
                         >
                           <p className="text-sm font-medium">{item.label}</p>
@@ -89,19 +99,22 @@ export function AppShell({
                 </div>
               ))}
             </nav>
-            <div className="mt-auto space-y-3 border-t border-white/10 pt-4">
-              <div className="rounded-xl border border-white/10 bg-white/8 px-3 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">Сеанс</p>
-                <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="mt-auto shrink-0 space-y-3 border-t border-white/10 pt-4">
+              <div className={cn("min-w-0", isOperator ? "rounded-xl border border-white/10 bg-white/8 px-3 py-3" : "px-1")}>
+                {isOperator ? <p className="text-xs uppercase tracking-[0.2em] text-white/50">Сеанс</p> : null}
+                <div className={cn("flex items-center justify-between gap-3", isOperator ? "mt-2" : "")}>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{user?.login ?? "Загрузка..."}</p>
-                    <p className="text-xs text-white/60">{user?.role.name ?? "Роль не определена"}</p>
+                    <p className="text-xs text-white/60">{roleLabel(user?.role.slug)}</p>
                   </div>
                 </div>
               </div>
               <Button
                 variant="secondary"
-                className="w-full justify-center bg-white text-primary hover:bg-white/90"
+                className={cn(
+                  "w-full justify-center bg-white text-primary hover:bg-white/90",
+                  !isOperator && "border border-white/10 bg-white/8 text-white hover:bg-white/12",
+                )}
                 onClick={async () => {
                   await clearSession();
                   queryClient.removeQueries({ queryKey: ["session"], exact: true });

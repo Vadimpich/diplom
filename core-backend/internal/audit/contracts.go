@@ -15,6 +15,7 @@ const (
 	EventTypeAuthLoginFailed      = "auth.login_failed"
 	EventTypeAdminUserCreated     = "admin.user_created"
 	EventTypeAdminUserUpdated     = "admin.user_updated"
+	EventTypeAdminSettingsUpdated = "admin.settings_updated"
 	EventTypeQuestionnaireCreated = "admin.questionnaire_created"
 	EventTypeQuestionnaireUpdated = "admin.questionnaire_updated"
 	EventTypeExaminationCreated   = "examination.created"
@@ -68,6 +69,7 @@ type Event struct {
 type ListFilter struct {
 	EventType     *string
 	ResourceKind  *string
+	ResourceID    *int64
 	ActorUserID   *int64
 	ExaminationID *int64
 	From          time.Time
