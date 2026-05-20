@@ -167,6 +167,19 @@ cp ops/env/offline-demo.env.example .env
 docker compose up -d --build
 ```
 
+Если хост — `ARM Mac` и нужно запустить `wimi`, используйте compose override с эмуляцией `amd64`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.arm-mac.yml up -d --build
+```
+
+Важно:
+
+- override затрагивает только `wimi`;
+- `WiMi-0.1.7.deb` является `amd64`-пакетом, поэтому на ARM он запускается через эмуляцию;
+- первый build и старт на ARM Mac могут быть существенно медленнее, чем на `x86_64`;
+- для максимально стабильного демо/production-сценария WiMi лучше держать на отдельном `x86_64` хосте.
+
 5. Проверить состояние контейнеров:
 
 ```bash
@@ -332,6 +345,33 @@ docker compose logs -f text-worker acoustic-worker paralinguistic-worker
 - `result_published`
 
 По ним можно увидеть, какой именно контейнер взял конкретное обследование и сколько времени заняла обработка.
+
+## ARM Mac и WiMi
+
+Если основной стек запускается на `ARM Mac`, а decision engine WiMi тоже нужен локально, используйте:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.arm-mac.yml up -d --build wimi core-backend
+```
+
+Проверка логов:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.arm-mac.yml logs -f wimi
+```
+
+Проверка, что модель загрузилась:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.arm-mac.yml exec -T core-backend \
+  sh -lc 'wget -qO- http://wimi:8081/Models'
+```
+
+Если `wimi` на ARM Mac стартует слишком долго или нестабильно падает даже под эмуляцией, это ожидаемое ограничение бинарного `amd64` `.deb`. В таком случае лучше вынести WiMi на отдельную `x86_64` машину и указать её в:
+
+```bash
+KESMI_BASE_URL=http://<x86-host>:8081
+```
 
 ## Полная локальная проверка
 
