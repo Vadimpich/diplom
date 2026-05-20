@@ -39,6 +39,9 @@ func TestLogin(t *testing.T) {
 	if payload["refresh_token"] == "" {
 		t.Fatal("expected refresh_token in response")
 	}
+	if payload["refresh_expires_in"] == nil {
+		t.Fatal("expected refresh_expires_in in response")
+	}
 	userPayload, ok := payload["user"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected nested user payload, got %#v", payload["user"])

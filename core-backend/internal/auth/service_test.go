@@ -31,6 +31,9 @@ func TestRefreshRotation(t *testing.T) {
 	if result.AccessToken != "access-2" {
 		t.Fatalf("expected access token to be re-issued, got %q", result.AccessToken)
 	}
+	if result.RefreshExpiresIn != int64((24 * time.Hour).Seconds()) {
+		t.Fatalf("expected refresh ttl %d, got %d", int64((24 * time.Hour).Seconds()), result.RefreshExpiresIn)
+	}
 	if result.RefreshToken == "" || result.RefreshToken == repo.seedRefreshToken {
 		t.Fatal("expected rotated refresh token to differ from the original")
 	}
@@ -44,6 +47,25 @@ func TestRefreshRotation(t *testing.T) {
 	}
 	if len(repo.refreshSessions) != 2 {
 		t.Fatalf("expected exactly two refresh sessions after rotation, got %d", len(repo.refreshSessions))
+	}
+}
+
+func TestLoginIncludesRefreshTTL(t *testing.T) {
+	now := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
+	repo := newAuthRepoStub(now)
+	service := NewService(repo, &stubTokenManager{token: "access-1", expiresIn: 900})
+	service.refreshTTL = 48 * time.Hour
+
+	result, err := service.Login(context.Background(), LoginInput{
+		Login:    "operator",
+		Password: "secret",
+	})
+	if err != nil {
+		t.Fatalf("login returned error: %v", err)
+	}
+
+	if result.RefreshExpiresIn != int64((48 * time.Hour).Seconds()) {
+		t.Fatalf("expected refresh ttl %d, got %d", int64((48 * time.Hour).Seconds()), result.RefreshExpiresIn)
 	}
 }
 

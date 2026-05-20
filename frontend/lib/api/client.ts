@@ -38,6 +38,8 @@ export class ApiError extends Error {
   }
 }
 
+let pendingRefresh: Promise<LoginResponse | null> | null = null;
+
 function getCookie(name: string) {
   if (typeof document === "undefined") {
     return null;
@@ -51,7 +53,41 @@ function getCookie(name: string) {
   return value ? decodeURIComponent(value) : null;
 }
 
-async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
+function isAuthTransportPath(path: string) {
+  return (
+    path === AUTH_LOGIN_ENDPOINT ||
+    path === AUTH_LOGOUT_ENDPOINT ||
+    path === AUTH_REFRESH_ENDPOINT ||
+    path === AUTH_SESSION_ENDPOINT
+  );
+}
+
+async function performRefresh(): Promise<LoginResponse | null> {
+  if (pendingRefresh) {
+    return pendingRefresh;
+  }
+
+  pendingRefresh = (async () => {
+    const response = await fetch(AUTH_REFRESH_ENDPOINT, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as LoginResponse;
+  })();
+
+  try {
+    return await pendingRefresh;
+  } finally {
+    pendingRefresh = null;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit, token?: string, allowRefresh = true): Promise<T> {
   const authToken = token ?? getCookie(AUTH_TOKEN_COOKIE);
   const headers = new Headers(init?.headers);
 
@@ -68,7 +104,20 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
   const response = await fetch(target, {
     ...init,
     headers,
+    credentials: path.startsWith("/api/") ? "same-origin" : init?.credentials,
   });
+
+  if (
+    response.status === 401 &&
+    allowRefresh &&
+    !token &&
+    !isAuthTransportPath(path)
+  ) {
+    const refreshed = await performRefresh();
+    if (refreshed?.access_token) {
+      return request<T>(path, init, refreshed.access_token, false);
+    }
+  }
 
   if (!response.ok) {
     let payload: ApiErrorShape | null = null;
@@ -147,12 +196,12 @@ export const apiClient = {
   refresh() {
     return request<LoginResponse>(AUTH_REFRESH_ENDPOINT, {
       method: "POST",
-    });
+    }, undefined, false);
   },
   logout() {
     return request<{ ok: boolean }>(AUTH_LOGOUT_ENDPOINT, {
       method: "POST",
-    });
+    }, undefined, false);
   },
   me() {
     return request<User | { user: User }>(AUTH_SESSION_ENDPOINT).then((payload) =>

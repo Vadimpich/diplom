@@ -45,11 +45,12 @@ type LoginInput struct {
 }
 
 type LoginResult struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
-	User         User   `json:"user"`
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	TokenType        string `json:"token_type"`
+	ExpiresIn        int64  `json:"expires_in"`
+	RefreshExpiresIn int64  `json:"refresh_expires_in"`
+	User             User   `json:"user"`
 }
 
 type RefreshInput struct {
@@ -294,11 +295,12 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (LoginResult, err
 	})
 
 	return LoginResult{
-		AccessToken:  token,
-		RefreshToken: refreshToken,
-		TokenType:    "Bearer",
-		ExpiresIn:    expiresIn,
-		User:         toUser(user),
+		AccessToken:      token,
+		RefreshToken:     refreshToken,
+		TokenType:        "Bearer",
+		ExpiresIn:        expiresIn,
+		RefreshExpiresIn: int64(s.refreshTTL.Seconds()),
+		User:             toUser(user),
 	}, nil
 }
 
@@ -350,11 +352,12 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (LoginResult,
 	}
 
 	return LoginResult{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		TokenType:    "Bearer",
-		ExpiresIn:    expiresIn,
-		User:         view,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		TokenType:        "Bearer",
+		ExpiresIn:        expiresIn,
+		RefreshExpiresIn: int64(s.refreshTTL.Seconds()),
+		User:             view,
 	}, nil
 }
 

@@ -1,21 +1,22 @@
 "use client";
 
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { apiClient, ApiError } from "@/lib/api/client";
+import { getRoleHome } from "@/lib/navigation/role-home";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
-import { useCurrentUser } from "@/hooks/use-current-user";
-import { getRoleHome } from "@/lib/navigation/role-home";
 
 const loginSchema = z.object({
   login: z.string().min(1, "Введите логин"),
@@ -73,14 +74,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/20 px-4 py-10">
-      <Card className="w-full max-w-md border-border/80 bg-white/90 shadow-panel">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <Card className="relative w-full max-w-md overflow-hidden border-border/80 bg-white/92 shadow-panel backdrop-blur">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         <CardContent className="space-y-6 p-6">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-primary">Система оценки психоэмоционального состояния</p>
+          <div className="space-y-3">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-secondary/35 text-primary shadow-soft">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
             <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Вход в рабочее место</h1>
-              <p className="text-sm text-muted-foreground">Авторизуйтесь, чтобы продолжить работу.</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Вход</h1>
+              <p className="text-sm text-muted-foreground">Система оценки эмоционального состояния</p>
             </div>
           </div>
           <form className="space-y-4" onSubmit={form.handleSubmit((values) => loginMutation.mutate(values))}>

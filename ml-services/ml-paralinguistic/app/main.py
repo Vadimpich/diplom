@@ -198,6 +198,8 @@ class WorkerState:
             await self.publish_result(result)
 
     async def process_delivery(self, body: bytes) -> dict[str, Any]:
+        command: ProcessingCommandEnvelope | None = None
+        started_at = time.perf_counter()
         try:
             command = ProcessingCommandEnvelope.model_validate_json(body)
             if command.channel != CHANNEL:
@@ -205,18 +207,83 @@ class WorkerState:
             if not command.answers:
                 raise FatalProcessingError("empty_answers", "command does not contain answer references")
 
+            self.logger.info(
+                "processing_started examination_id=%s channel=%s attempt=%s answers=%s correlation_id=%s message_id=%s",
+                command.examination_id,
+                command.channel,
+                command.attempt,
+                len(command.answers),
+                command.correlation_id,
+                command.message_id,
+            )
             fetched_objects = await asyncio.to_thread(self.fetch_answer_objects, command.answers)
+            self.logger.info(
+                "audio_objects_loaded examination_id=%s channel=%s attempt=%s answers=%s bytes=%s correlation_id=%s",
+                command.examination_id,
+                command.channel,
+                command.attempt,
+                len(fetched_objects),
+                sum(item["bytes"] for item in fetched_objects),
+                command.correlation_id,
+            )
             payload = build_payload(command, fetched_objects)
-            return self.build_result(command, "succeeded", payload=payload)
+            result = self.build_result(command, "succeeded", payload=payload)
+            self.logger.info(
+                "processing_succeeded examination_id=%s channel=%s attempt=%s processing_time_ms=%s correlation_id=%s",
+                command.examination_id,
+                command.channel,
+                command.attempt,
+                payload.get("processing_time_ms"),
+                command.correlation_id,
+            )
+            return result
         except ValidationError as exc:
+            self.logger.warning("processing_invalid_command channel=%s error=%s", CHANNEL, exc)
             return self.build_validation_error(exc)
         except FatalProcessingError as exc:
+            self.log_failure(command, "fatal_error", exc.code, exc.message, started_at)
             return self.build_result_from_error(body, "fatal_error", exc.code, exc.message)
         except TemporaryProcessingError as exc:
+            self.log_failure(command, "temporary_error", exc.code, exc.message, started_at)
             return self.build_result_from_error(body, "temporary_error", exc.code, exc.message)
         except Exception as exc:
-            self.logger.exception("unexpected worker failure")
+            self.log_failure(command, "temporary_error", "unexpected_error", str(exc), started_at, with_trace=True)
             return self.build_result_from_error(body, "temporary_error", "unexpected_error", str(exc))
+
+    def log_failure(
+        self,
+        command: ProcessingCommandEnvelope | None,
+        status: str,
+        code: str,
+        message: str,
+        started_at: float,
+        *,
+        with_trace: bool = False,
+    ) -> None:
+        duration_ms = int(round((time.perf_counter() - started_at) * 1000))
+        if command is None:
+            self.logger.warning(
+                "processing_failed channel=%s status=%s error_code=%s duration_ms=%s error=%s",
+                CHANNEL,
+                status,
+                code,
+                duration_ms,
+                message,
+                exc_info=with_trace,
+            )
+            return
+        self.logger.warning(
+            "processing_failed examination_id=%s channel=%s attempt=%s status=%s error_code=%s duration_ms=%s correlation_id=%s error=%s",
+            command.examination_id,
+            command.channel,
+            command.attempt,
+            status,
+            code,
+            duration_ms,
+            command.correlation_id,
+            message,
+            exc_info=with_trace,
+        )
 
     def fetch_answer_objects(self, answers: list[AnswerReference]) -> list[dict[str, Any]]:
         objects: list[dict[str, Any]] = []
@@ -333,6 +400,15 @@ class WorkerState:
                 timestamp=utc_now(),
             ),
             routing_key=self.config.result_routing_key,
+        )
+        self.logger.info(
+            "result_published examination_id=%s channel=%s attempt=%s status=%s correlation_id=%s message_id=%s",
+            result.get("examination_id"),
+            result.get("channel"),
+            result.get("attempt"),
+            result.get("status"),
+            result.get("correlation_id"),
+            result.get("message_id"),
         )
 
     def health(self) -> dict[str, Any]:

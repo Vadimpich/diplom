@@ -37,6 +37,8 @@ export function MediaRecorderCard({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioSourceLabel, setAudioSourceLabel] = useState<string>("Микрофон готов");
   const [recorderError, setRecorderError] = useState<string | null>(null);
+  const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
+  const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -45,6 +47,20 @@ export function MediaRecorderCard({
       }
     };
   }, [audioUrl]);
+
+  useEffect(() => {
+    if (recorderState !== "recording" || recordingStartedAt === null) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setRecordingElapsedMs(Date.now() - recordingStartedAt);
+    }, 250);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [recorderState, recordingStartedAt]);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -98,6 +114,13 @@ export function MediaRecorderCard({
     return audioSourceLabel;
   }, [audioBlob, audioSourceLabel, recorderState]);
 
+  const recordingTimerLabel = useMemo(() => {
+    const totalSeconds = Math.max(0, Math.floor(recordingElapsedMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [recordingElapsedMs]);
+
   async function startRecording() {
     try {
       setRecorderError(null);
@@ -125,6 +148,8 @@ export function MediaRecorderCard({
       };
 
       mediaRecorder.start();
+      setRecordingStartedAt(Date.now());
+      setRecordingElapsedMs(0);
       setRecorderState("recording");
     } catch {
       setRecorderError("Не удалось получить доступ к микрофону. Проверьте разрешения браузера.");
@@ -133,6 +158,7 @@ export function MediaRecorderCard({
 
   function stopRecording() {
     mediaRecorderRef.current?.stop();
+    setRecordingStartedAt(null);
   }
 
   function resetRecording() {
@@ -144,6 +170,8 @@ export function MediaRecorderCard({
     }
     setAudioUrl(null);
     setAudioSourceLabel("Микрофон готов");
+    setRecordingStartedAt(null);
+    setRecordingElapsedMs(0);
     setRecorderError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -170,6 +198,8 @@ export function MediaRecorderCard({
     setAudioBlob(nextFile);
     setRecorderState("recorded");
     setAudioSourceLabel("Файл готов");
+    setRecordingStartedAt(null);
+    setRecordingElapsedMs(0);
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
     }
@@ -198,22 +228,29 @@ export function MediaRecorderCard({
                 </p>
               </div>
             </div>
-            {recorderState === "recording" ? (
-              <span className="inline-flex items-center gap-2 rounded-full bg-danger/10 px-3 py-2 text-sm text-danger">
-                <Pause className="h-4 w-4" />
-                {durationHint}
-              </span>
-            ) : recorderState === "recorded" ? (
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" />
-                {durationHint}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-full bg-background px-3 py-2 text-sm text-muted-foreground">
-                <Mic className="h-4 w-4" />
-                {durationHint}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {recorderState === "recording" ? (
+                <>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-danger/10 px-3 py-2 text-sm text-danger">
+                    <Pause className="h-4 w-4" />
+                    {durationHint}
+                  </span>
+                  <span className="inline-flex min-w-[86px] items-center justify-center rounded-full border border-danger/20 bg-background/90 px-3 py-2 font-mono text-sm font-semibold text-danger shadow-soft">
+                    {recordingTimerLabel}
+                  </span>
+                </>
+              ) : recorderState === "recorded" ? (
+                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {durationHint}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-full bg-background px-3 py-2 text-sm text-muted-foreground">
+                  <Mic className="h-4 w-4" />
+                  {durationHint}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-5 grid grid-cols-8 gap-2">

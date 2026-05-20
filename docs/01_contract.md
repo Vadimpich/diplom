@@ -457,6 +457,7 @@ KESMI / WiMi boundary:
   "refresh_token": "<opaque-refresh-token>",
   "token_type": "Bearer",
   "expires_in": 900,
+  "refresh_expires_in": 604800,
   "user": {
     "id": 1,
     "login": "operator",
@@ -472,6 +473,10 @@ KESMI / WiMi boundary:
   }
 }
 ```
+
+Поле `refresh_expires_in`:
+- срок жизни refresh-session в секундах;
+- используется frontend BFF для корректной установки `HttpOnly` refresh-cookie независимо от short-lived access token TTL.
 
 Поле `user.last_login_at`:
 - nullable RFC3339 timestamp последнего успешного логина;
@@ -508,6 +513,7 @@ KESMI / WiMi boundary:
   "refresh_token": "<rotated-opaque-refresh-token>",
   "token_type": "Bearer",
   "expires_in": 900,
+  "refresh_expires_in": 604800,
   "user": {
     "id": 1,
     "login": "operator",
@@ -568,6 +574,7 @@ Endpoints:
 - BFF может выставлять вспомогательные cookies для переходного UI-слоя, но transport refresh-session остаётся централизованным в `/api/auth/*`;
 - frontend-клиент не должен писать auth cookies через `document.cookie`.
 - protected layouts и route guards должны опираться на `/api/auth/session` как на авторитетный источник session/role state; role-cookie допустим только как UX hint для первичного redirect.
+- browser-side API client должен уметь один раз автоматически выполнить `POST /api/auth/refresh` после `401 Unauthorized` и повторить исходный запрос с новым access token, если refresh-session ещё валидна.
 
 ### CORS / preflight
 

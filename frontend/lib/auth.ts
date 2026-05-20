@@ -33,32 +33,33 @@ export function getRoleFromCookie(): RoleSlug | null {
 }
 
 export function setAuthCookies(response: NextResponse, session: LoginResponse) {
-  const expiresAt = new Date(Date.now() + session.expires_in * 1000);
+  const accessExpiresAt = new Date(Date.now() + session.expires_in * 1000);
+  const refreshExpiresAt = new Date(Date.now() + session.refresh_expires_in * 1000);
 
   response.cookies.set(AUTH_TOKEN_COOKIE, session.access_token, {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires: expiresAt,
+    expires: accessExpiresAt,
   });
   response.cookies.set(AUTH_ROLE_COOKIE, session.user.role.slug, {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires: expiresAt,
+    expires: accessExpiresAt,
   });
-  response.cookies.set(AUTH_EXPIRES_COOKIE, expiresAt.toISOString(), {
+  response.cookies.set(AUTH_EXPIRES_COOKIE, accessExpiresAt.toISOString(), {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires: expiresAt,
+    expires: accessExpiresAt,
   });
   response.cookies.set(AUTH_REFRESH_COOKIE, session.refresh_token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires: expiresAt,
+    expires: refreshExpiresAt,
   });
 }
 

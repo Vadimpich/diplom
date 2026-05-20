@@ -238,6 +238,101 @@ curl -fsS http://localhost:18080/ready
 curl -fsS http://localhost:18080/metrics
 ```
 
+## Репликация ML-воркеров
+
+Для умеренной параллельной нагрузки можно масштабировать именно ML-воркеры через обычный Docker Compose.  
+Swarm или Kubernetes для этого не нужны.
+
+Подходящий сценарий:
+
+- несколько операторов одновременно запускают обследования;
+- `text-worker`, `acoustic-worker`, `paralinguistic-worker` обрабатывают задачи из своих RabbitMQ-очередей параллельно;
+- `core-backend`, `frontend`, `postgres`, `rabbitmq`, `minio`, `ml-baseline`, `wimi` остаются в одной реплике.
+
+### Что можно масштабировать
+
+Без изменения архитектуры безопасно масштабировать:
+
+- `text-worker`
+- `acoustic-worker`
+- `paralinguistic-worker`
+
+Пример запуска с тремя репликами каждого канала:
+
+```bash
+docker compose up -d \
+  --scale text-worker=3 \
+  --scale acoustic-worker=3 \
+  --scale paralinguistic-worker=3 \
+  text-worker acoustic-worker paralinguistic-worker
+```
+
+Или вместе с основным стеком:
+
+```bash
+docker compose up -d --build \
+  --scale text-worker=3 \
+  --scale acoustic-worker=3 \
+  --scale paralinguistic-worker=3
+```
+
+### Что не стоит масштабировать без доработок
+
+Пока лучше оставлять в одной реплике:
+
+- `core-backend`
+- `frontend`
+- `ml-baseline`
+- `wimi`
+- `postgres`
+- `rabbitmq`
+- `minio`
+
+Причина: текущая схема безопасно поддерживает многопотребительскую обработку именно на уровне ML-очередей.  
+Горизонтальное масштабирование `core-backend` потребует отдельной доработки outbox/publisher-логики.
+
+### Что важно понимать
+
+- Реплики ускоряют обработку нескольких обследований одновременно.
+- Реплики не ускоряют один конкретный канал внутри одного обследования, потому что одно сообщение канала обрабатывается одним worker-экземпляром целиком.
+- На практике первым bottleneck обычно становится `text-worker`, потому что он включает STT и text emotion inference.
+
+### Как проверить, что реплики реально работают
+
+Посмотреть поднятые контейнеры:
+
+```bash
+docker compose ps
+```
+
+Проверить число consumers в RabbitMQ:
+
+```bash
+docker compose exec -T rabbitmq rabbitmqctl list_consumers \
+  --no-table-headers queue_name consumer_tag ack_required prefetch_count | sort
+```
+
+Для трёх реплик каждого ML-канала в выводе должно быть:
+
+- `3` consumers на `qq.processing.text`
+- `3` consumers на `qq.processing.acoustic`
+- `3` consumers на `qq.processing.paralinguistic`
+
+Также можно смотреть логи воркеров:
+
+```bash
+docker compose logs -f text-worker acoustic-worker paralinguistic-worker
+```
+
+В логах появятся события:
+
+- `processing_started`
+- `audio_objects_loaded`
+- `processing_succeeded`
+- `result_published`
+
+По ним можно увидеть, какой именно контейнер взял конкретное обследование и сколько времени заняла обработка.
+
 ## Полная локальная проверка
 
 ```bash
