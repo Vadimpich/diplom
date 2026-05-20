@@ -1,11 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { saveExaminationDraft } from "@/lib/examination-drafts";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +8,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
+import { apiClient, ApiError } from "@/lib/api/client";
+import { saveExaminationDraft } from "@/lib/examination-drafts";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 
 export default function NewExaminationPage() {
   const searchParams = useSearchParams();
@@ -59,13 +59,13 @@ export default function NewExaminationPage() {
   });
 
   return (
-    <div className="space-y-6 pt-4">
+    <div className="space-y-6">
       <PageHeader title="Новое обследование" />
 
       <Card>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-4">
               <Badge variant="info">1</Badge>
               <h2 className="text-lg font-semibold">Специалист</h2>
             </div>
