@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime, timezone
 
@@ -23,6 +24,7 @@ REQUIRED_METRIC_KEYS = {"overall_deviation_index", "speech_stability_score"}
 SUPPORTED_ALGORITHM_VERSION = os.getenv("BASELINE_ALGORITHM_VERSION", "baseline-v1")
 
 app = FastAPI(title="ml-baseline")
+logger = logging.getLogger("ml-baseline")
 
 
 def utc_now() -> datetime:
@@ -35,7 +37,24 @@ def metric_map(metrics: list) -> dict[str, float]:
 
 def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculationResponse:
     current_metrics = metric_map(payload.metrics)
+    logger.info(
+        "baseline_calculation_started examination_id=%s specialist_id=%s algorithm_version=%s metrics=%s history_count=%s personal_baseline_available=%s data_reliability=%.4f overall_band=%s",
+        payload.examination_id,
+        payload.specialist_id,
+        payload.algorithm_version,
+        len(current_metrics),
+        payload.history.baseline_exam_count,
+        payload.existing_baseline.baseline_available,
+        payload.context.data_reliability,
+        payload.context.overall_band,
+    )
     if missing_keys := sorted(REQUIRED_METRIC_KEYS - current_metrics.keys()):
+        logger.warning(
+            "baseline_calculation_rejected examination_id=%s specialist_id=%s reason=missing_required_metrics missing_metric_keys=%s",
+            payload.examination_id,
+            payload.specialist_id,
+            ",".join(missing_keys),
+        )
         raise HTTPException(
             status_code=422,
             detail={
@@ -45,6 +64,13 @@ def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculati
         )
 
     if payload.algorithm_version != SUPPORTED_ALGORITHM_VERSION:
+        logger.warning(
+            "baseline_calculation_rejected examination_id=%s specialist_id=%s reason=unsupported_algorithm_version requested=%s supported=%s",
+            payload.examination_id,
+            payload.specialist_id,
+            payload.algorithm_version,
+            SUPPORTED_ALGORITHM_VERSION,
+        )
         raise HTTPException(
             status_code=400,
             detail={
@@ -106,7 +132,7 @@ def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculati
         )
     )
 
-    return BaselineCalculationResponse(
+    response = BaselineCalculationResponse(
         schema_version=payload.schema_version,
         algorithm_version=payload.algorithm_version,
         refreshed_at=refreshed_at,
@@ -115,6 +141,21 @@ def calculate_baseline(payload: BaselineCalculationRequest) -> BaselineCalculati
         update_eligibility=UpdateEligibility.model_validate(update_eligibility_data),
         next_baseline=next_baseline,
     )
+    logger.info(
+        "baseline_calculation_succeeded examination_id=%s specialist_id=%s general_band=%s personal_band=%s personal_source=%s update_eligible=%s update_reason=%s next_exam_count=%s next_baseline_available=%s significant_general=%s significant_personal=%s",
+        payload.examination_id,
+        payload.specialist_id,
+        response.general_deviation.band,
+        response.personal_deviation.band,
+        response.personal_deviation.baseline_source,
+        response.update_eligibility.eligible,
+        response.update_eligibility.reason,
+        response.next_baseline.exam_count,
+        response.next_baseline.baseline_available,
+        ",".join(response.general_deviation.significant_deviations) or "none",
+        ",".join(response.personal_deviation.significant_deviations) or "none",
+    )
+    return response
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -144,4 +185,14 @@ def metrics() -> Response:
 
 @app.post("/baseline/calculate", response_model=BaselineCalculationResponse)
 def calculate(payload: BaselineCalculationRequest) -> BaselineCalculationResponse:
-    return calculate_baseline(payload)
+    try:
+        return calculate_baseline(payload)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception(
+            "baseline_calculation_failed examination_id=%s specialist_id=%s",
+            payload.examination_id,
+            payload.specialist_id,
+        )
+        raise
